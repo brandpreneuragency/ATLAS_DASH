@@ -1,5 +1,8 @@
 import { create } from 'zustand';
 import { db } from '../services/db';
+import { useUIStore } from './uiStore';
+
+const toast = (msg: string) => useUIStore.getState().showToast(msg, 'error');
 
 export type TreeNode = {
   name: string;
@@ -241,7 +244,7 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
     if (!parent || parent.kind !== 'directory') return;
     const siblings = parent.children ?? [];
     const err = validateName(name, siblings);
-    if (err) { alert(err); return; }
+    if (err) { toast(err); return; }
     await withPermissionGuard(
       rootHandle,
       async () => { await (parent.handle as FileSystemDirectoryHandle).getFileHandle(name.trim(), { create: true }); },
@@ -256,7 +259,7 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
     if (!parent || parent.kind !== 'directory') return;
     const siblings = parent.children ?? [];
     const err = validateName(name, siblings);
-    if (err) { alert(err); return; }
+    if (err) { toast(err); return; }
     await withPermissionGuard(
       rootHandle,
       async () => { await (parent.handle as FileSystemDirectoryHandle).getDirectoryHandle(name.trim(), { create: true }); },
@@ -274,7 +277,7 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
     if (!parent || parent.kind !== 'directory') return null;
     const siblings = (parent.children ?? []).filter((s) => s.path !== path);
     const err = validateName(newName, siblings);
-    if (err) { alert(err); return null; }
+    if (err) { toast(err); return null; }
     const trimmed = newName.trim();
     const parentDir = parent.handle as FileSystemDirectoryHandle;
 
@@ -291,7 +294,7 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
         } else {
           const children = node.children ?? [];
           if (children.length > 500) {
-            alert('Directory rename is blocked for folders with more than 500 entries.');
+            toast('Directory rename is blocked for folders with more than 500 entries.');
             return null;
           }
           await copyDirectoryRecursive(node.handle as FileSystemDirectoryHandle, parentDir, trimmed);
@@ -323,7 +326,7 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
     const targetDirHandle = targetDir.handle as FileSystemDirectoryHandle;
     const siblings = targetDir.children ?? [];
     const nameErr = validateName(node.name, siblings);
-    if (nameErr) { alert(nameErr); return null; }
+    if (nameErr) { toast(nameErr); return null; }
 
     const result = await withPermissionGuard(rootHandle, async () => {
       if (node.kind === 'file') {

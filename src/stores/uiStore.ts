@@ -1,6 +1,13 @@
 import { create } from 'zustand';
+import { nanoid } from 'nanoid';
 import { db } from '../services/db';
 import i18n from '../i18n';
+
+export interface Toast {
+  id: string;
+  message: string;
+  type: 'error' | 'info';
+}
 
 interface SelectionState {
   text: string;
@@ -27,6 +34,10 @@ interface UIStore {
   isDarkMode: boolean;
   language: 'en' | 'tr';
 
+  toasts: Toast[];
+  showToast: (message: string, type?: Toast['type']) => void;
+  dismissToast: (id: string) => void;
+
   setSidebarOpen: (v: boolean) => void;
   setSidebarWidth: (w: number) => void;
   setSidebarTab: (tab: SidebarTab) => void;
@@ -46,6 +57,16 @@ interface UIStore {
 }
 
 export const useUIStore = create<UIStore>((set, get) => ({
+  toasts: [],
+
+  showToast: (message, type = 'error') => {
+    const id = nanoid(6);
+    set((s) => ({ toasts: [...s.toasts, { id, message, type }] }));
+    setTimeout(() => get().dismissToast(id), 4000);
+  },
+
+  dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+
   sidebarOpen: true,
   sidebarWidth: 33,
   sidebarTab: 'chat',

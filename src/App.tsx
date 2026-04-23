@@ -12,6 +12,7 @@ import { QuickPrompts } from './components/modals/QuickPrompts';
 import { WritersManagerModal } from './components/modals/WritersManagerModal';
 import { ActionsManagerModal } from './components/modals/ActionsManagerModal';
 import { ModelSwitcher } from './components/ui/ModelSwitcher';
+import { ToastContainer } from './components/ui/Toast';
 import { useDocumentStore } from './stores/documentStore';
 import { useUIStore } from './stores/uiStore';
 import { useAIStore } from './stores/aiStore';
@@ -68,5 +69,6 @@ export default function App() {
         </>
       }
     />
+    <ToastContainer />
   );
 }

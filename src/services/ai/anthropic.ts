@@ -1,15 +1,12 @@
 import type { AIProviderConfig } from '../../types';
 import type { ChatMessage } from './types';
 
-// Anthropic does not support browser CORS directly.
-// This implementation targets a local proxy at http://localhost:3001/anthropic
-// or can be used via OpenRouter (set provider to 'openrouter').
 export async function* streamAnthropic(
   messages: ChatMessage[],
   config: AIProviderConfig,
   signal?: AbortSignal
 ): AsyncGenerator<string, void, unknown> {
-  const proxyUrl = config.baseUrl || 'http://localhost:3001/anthropic';
+  const proxyUrl = config.baseUrl || 'https://api.anthropic.com';
   const systemMessages = messages.filter((m) => m.role === 'system');
   const chatMessages = messages.filter((m) => m.role !== 'system');
   const systemPrompt = systemMessages.map((m) => m.content).join('\n');

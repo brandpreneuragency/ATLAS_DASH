@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import type { Document } from '../types';
 import { db } from '../services/db';
+import { useUIStore } from './uiStore';
+
+const toast = (msg: string) => useUIStore.getState().showToast(msg, 'error');
 import { SUPPORTED_EXTENSIONS, parseByExt } from '../services/fileFormat';
 import type { TreeNode } from './fileSystemStore';
 
@@ -129,7 +132,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     }
     const ext = node.name.split('.').pop()?.toLowerCase() ?? '';
     if (!SUPPORTED_EXTENSIONS.includes(ext)) {
-      alert(`Unsupported file type: .${ext}`);
+      toast(`Unsupported file type: .${ext}`);
       return null;
     }
     const file = await (node.handle as FileSystemFileHandle).getFile();
@@ -138,7 +141,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     try {
       json = parseByExt(text, ext);
     } catch {
-      alert(`Could not parse file: ${node.name}`);
+      toast(`Could not parse file: ${node.name}`);
       return null;
     }
     const doc = await createDocument(node.name);

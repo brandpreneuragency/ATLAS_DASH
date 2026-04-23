@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { PROVIDER_MODELS } from '../services/ai/router';
 import type { Agent, AIProviderConfig, ProviderKey } from '../types';
 import { db } from '../services/db';
+import { secureGet, secureSet } from '../services/secureStorage';
 
 const DEFAULT_AGENT: Agent = {
   id: 'default',
@@ -51,7 +52,7 @@ export const useAIStore = create<AIStore>((set, get) => ({
     const activeAgentSetting = await db.settings.get('activeAgentId');
     const activeProviderSetting = await db.settings.get('activeProviderId');
     const hiddenModelsRow = await db.settings.get('hiddenModels');
-    const providerKeysRow = await db.settings.get('providerKeys');
+    const providerKeysRaw = await secureGet('providerKeys');
 
     const allAgents = agents.length > 0 ? agents : [DEFAULT_AGENT];
     if (agents.length === 0) {
@@ -64,8 +65,8 @@ export const useAIStore = create<AIStore>((set, get) => ({
     }
 
     let providerKeys: Record<string, ProviderKey> = {};
-    if (providerKeysRow?.value) {
-      try { providerKeys = JSON.parse(String(providerKeysRow.value)); } catch { providerKeys = {}; }
+    if (providerKeysRaw) {
+      try { providerKeys = JSON.parse(providerKeysRaw); } catch { providerKeys = {}; }
     }
 
     set({
@@ -171,7 +172,7 @@ export const useAIStore = create<AIStore>((set, get) => ({
       baseUrl: pk.baseUrl,
     };
     await db.providerConfigs.put(config);
-    db.settings.put({ key: 'providerKeys', value: JSON.stringify(next) });
+    secureSet('providerKeys', JSON.stringify(next));
     set((s) => {
       const alreadyExists = s.providerConfigs.find((c) => c.id === pk.provider);
       const configs = alreadyExists
