@@ -1,0 +1,339 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #8B5CF6;
+  --color-brand-dark: #7C3AED;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F9FAFB;
+  --color-border: #E5E7EB;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6B7280;
+  --color-highlight: #EEF2FF;
+  --color-highlight-alt: #F3E8FF;
+  --color-input: #F3F4F6;
+  --font-family-sans: 'Inter', sans-serif;
+}
+
+.send-btn {
+  background: linear-gradient(135deg, #d8b4fe 0%, #c4b5fd 100%);
+}
+
+.send-btn:not(:disabled) {
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 60%, #6d28d9 100%);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.45);
+}
+
+.send-btn:not(:disabled):hover {
+  background: linear-gradient(135deg, #b369f8 0%, #8b4cf0 60%, #7c35e0 100%);
+  box-shadow: 0 3px 12px rgba(124, 58, 237, 0.6);
+  transform: scale(1.08);
+}
+
+.send-btn:not(:disabled):active {
+  transform: scale(0.95);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  background: #FFFFFF;
+  color: #111827;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* TipTap editor styles */
+.tiptap-editor {
+  outline: none;
+  min-height: 400px;
+}
+
+.tiptap-editor h1 {
+  font-size: 1.125rem; /* 18px — base (12px step) */
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 1rem;
+  line-height: 1.2;
+}
+
+.tiptap-editor h2 {
+  font-size: 1rem; /* 16px */
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.75rem;
+  margin-top: 1.5rem;
+  line-height: 1.3;
+}
+
+.tiptap-editor h3 {
+  font-size: 0.875rem; /* 14px */
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.tiptap-editor p {
+  font-size: 0.75rem;
+  line-height: 1.75;
+  color: #111827;
+  margin-bottom: 0.75rem;
+}
+
+/* Font size — 14px step */
+.tiptap-editor.font-size-14 p,
+.tiptap-editor.font-size-14 ul li,
+.tiptap-editor.font-size-14 ol li  { font-size: 0.875rem; } /* 14px */
+.tiptap-editor.font-size-14 h1     { font-size: 1.25rem;  } /* 20px */
+.tiptap-editor.font-size-14 h2     { font-size: 1.125rem; } /* 18px */
+.tiptap-editor.font-size-14 h3     { font-size: 1rem;     } /* 16px */
+
+/* Font size — 16px step */
+.tiptap-editor.font-size-16 p,
+.tiptap-editor.font-size-16 ul li,
+.tiptap-editor.font-size-16 ol li  { font-size: 1rem;     } /* 16px */
+.tiptap-editor.font-size-16 h1     { font-size: 1.375rem; } /* 22px */
+.tiptap-editor.font-size-16 h2     { font-size: 1.25rem;  } /* 20px */
+.tiptap-editor.font-size-16 h3     { font-size: 1.125rem; } /* 18px */
+
+.tiptap-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #9CA3AF;
+  pointer-events: none;
+  height: 0;
+}
+
+.tiptap-editor ul {
+  list-style: none;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.tiptap-editor ul li {
+  position: relative;
+  font-size: 0.75rem;
+  line-height: 1.75;
+  margin-bottom: 0.25rem;
+}
+
+.tiptap-editor ul li::before {
+  content: '•';
+  position: absolute;
+  left: -1.25rem;
+  color: #8B5CF6;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+.tiptap-editor ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.tiptap-editor ol li {
+  list-style-type: decimal;
+  font-size: 0.75rem;
+  line-height: 1.75;
+  margin-bottom: 0.25rem;
+}
+
+
+.tiptap-editor ol li {
+  line-height: 1.75;
+  margin-bottom: 0.25rem;
+}
+
+.tiptap-editor blockquote {
+  border-left: 3px solid #8B5CF6;
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: #6B7280;
+  font-style: italic;
+}
+
+.tiptap-editor code {
+  background: #F3F4F6;
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  font-size: 0.875em;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.tiptap-editor pre {
+  background: #1F2937;
+  color: #F9FAFB;
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+.tiptap-editor pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.tiptap-editor a {
+  color: #8B5CF6;
+  text-decoration: underline;
+}
+
+.tiptap-editor mark {
+  background: #EEF2FF;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+/* Toolbar button active state */
+.toolbar-btn-active {
+  background: #EEF2FF;
+  color: #8B5CF6;
+}
+
+/* Dropdown menu */
+.dropdown-menu {
+  animation: fadeIn 0.1s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Tab chrome-style */
+.tab-active {
+  background: white;
+  border-top: 2px solid #8B5CF6;
+}
+
+/* Resize handle cursor */
+.resize-handle {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* Streaming cursor blink */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.streaming-cursor::after {
+  content: '▋';
+  animation: blink 1s step-end infinite;
+  color: #8B5CF6;
+}
+
+.tree-node {
+  padding-left: calc(4px + var(--tree-depth, 0) * 12px);
+}
+
+.toggle-knob {
+  background-color: #ffffff;
+}
+
+.chat-textarea {
+  min-height: 24px;
+  max-height: 192px;
+  overflow-y: auto;
+}
+
+/* ── DARK MODE ──────────────────────────────────────── */
+
+/* Override CSS custom properties */
+.dark {
+  --color-surface: #252526;
+  --color-surface-muted: #2d2d30;
+  --color-border: #3c3c3c;
+  --color-text-primary: #e8e8e8;
+  --color-text-secondary: #9d9d9d;
+  --color-highlight: #2d2540;
+  --color-highlight-alt: #251e3d;
+  --color-input: #3c3c3c;
+  color-scheme: dark;
+}
+
+/* Root + body backgrounds */
+html.dark,
+html.dark body,
+html.dark #root {
+  background: #1a1a1a;
+  color: #e8e8e8;
+}
+
+/* White surfaces → dark card */
+.dark .bg-white { background-color: #252526; }
+
+/* f0f0f0 panel backgrounds → dark base */
+.dark .bg-\[\#f0f0f0\] { background-color: #1a1a1a; }
+.dark .bg-\[rgba\(240\,240\,240\,1\)\] { background-color: #1a1a1a; }
+
+/* App shell outer bg */
+html.dark .flex.flex-col.h-screen { background-color: #1a1a1a; }
+
+/* Gray utility classes */
+.dark .bg-gray-50  { background-color: #2a2a2a; }
+.dark .bg-gray-100 { background-color: #2d2d2d; }
+.dark .hover\:bg-gray-50:hover  { background-color: #2a2a2a; }
+.dark .hover\:bg-gray-100:hover { background-color: #2d2d2d; }
+
+/* Overlay */
+.dark .bg-black\/30 { background-color: rgba(0, 0, 0, 0.65); }
+
+/* Tab chrome */
+.dark .tab-active { background: #252526; }
+
+/* Scrollbar in dark */
+.dark ::-webkit-scrollbar-thumb       { background: #4a4a4a; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #606060; }
+
+/* Dropdown shadow */
+.dark .dropdown-menu {
+  border-color: #3c3c3c;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55);
+}
+
+/* TipTap editor text */
+.dark .tiptap-editor p,
+.dark .tiptap-editor li,
+.dark .tiptap-editor h1,
+.dark .tiptap-editor h2,
+.dark .tiptap-editor h3  { color: #e8e8e8; }
+
+.dark .tiptap-editor blockquote { color: #9d9d9d; }
+.dark .tiptap-editor code  { background-color: #2d2d30; color: #e8e8e8; }
+.dark .tiptap-editor pre   { background-color: #1a1a1a; }
+
+/* Sidebar toggle handle backgrounds */
+.dark .bg-\[\#d9d9d9\] { background-color: #303030; }
+
+/* Active tab background + border */
+.dark .bg-\[rgba\(234\,219\,255\,1\)\]   { background-color: #303030; }
+.dark .border-\[rgba\(216\,194\,248\,1\)\] { border-color: #404040; }
+
+/* Separator / resize handle lines */
+.dark .bg-\[\#dedede\] { background-color: #303030; }
