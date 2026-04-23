@@ -52,23 +52,25 @@ export default function App() {
   }
 
   return (
-    <AppLayout
-      header={<Header />}
-      editor={<EditorWorkspace onEditorReady={handleEditorReady} />}
-      sidebar={<AISidebar documentId={activeDocumentId} editor={editor} />}
-      leftPanel={<FileExplorerPanel />}
-      modals={
-        <>
-          <SettingsModal />
-          <AgentEditor />
-          <QuickPrompts onSelectPrompt={handleQuickPromptSelect} />
-          <ModelManagementModal />
-          <WritersManagerModal />
-          <ActionsManagerModal />
-          <ModelSwitcher />
-        </>
-      }
-    />
-    <ToastContainer />
+    <>
+      <AppLayout
+        header={<Header />}
+        editor={<EditorWorkspace onEditorReady={handleEditorReady} />}
+        sidebar={<AISidebar documentId={activeDocumentId} editor={editor} />}
+        leftPanel={<FileExplorerPanel />}
+        modals={
+          <>
+            <SettingsModal />
+            <AgentEditor />
+            <QuickPrompts onSelectPrompt={handleQuickPromptSelect} />
+            <ModelManagementModal />
+            <WritersManagerModal />
+            <ActionsManagerModal />
+            <ModelSwitcher />
+          </>
+        }
+      />
+      <ToastContainer />
+    </>
   );
 }
