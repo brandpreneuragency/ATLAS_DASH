@@ -60,10 +60,6 @@ export function TreeNode({ node, depth }: TreeNodeProps) {
     }
   }, [inlineInput]);
 
-  const getParentPath = (p: string) => {
-    const idx = p.lastIndexOf('/');
-    return idx === -1 ? p : p.slice(0, idx);
-  };
 
   const handleClick = async () => {
     if (inlineInput?.mode === 'rename') return;
@@ -173,8 +169,6 @@ export function TreeNode({ node, depth }: TreeNodeProps) {
     // clean up expanded paths
     setExpandedPaths(expandedPaths.filter((p) => !removedPaths.includes(p) && !p.startsWith(node.path + '/')));
   };
-
-  const parentPath = getParentPath(node.path);
 
   // ── Drag-and-drop handlers ──────────────────────────────────────────
   const handleDragStart = (e: React.DragEvent) => {

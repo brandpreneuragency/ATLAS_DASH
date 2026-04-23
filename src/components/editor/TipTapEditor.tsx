@@ -64,9 +64,7 @@ export function TipTapEditor({ documentId, initialContent, onEditorReady }: TipT
     editorProps: {
       attributes: {
         class: `tiptap-editor focus:outline-none${editorFontSize !== 12 ? ` font-size-${editorFontSize}` : ''}`,
-        style: {
-          fontFamily: editorFontFamily,
-        },
+        style: `font-family: ${editorFontFamily}`,
       },
       transformPastedHTML: sanitizePastedHTML,
     },

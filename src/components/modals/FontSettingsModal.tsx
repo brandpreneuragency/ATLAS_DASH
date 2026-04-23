@@ -1,10 +1,15 @@
 import { X } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 
+const sizeMap = { small: 12, medium: 14, big: 16 } as const;
+const reverseMap: Record<number, 'small' | 'medium' | 'big'> = { 12: 'small', 14: 'medium', 16: 'big' };
+
 export function FontSettingsModal() {
-  const { activeModal, setActiveModal, editorFontFamily, editorTextProportions, setEditorFontFamily, setEditorTextProportions } = useUIStore();
+  const { activeModal, setActiveModal, editorFontFamily, editorFontSize, setEditorFontFamily, setEditorFontSize } = useUIStore();
 
   if (activeModal !== 'fontSettings') return null;
+
+  const currentProportion = reverseMap[editorFontSize] ?? 'small';
 
   const fontOptions = [
     { value: 'Inter', label: 'Inter' },
@@ -14,7 +19,7 @@ export function FontSettingsModal() {
     { value: 'Courier New', label: 'Courier New' },
   ];
 
-  const sizeOptions = [
+  const sizeOptions: Array<{ value: 'small' | 'medium' | 'big'; label: string }> = [
     { value: 'small', label: 'Small' },
     { value: 'medium', label: 'Medium' },
     { value: 'big', label: 'Big' },
@@ -57,24 +62,24 @@ export function FontSettingsModal() {
               {sizeOptions.map((size) => (
                 <button
                   key={size.value}
-                  onClick={() => setEditorTextProportions(size.value as 'small' | 'medium' | 'big')}
+                  onClick={() => setEditorFontSize(sizeMap[size.value])}
                   className={`w-full flex items-center justify-between p-3 rounded-xl border transition-colors text-sm text-text-primary ${
-                    editorTextProportions === size.value
+                    currentProportion === size.value
                       ? 'border-brand bg-brand/10'
                       : 'border-border hover:bg-gray-50'
                   }`}
                 >
                   <span>{size.label}</span>
-                  {editorTextProportions === size.value && (
+                  {currentProportion === size.value && (
                     <span className="text-brand text-xs">✓</span>
                   )}
                 </button>
               ))}
             </div>
             <div className="mt-3 text-xs text-text-secondary">
-              <p>Small: Current font size</p>
-              <p>Medium: +2px to font sizes</p>
-              <p>Big: +4px to font sizes</p>
+              <p>Small: 12px</p>
+              <p>Medium: 14px</p>
+              <p>Big: 16px</p>
             </div>
           </div>
         </div>

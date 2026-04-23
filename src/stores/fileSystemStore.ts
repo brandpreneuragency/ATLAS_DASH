@@ -51,7 +51,7 @@ async function buildChildren(
       name,
       path: `${parentPath}/${name}`,
       kind: handle.kind,
-      handle,
+      handle: handle as FileSystemFileHandle | FileSystemDirectoryHandle,
     });
   }
   return sortNodes(nodes);

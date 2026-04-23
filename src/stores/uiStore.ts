@@ -164,7 +164,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
     set({
       sidebarOpen: sidebarOpen ? Boolean(sidebarOpen.value) : true,
       sidebarWidth: sidebarWidth ? Number(sidebarWidth.value) : 33,
-      sidebarTab: sidebarTab ? String(sidebarTab.value) : 'chat',
+      sidebarTab: (sidebarTab ? String(sidebarTab.value) : 'chat') as SidebarTab,
       fileExplorerOpen: fileExplorerOpen ? Boolean(fileExplorerOpen.value) : false,
       fileExplorerWidth: fileExplorerWidth ? Number(fileExplorerWidth.value) : 20,
       expandedPaths: fileExplorerExpandedPaths ? JSON.parse(String(fileExplorerExpandedPaths.value)) : [],
