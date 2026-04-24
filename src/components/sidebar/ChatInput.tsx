@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Square, ChevronDown, ChevronRight, User, Zap, Plus, X, Check } from 'lucide-react';
+import { Square, ChevronDown, ChevronRight, User, Zap, Plus, X, Check, Globe } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../../stores/uiStore';
 import { useChatStore } from '../../stores/chatStore';
@@ -37,7 +37,7 @@ export function ChatInput({ documentId }: ChatInputProps) {
 
   const { selectedText } = useUIStore();
   const { isStreaming } = useChatStore();
-  const { agents, activeAgentId, setActiveAgent, getActiveAgent, providerConfigs, activeProviderId, setActiveProvider, isModelHidden, setActiveModel } = useAIStore();
+  const { agents, activeAgentId, setActiveAgent, getActiveAgent, providerConfigs, activeProviderId, setActiveProvider, isModelHidden, setActiveModel, searchConfig, saveSearchConfig } = useAIStore();
   const { setActiveModal } = useUIStore();
   const { sendMessage, stopStreaming } = useStreamingChat(documentId);
 
@@ -139,6 +139,10 @@ export function ChatInput({ documentId }: ChatInputProps) {
   };
 
   const canSend = (value.trim().length > 0 || attachments.length > 0) && !isStreaming;
+
+  const toggleWebSearch = () => {
+    saveSearchConfig({ ...searchConfig, enabled: !searchConfig.enabled });
+  };
 
   return (
     <div className="flex-shrink-0 pl-[20px] pr-[18px] pb-[10px] pt-[6px]">
@@ -388,6 +392,20 @@ export function ChatInput({ documentId }: ChatInputProps) {
                 </div>
               )}
             </div>
+
+            {/* Web search toggle */}
+            <button
+              type="button"
+              onClick={toggleWebSearch}
+              title={searchConfig.enabled ? 'Web Search ON — click to disable' : 'Web Search OFF — click to enable'}
+              className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors flex-shrink-0 ${
+                searchConfig.enabled
+                  ? 'text-brand bg-brand/10 hover:bg-brand/20'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-gray-100'
+              }`}
+            >
+              <Globe size={14} />
+            </button>
 
             {/* Send / Stop */}
             {isStreaming ? (
