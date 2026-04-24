@@ -37,6 +37,8 @@ interface AIStore {
   setActiveModel: (provider: string, modelId: string) => void;
   searchConfig: SearchConfig;
   saveSearchConfig: (config: SearchConfig) => Promise<void>;
+  systemInstructions: string;
+  saveSystemInstructions: (text: string) => Promise<void>;
 }
 
 export const useAIStore = create<AIStore>((set, get) => ({
@@ -48,6 +50,7 @@ export const useAIStore = create<AIStore>((set, get) => ({
   hiddenModels: [],
   providerKeys: {},
   searchConfig: { exaKey: '', tavilyKey: '', enabled: false },
+  systemInstructions: '',
 
   loadAISettings: async () => {
     const agents = await db.agents.toArray();
@@ -57,6 +60,7 @@ export const useAIStore = create<AIStore>((set, get) => ({
     const hiddenModelsRow = await db.settings.get('hiddenModels');
     const providerKeysRaw = await secureGet('providerKeys');
     const searchConfigRaw = await secureGet('searchConfig');
+    const systemInstructionsRaw = await secureGet('systemInstructions');
 
     const allAgents = agents.length > 0 ? agents : [DEFAULT_AGENT];
     if (agents.length === 0) {
@@ -84,6 +88,7 @@ export const useAIStore = create<AIStore>((set, get) => ({
       searchConfig: searchConfigRaw
         ? (() => { try { return JSON.parse(searchConfigRaw) as SearchConfig; } catch { return { exaKey: '', tavilyKey: '', enabled: false }; } })()
         : { exaKey: '', tavilyKey: '', enabled: false },
+      systemInstructions: systemInstructionsRaw ?? '',
     });
   },
 
@@ -207,5 +212,10 @@ export const useAIStore = create<AIStore>((set, get) => ({
   saveSearchConfig: async (config) => {
     await secureSet('searchConfig', JSON.stringify(config));
     set({ searchConfig: config });
+  },
+
+  saveSystemInstructions: async (text) => {
+    await secureSet('systemInstructions', text);
+    set({ systemInstructions: text });
   },
 }));

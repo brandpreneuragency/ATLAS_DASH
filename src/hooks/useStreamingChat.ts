@@ -15,6 +15,7 @@ export function useStreamingChat(documentId: string) {
     useChatStore();
   const { getActiveAgent, getActiveProvider } = useAIStore();
   const searchConfig = useAIStore((s) => s.searchConfig);
+  const systemInstructions = useAIStore((s) => s.systemInstructions);
   const abortRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(
@@ -62,9 +63,13 @@ export function useStreamingChat(documentId: string) {
         }
       }
 
-      const systemContent = searchContext
-        ? `${agent.systemPrompt}\n\n${searchContext}`
+      const basePrompt = systemInstructions.trim()
+        ? `${systemInstructions.trim()}\n\n${agent.systemPrompt}`
         : agent.systemPrompt;
+
+      const systemContent = searchContext
+        ? `${basePrompt}\n\n${searchContext}`
+        : basePrompt;
 
       const aiMessages: AIChatMessage[] = [
         { role: 'system', content: systemContent },
@@ -138,7 +143,7 @@ export function useStreamingChat(documentId: string) {
         setIsStreaming(false);
       }
     },
-    [documentId, addMessage, updateMessage, setStreamingMessageId, setIsStreaming, getMessages, getActiveAgent, getActiveProvider, searchConfig]
+    [documentId, addMessage, updateMessage, setStreamingMessageId, setIsStreaming, getMessages, getActiveAgent, getActiveProvider, searchConfig, systemInstructions]
   );
 
   const stopStreaming = useCallback(() => {

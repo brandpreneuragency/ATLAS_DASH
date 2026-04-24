@@ -60,6 +60,11 @@ const en = {
     textSize: 'Text Size',
     fontFamily: 'Font Family',
     language: 'Language',
+    systemInstructions: 'System Instructions',
+    systemInstructionsHint: 'Prepended to every agent\'s system prompt on each message.',
+    systemInstructionsPlaceholder: 'E.g. Always respond in British English. Today\'s date is…',
+    save: 'Save',
+    saved: 'Saved',
   },
   models: {
     title: 'Model Management',

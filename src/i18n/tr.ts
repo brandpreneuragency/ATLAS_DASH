@@ -60,6 +60,11 @@ const tr = {
     textSize: 'Metin Boyutu',
     fontFamily: 'Yazı Tipi',
     language: 'Dil',
+    systemInstructions: 'Sistem Talimatları',
+    systemInstructionsHint: 'Her mesajda tüm ajanların sistem istemine eklenir.',
+    systemInstructionsPlaceholder: 'Örn. Her zaman Türkçe yanıt ver. Bugünün tarihi…',
+    save: 'Kaydet',
+    saved: 'Kaydedildi',
   },
   models: {
     title: 'Model Yönetimi',

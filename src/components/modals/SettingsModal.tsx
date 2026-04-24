@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, ChevronDown, Moon, Sun } from 'lucide-react';
+import { X, ChevronDown, Moon, Sun, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../../stores/uiStore';
+import { useAIStore } from '../../stores/aiStore';
 
 const FONT_FAMILIES = ['Inter', 'Georgia', 'Arial', 'Verdana', 'Trebuchet MS'];
 
@@ -14,8 +15,23 @@ export function SettingsModal() {
     isDarkMode, setIsDarkMode,
     language, setLanguage,
   } = useUIStore();
+  const systemInstructions = useAIStore((s) => s.systemInstructions);
+  const saveSystemInstructions = useAIStore((s) => s.saveSystemInstructions);
+
   const [fontOpen, setFontOpen] = useState(false);
   const fontRef = useRef<HTMLDivElement>(null);
+  const [instructionsText, setInstructionsText] = useState('');
+  const [instructionsSaved, setInstructionsSaved] = useState(false);
+
+  useEffect(() => {
+    setInstructionsText(systemInstructions);
+  }, [systemInstructions]);
+
+  const handleSaveInstructions = async () => {
+    await saveSystemInstructions(instructionsText);
+    setInstructionsSaved(true);
+    setTimeout(() => setInstructionsSaved(false), 2000);
+  };
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -52,6 +68,29 @@ export function SettingsModal() {
               <span>{t('settings.manageProviders')}</span>
               <span className="text-text-secondary text-xs">→</span>
             </button>
+          </div>
+
+          {/* System Instructions */}
+          <div>
+            <h3 className="text-sm font-semibold text-text-primary mb-1">{t('settings.systemInstructions')}</h3>
+            <p className="text-xs text-text-secondary mb-3">{t('settings.systemInstructionsHint')}</p>
+            <textarea
+              value={instructionsText}
+              onChange={(e) => setInstructionsText(e.target.value)}
+              placeholder={t('settings.systemInstructionsPlaceholder')}
+              rows={4}
+              className="w-full text-xs border border-border rounded-xl px-3 py-2.5 outline-none focus:border-brand resize-y font-mono text-text-primary placeholder-text-secondary bg-white"
+            />
+            <div className="flex justify-end mt-2">
+              <button
+                type="button"
+                onClick={handleSaveInstructions}
+                className="flex items-center gap-1.5 text-xs font-semibold bg-brand text-white px-3 py-1.5 rounded-lg hover:bg-brand/90 transition-colors"
+              >
+                {instructionsSaved ? <Check size={12} /> : null}
+                {instructionsSaved ? t('settings.saved') : t('settings.save')}
+              </button>
+            </div>
           </div>
 
           {/* Appearance */}
