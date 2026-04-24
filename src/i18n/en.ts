@@ -70,6 +70,7 @@ const en = {
     title: 'Model Management',
     subtitle: 'Configure API keys and choose which models appear in the quick selector.',
     close: 'Close model management',
+    back: 'Back to settings',
     apiKey: 'API Key — {{provider}}',
     pasteKey: 'Paste your API key…',
     baseUrl: 'Base URL',

@@ -21,6 +21,7 @@ interface DocumentStore {
   duplicateDocument: (id: string) => Promise<Document>;
   getActiveDocument: () => Document | null;
   openFileAsDocument: (node: TreeNode) => Promise<Document | null>;
+  openFileFromTree: (node: TreeNode, forceNewTab?: boolean) => Promise<Document | null>;
   renameDocumentBySourcePath: (oldPath: string, newPath: string, newTitle: string) => Promise<void>;
   deleteDocumentsBySourcePaths: (paths: string[]) => Promise<void>;
 }
@@ -124,13 +125,14 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
   },
 
   openFileAsDocument: async (node: TreeNode) => {
-    const { documents, setActiveDocument, createDocument, updateDocument } = get();
+    const { documents, setActiveDocument } = get();
     const existing = documents.find((d) => d.sourcePath === node.path);
     if (existing) {
       setActiveDocument(existing.id);
       return existing;
     }
-    const ext = node.name.split('.').pop()?.toLowerCase() ?? '';
+    const parts = node.name.split('.');
+    const ext = (parts.length > 1 ? parts.pop() : parts[0])?.toLowerCase() ?? '';
     if (!SUPPORTED_EXTENSIONS.includes(ext)) {
       toast(`Unsupported file type: .${ext}`);
       return null;
@@ -144,9 +146,83 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       toast(`Could not parse file: ${node.name}`);
       return null;
     }
-    const doc = await createDocument(node.name);
-    await updateDocument(doc.id, { content: JSON.stringify(json), sourcePath: node.path });
-    return get().documents.find((d) => d.id === doc.id) ?? doc;
+    const doc: Document = {
+      id: nanoid(8),
+      title: node.name,
+      content: JSON.stringify(json),
+      sourcePath: node.path,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      order: get().documents.length,
+    };
+    await db.documents.put(doc);
+    set((s) => ({ documents: [...s.documents, doc], activeDocumentId: doc.id }));
+    return doc;
+  },
+
+  openFileFromTree: async (node: TreeNode, forceNewTab = false) => {
+    const { documents, activeDocumentId, setActiveDocument } = get();
+
+    const existing = documents.find((d) => d.sourcePath === node.path);
+    if (existing) {
+      setActiveDocument(existing.id);
+      return existing;
+    }
+
+    const parts = node.name.split('.');
+    const ext = (parts.length > 1 ? parts.pop() : parts[0])?.toLowerCase() ?? '';
+    if (!SUPPORTED_EXTENSIONS.includes(ext)) {
+      toast(`Unsupported file type: .${ext}`);
+      return null;
+    }
+    const file = await (node.handle as FileSystemFileHandle).getFile();
+    const text = await file.text();
+    let json: object;
+    try {
+      json = parseByExt(text, ext);
+    } catch {
+      toast(`Could not parse file: ${node.name}`);
+      return null;
+    }
+
+    const activeDoc = documents.find((d) => d.id === activeDocumentId);
+    const isEmpty = !activeDoc?.content?.includes('"text":');
+    const isCleanFile = !!activeDoc?.sourcePath && !activeDoc?.isDirty;
+    const replace = !forceNewTab && !!activeDoc && (isEmpty || isCleanFile);
+
+    if (replace && activeDoc) {
+      const newDoc: Document = {
+        id: nanoid(8),
+        title: node.name,
+        content: JSON.stringify(json),
+        sourcePath: node.path,
+        isDirty: false,
+        order: activeDoc.order,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      await db.documents.delete(activeDoc.id);
+      await db.documents.put(newDoc);
+      set((s) => ({
+        documents: s.documents.map((d) => (d.id === activeDoc.id ? newDoc : d)),
+        activeDocumentId: newDoc.id,
+      }));
+      return newDoc;
+    }
+
+    const newDoc: Document = {
+      id: nanoid(8),
+      title: node.name,
+      content: JSON.stringify(json),
+      sourcePath: node.path,
+      isDirty: false,
+      order: get().documents.length,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    await db.documents.put(newDoc);
+    set((s) => ({ documents: [...s.documents, newDoc], activeDocumentId: newDoc.id }));
+    return newDoc;
   },
 }));
 

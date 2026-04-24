@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, ChevronRight, ChevronDown, Eye, EyeOff, KeyRound, Check, Globe } from 'lucide-react';
+import { X, ChevronRight, ChevronDown, Eye, EyeOff, KeyRound, Check, Globe, ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../../stores/uiStore';
 import { useAIStore } from '../../stores/aiStore';
@@ -221,11 +221,21 @@ export function ModelManagementModal() {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
-          <div>
-            <h2 id="model-management-title" className="text-base font-semibold text-text-primary">{t('models.title')}</h2>
-            <p className="text-xs text-text-secondary mt-0.5">
-              {t('models.subtitle')}
-            </p>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setActiveModal('settings')}
+              aria-label={t('models.back')}
+              className="text-text-secondary hover:text-text-primary transition-colors"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div>
+              <h2 id="model-management-title" className="text-base font-semibold text-text-primary">{t('models.title')}</h2>
+              <p className="text-xs text-text-secondary mt-0.5">
+                {t('models.subtitle')}
+              </p>
+            </div>
           </div>
           <button
             type="button"

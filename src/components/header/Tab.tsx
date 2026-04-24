@@ -141,6 +141,11 @@ export function Tab({ doc, isActive, compressed = false, onSelect, onClose, onRe
     setIsEditing(false);
   };
 
+  const isEmpty = !doc.content?.includes('"text":');
+  const isCleanFile = !!doc.sourcePath && !doc.isDirty;
+  const isReplaceable = isEmpty || isCleanFile;
+  const isDirty = !!doc.sourcePath && !!doc.isDirty;
+
   return (
     <div
       onClick={onSelect}
@@ -186,7 +191,10 @@ export function Tab({ doc, isActive, compressed = false, onSelect, onClose, onRe
               className="text-xs font-medium bg-transparent outline-none border-b border-brand w-24"
             />
           ) : (
-            <span className="text-xs font-medium truncate">{doc.title}</span>
+            <span className={`text-xs font-medium truncate${isReplaceable ? ' italic' : ''}`}>
+              {isDirty && <span className="mr-0.5 text-brand">●</span>}
+              {doc.title}
+            </span>
           )}
 
           <button

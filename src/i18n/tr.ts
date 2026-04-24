@@ -70,6 +70,7 @@ const tr = {
     title: 'Model Yönetimi',
     subtitle: 'API anahtarlarını yapılandırın ve hızlı seçicide hangi modellerin görüneceğini seçin.',
     close: 'Model yönetimini kapat',
+    back: 'Ayarlara geri dön',
     apiKey: 'API Anahtarı — {{provider}}',
     pasteKey: 'API anahtarınızı yapıştırın…',
     baseUrl: 'Temel URL',

@@ -1,14 +1,14 @@
 import type { Editor } from '@tiptap/react';
-import { Search, Undo2, Redo2, Save } from 'lucide-react';
+import { Search, Undo2, Redo2, Lock, LockOpen, Save } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
-import { useDocumentStore } from '../../stores/documentStore';
-import { useFileSystemStore } from '../../stores/fileSystemStore';
-import type { TreeNode } from '../../stores/fileSystemStore';
-import { serialize } from '../../services/fileFormat';
+import { useSaveDocument } from '../../hooks/useSaveDocument';
 import { FindReplace } from './FindReplace';
 
 interface ToolbarProps {
   editor: Editor | null;
+  isFileBacked: boolean;
+  isLocked: boolean;
+  onToggleLock: () => void;
 }
 
 function ToolBtn({
@@ -34,71 +34,49 @@ function ToolBtn({
   );
 }
 
-function findNodeByPath(node: TreeNode, path: string): TreeNode | null {
-  if (node.path === path) return node;
-  for (const child of node.children ?? []) {
-    const found = findNodeByPath(child, path);
-    if (found) return found;
-  }
-  return null;
-}
-
-export function FormattingToolbar({ editor }: ToolbarProps) {
+export function FormattingToolbar({ editor, isFileBacked, isLocked, onToggleLock }: ToolbarProps) {
   const { setFindReplaceOpen, findReplaceOpen } = useUIStore();
-  const { activeDocumentId, documents, updateDocument } = useDocumentStore();
-  const rootNode = useFileSystemStore((s) => s.rootNode);
-
-  const handleSave = async () => {
-    if (!editor || !activeDocumentId) return;
-    const editorJson = editor.getJSON();
-    const json = JSON.stringify(editorJson);
-    const text = editor.getText();
-    const firstLine = text.split('\n')[0]?.trim() ?? '';
-    const title = firstLine.slice(0, 80) || 'Untitled';
-    updateDocument(activeDocumentId, { content: json, title });
-
-    const doc = documents.find((d) => d.id === activeDocumentId);
-    if (!doc?.sourcePath || !rootNode) return;
-    const fileNode = findNodeByPath(rootNode, doc.sourcePath);
-    if (!fileNode || fileNode.kind !== 'file') return;
-    const ext = fileNode.name.split('.').pop()?.toLowerCase() ?? '';
-    try {
-      const handle = fileNode.handle as FileSystemFileHandle;
-      const writable = await handle.createWritable();
-      await writable.write(serialize(editorJson, ext));
-      await writable.close();
-    } catch (err: any) {
-      if (err?.name === 'NotAllowedError') {
-        try {
-          await (fileNode.handle as any).requestPermission({ mode: 'readwrite' });
-          const handle = fileNode.handle as FileSystemFileHandle;
-          const writable = await handle.createWritable();
-          await writable.write(serialize(editorJson, ext));
-          await writable.close();
-        } catch {
-          console.warn('[Save] disk write failed after permission retry');
-        }
-      } else {
-        console.warn('[Save] disk write failed:', err);
-      }
-    }
-  };
+  const saveDocument = useSaveDocument();
 
   return (
     <>
-      <div className="flex h-[30px] items-center justify-end gap-0.5 rounded-[10px] bg-transparent px-0 py-0">
-        <ToolBtn onClick={handleSave} title="Save">
-          <Save size={14} />
-        </ToolBtn>
-        <ToolBtn onClick={() => setFindReplaceOpen(!findReplaceOpen)} title="Find & Replace" active={findReplaceOpen}>
-          <Search size={14} />
-        </ToolBtn>
-        <ToolBtn onClick={() => editor?.chain().focus().undo().run()} title="Undo" disabled={!editor?.can().undo()}>
-          <Undo2 size={14} />
-        </ToolBtn>
-        <ToolBtn onClick={() => editor?.chain().focus().redo().run()} title="Redo" disabled={!editor?.can().redo()}>
-          <Redo2 size={14} />
-        </ToolBtn>
+      <div className="flex h-[30px] items-center justify-between w-full px-0">
+        {/* Left: Lock + Save */}
+        <div className="flex items-center gap-0.5">
+          {isFileBacked && (
+            <button
+              type="button"
+              onClick={onToggleLock}
+              title={isLocked ? 'Unlock to edit' : 'Lock file'}
+              className="flex items-center justify-center w-7 h-7 rounded-md transition-colors text-sm flex-shrink-0 hover:bg-gray-100"
+            >
+              {isLocked
+                ? <Lock size={14} className="text-purple-500" />
+                : <LockOpen size={14} className="text-text-secondary" />
+              }
+            </button>
+          )}
+          <ToolBtn
+            onClick={() => saveDocument(editor)}
+            title="Save to disk"
+            disabled={isFileBacked && isLocked}
+          >
+            <Save size={14} />
+          </ToolBtn>
+        </div>
+
+        {/* Right: Find, Undo, Redo */}
+        <div className="flex items-center gap-0.5">
+          <ToolBtn onClick={() => setFindReplaceOpen(!findReplaceOpen)} title="Find & Replace" active={findReplaceOpen}>
+            <Search size={14} />
+          </ToolBtn>
+          <ToolBtn onClick={() => editor?.chain().focus().undo().run()} title="Undo" disabled={!editor?.can().undo()}>
+            <Undo2 size={14} />
+          </ToolBtn>
+          <ToolBtn onClick={() => editor?.chain().focus().redo().run()} title="Redo" disabled={!editor?.can().redo()}>
+            <Redo2 size={14} />
+          </ToolBtn>
+        </div>
       </div>
 
       <FindReplace editor={editor} />

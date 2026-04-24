@@ -7,12 +7,18 @@ export async function* streamOpenAI(
   signal?: AbortSignal
 ): AsyncGenerator<string, void, unknown> {
   const baseUrl = config.baseUrl || 'https://api.openai.com/v1';
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${config.apiKey}`,
+  };
+  if (config.provider === 'openrouter') {
+    headers['HTTP-Referer'] = 'https://tabs-editor.app';
+    headers['X-Title'] = 'TABS';
+  }
+
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`,
-    },
+    headers,
     body: JSON.stringify({
       model: config.selectedModel || 'gpt-4o',
       messages,
@@ -29,6 +35,8 @@ export async function* streamOpenAI(
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  let reasoningStarted = false;
+  let reasoningClosed = false;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -43,8 +51,18 @@ export async function* streamOpenAI(
       if (!trimmed.startsWith('data: ')) continue;
       try {
         const json = JSON.parse(trimmed.slice(6));
-        const delta = json.choices?.[0]?.delta?.content;
-        if (delta) yield delta;
+        const delta = json.choices?.[0]?.delta;
+        const reasoning = delta?.reasoning ?? delta?.reasoning_content ?? '';
+        const content = delta?.content ?? '';
+
+        if (reasoning) {
+          if (!reasoningStarted) { yield '<think>'; reasoningStarted = true; }
+          yield reasoning;
+        }
+        if (content) {
+          if (reasoningStarted && !reasoningClosed) { yield '</think>'; reasoningClosed = true; }
+          yield content;
+        }
       } catch {
         // skip malformed chunks
       }

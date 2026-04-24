@@ -38,7 +38,7 @@ export function TreeNode({ node, depth }: TreeNodeProps) {
   const { t } = useTranslation();
   const { expandedPaths, toggleExpandedPath, setExpandedPaths } = useUIStore();
   const { ensureChildrenLoaded, createFile, createDirectory, rename, remove, move } = useFileSystemStore();
-  const { openFileAsDocument, renameDocumentBySourcePath, deleteDocumentsBySourcePaths, renameDocumentBySourcePath: moveDocumentPath } = useDocumentStore();
+  const { openFileFromTree, renameDocumentBySourcePath, deleteDocumentsBySourcePaths, renameDocumentBySourcePath: moveDocumentPath } = useDocumentStore();
 
   const expanded = expandedPaths.includes(node.path);
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
@@ -69,7 +69,7 @@ export function TreeNode({ node, depth }: TreeNodeProps) {
       }
       toggleExpandedPath(node.path);
     } else {
-      await openFileAsDocument(node);
+      await openFileFromTree(node, false);
     }
   };
 
@@ -218,6 +218,7 @@ export function TreeNode({ node, depth }: TreeNodeProps) {
         style={{ '--tree-depth': depth } as React.CSSProperties}
         draggable
         onClick={handleClick}
+        onAuxClick={(e) => { if (node.kind === 'file') { e.preventDefault(); openFileFromTree(node, true); } }}
         onKeyDown={handleKeyDown}
         onContextMenu={handleContextMenu}
         onMouseEnter={() => setShowKebab(true)}

@@ -36,9 +36,10 @@ interface TipTapEditorProps {
   documentId: string | null;
   initialContent: string;
   onEditorReady?: (editor: Editor) => void;
+  editable?: boolean;
 }
 
-export function TipTapEditor({ documentId, initialContent, onEditorReady }: TipTapEditorProps) {
+export function TipTapEditor({ documentId, initialContent, onEditorReady, editable = true }: TipTapEditorProps) {
   const setSelectedText = useUIStore((s) => s.setSelectedText);
   const { editorFontFamily, editorFontSize } = useUIStore((s) => s);
 
@@ -82,6 +83,11 @@ export function TipTapEditor({ documentId, initialContent, onEditorReady }: TipT
   useEffect(() => {
     if (editor && onEditorReady) onEditorReady(editor);
   }, [editor, onEditorReady]);
+
+  useEffect(() => {
+    if (!editor) return;
+    editor.setEditable(editable);
+  }, [editor, editable]);
 
   useEffect(() => {
     if (!editor) return;

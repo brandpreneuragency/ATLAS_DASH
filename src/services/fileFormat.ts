@@ -1,6 +1,8 @@
 import { serializeMdString } from './export';
 
-export const SUPPORTED_EXTENSIONS = ['md', 'markdown', 'txt', 'json'];
+export const SUPPORTED_EXTENSIONS = ['md', 'markdown', 'txt', 'json', 'mjs', 'cjs', 'js', 'ts', 'tsx', 'jsx', 'env', 'local', 'gitignore', 'yaml', 'yml', 'toml', 'html', 'htm', 'css', 'scss', 'xml', 'csv'];
+
+export const TEXT_AS_IS_EXTENSIONS = new Set(['mjs', 'cjs', 'js', 'ts', 'tsx', 'jsx', 'env', 'local', 'gitignore', 'yaml', 'yml', 'toml', 'html', 'htm', 'css', 'scss', 'xml', 'csv']);
 
 function mdNodeFromLines(lines: string[]): object[] {
   const nodes: object[] = [];
@@ -112,7 +114,10 @@ export function parseJson(text: string): object {
 export function parseByExt(text: string, ext: string): object {
   if (ext === 'md' || ext === 'markdown') return parseMarkdown(text);
   if (ext === 'txt') return parseTxt(text);
-  if (ext === 'json') return parseJson(text);
+  if (ext === 'json') {
+    try { return parseJson(text); } catch { return parseTxt(text); }
+  }
+  if (TEXT_AS_IS_EXTENSIONS.has(ext)) return parseTxt(text);
   throw new Error(`Unsupported extension: ${ext}`);
 }
 
