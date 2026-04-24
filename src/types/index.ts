@@ -6,6 +6,7 @@ export interface Document {
   updatedAt: number;
   order: number;
   sourcePath?: string;
+  isDirty?: boolean;
 }
 
 export interface Attachment {
@@ -74,4 +75,16 @@ export interface StreamChunk {
 export interface ChatPayload {
   messages: { role: 'user' | 'assistant' | 'system'; content: string }[];
   config: AIProviderConfig;
+}
+
+export interface SearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+}
+
+export interface SearchConfig {
+  exaKey: string;
+  tavilyKey: string;
+  enabled: boolean;
 }
