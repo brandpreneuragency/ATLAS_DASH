@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { PROVIDER_MODELS } from '../services/ai/router';
-import type { Agent, AIProviderConfig, ProviderKey } from '../types';
+import type { Agent, AIProviderConfig, ProviderKey, SearchConfig } from '../types';
 import { db } from '../services/db';
 import { secureGet, secureSet } from '../services/secureStorage';
 
@@ -35,6 +35,8 @@ interface AIStore {
   saveProviderKey: (pk: ProviderKey) => Promise<void>;
   isModelHidden: (provider: string, modelId: string) => boolean;
   setActiveModel: (provider: string, modelId: string) => void;
+  searchConfig: SearchConfig;
+  saveSearchConfig: (config: SearchConfig) => Promise<void>;
 }
 
 export const useAIStore = create<AIStore>((set, get) => ({
@@ -45,6 +47,7 @@ export const useAIStore = create<AIStore>((set, get) => ({
   isLoaded: false,
   hiddenModels: [],
   providerKeys: {},
+  searchConfig: { exaKey: '', tavilyKey: '', enabled: false },
 
   loadAISettings: async () => {
     const agents = await db.agents.toArray();
@@ -53,6 +56,7 @@ export const useAIStore = create<AIStore>((set, get) => ({
     const activeProviderSetting = await db.settings.get('activeProviderId');
     const hiddenModelsRow = await db.settings.get('hiddenModels');
     const providerKeysRaw = await secureGet('providerKeys');
+    const searchConfigRaw = await secureGet('searchConfig');
 
     const allAgents = agents.length > 0 ? agents : [DEFAULT_AGENT];
     if (agents.length === 0) {
@@ -77,6 +81,9 @@ export const useAIStore = create<AIStore>((set, get) => ({
       isLoaded: true,
       hiddenModels,
       providerKeys,
+      searchConfig: searchConfigRaw
+        ? (() => { try { return JSON.parse(searchConfigRaw) as SearchConfig; } catch { return { exaKey: '', tavilyKey: '', enabled: false }; } })()
+        : { exaKey: '', tavilyKey: '', enabled: false },
     });
   },
 
@@ -195,5 +202,10 @@ export const useAIStore = create<AIStore>((set, get) => ({
     );
     set({ providerConfigs: configs });
     db.providerConfigs.bulkPut(configs);
+  },
+
+  saveSearchConfig: async (config) => {
+    await secureSet('searchConfig', JSON.stringify(config));
+    set({ searchConfig: config });
   },
 }));
