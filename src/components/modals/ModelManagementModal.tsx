@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, ChevronRight, ChevronDown, Eye, EyeOff, KeyRound, Check } from 'lucide-react';
+import { X, ChevronRight, ChevronDown, Eye, EyeOff, KeyRound, Check, Globe } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../../stores/uiStore';
 import { useAIStore } from '../../stores/aiStore';
@@ -186,6 +186,24 @@ function ProviderRow({ provider }: ProviderRowProps) {
 export function ModelManagementModal() {
   const { t } = useTranslation();
   const { activeModal, setActiveModal } = useUIStore();
+  const searchConfig = useAIStore((s) => s.searchConfig);
+  const saveSearchConfig = useAIStore((s) => s.saveSearchConfig);
+
+  const [exaKey, setExaKey] = useState(searchConfig.exaKey);
+  const [tavilyKey, setTavilyKey] = useState(searchConfig.tavilyKey);
+  const [showExaKey, setShowExaKey] = useState(false);
+  const [showTavilyKey, setShowTavilyKey] = useState(false);
+  const [searchSaved, setSearchSaved] = useState(false);
+
+  const handleSaveSearchKeys = async () => {
+    await saveSearchConfig({
+      exaKey: exaKey.trim(),
+      tavilyKey: tavilyKey.trim(),
+      enabled: searchConfig.enabled,
+    });
+    setSearchSaved(true);
+    setTimeout(() => setSearchSaved(false), 2000);
+  };
 
   if (activeModal !== 'modelManagement') return null;
 
@@ -224,6 +242,79 @@ export function ModelManagementModal() {
           {providers.map((provider) => (
             <ProviderRow key={provider} provider={provider} />
           ))}
+
+          {/* Web Search */}
+          <div className="mt-4 border-t border-border pt-4">
+            <div className="flex items-center gap-2 px-4 py-2">
+              <Globe size={14} className="text-brand" />
+              <span className="text-xs font-bold tracking-widest text-text-secondary uppercase">
+                Web Search
+              </span>
+            </div>
+            <div className="mx-4 mb-2 p-3 bg-highlight/40 border border-brand/20 rounded-xl space-y-3">
+              <p className="text-[10px] text-text-secondary">
+                Add an Exa key (primary, 1000 free/month at{' '}
+                <span className="font-mono">exa.ai</span>) and/or a Tavily key (fallback,
+                1000 free/month at <span className="font-mono">tavily.com</span>). Toggle
+                search on/off with the Globe button in chat.
+              </p>
+
+              {/* Exa Key */}
+              <div className="space-y-1">
+                <div className="text-[10px] font-bold tracking-widest text-text-secondary uppercase">
+                  Exa API Key <span className="font-normal normal-case">(Primary)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type={showExaKey ? 'text' : 'password'}
+                    value={exaKey}
+                    onChange={(e) => setExaKey(e.target.value)}
+                    placeholder="exa_..."
+                    className="flex-1 text-xs border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-brand font-mono bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowExaKey((v) => !v)}
+                    className="text-text-secondary hover:text-text-primary"
+                  >
+                    {showExaKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Tavily Key */}
+              <div className="space-y-1">
+                <div className="text-[10px] font-bold tracking-widest text-text-secondary uppercase">
+                  Tavily API Key <span className="font-normal normal-case">(Fallback)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type={showTavilyKey ? 'text' : 'password'}
+                    value={tavilyKey}
+                    onChange={(e) => setTavilyKey(e.target.value)}
+                    placeholder="tvly-..."
+                    className="flex-1 text-xs border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-brand font-mono bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowTavilyKey((v) => !v)}
+                    className="text-text-secondary hover:text-text-primary"
+                  >
+                    {showTavilyKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSaveSearchKeys}
+                className="flex items-center gap-1.5 text-xs font-semibold bg-brand text-white px-3 py-1.5 rounded-lg hover:bg-brand/90 transition-colors"
+              >
+                {searchSaved ? <Check size={12} /> : <KeyRound size={12} />}
+                {searchSaved ? 'Saved' : 'Save Keys'}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
