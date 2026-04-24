@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react';
 import { useChatStore } from '../stores/chatStore';
 import { useAIStore } from '../stores/aiStore';
 import { streamChat } from '../services/ai/router';
+import { invokeWebSearch, formatSearchResultsAsContext } from '../services/search';
 import type { ChatMessage as AppChatMessage, Attachment } from '../types';
 import type { ChatMessage as AIChatMessage, ContentPart } from '../services/ai/types';
 
@@ -13,6 +14,7 @@ export function useStreamingChat(documentId: string) {
   const { addMessage, updateMessage, setStreamingMessageId, setIsStreaming, getMessages } =
     useChatStore();
   const { getActiveAgent, getActiveProvider } = useAIStore();
+  const searchConfig = useAIStore((s) => s.searchConfig);
   const abortRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(
@@ -45,8 +47,27 @@ export function useStreamingChat(documentId: string) {
       await addMessage(userMsg);
 
       const history = getMessages(documentId);
+
+      let searchContext = '';
+      if (searchConfig.enabled && (searchConfig.exaKey || searchConfig.tavilyKey)) {
+        try {
+          const results = await invokeWebSearch(
+            userText,
+            searchConfig.exaKey,
+            searchConfig.tavilyKey,
+          );
+          searchContext = formatSearchResultsAsContext(results);
+        } catch {
+          // Search failed — AI call proceeds without search context
+        }
+      }
+
+      const systemContent = searchContext
+        ? `${agent.systemPrompt}\n\n${searchContext}`
+        : agent.systemPrompt;
+
       const aiMessages: AIChatMessage[] = [
-        { role: 'system', content: agent.systemPrompt },
+        { role: 'system', content: systemContent },
         ...history.map((m) => {
           if (m.role === 'user' && m.attachments?.length) {
             const parts: ContentPart[] = [{ type: 'text', text: m.selectedText
@@ -117,7 +138,7 @@ export function useStreamingChat(documentId: string) {
         setIsStreaming(false);
       }
     },
-    [documentId, addMessage, updateMessage, setStreamingMessageId, setIsStreaming, getMessages, getActiveAgent, getActiveProvider]
+    [documentId, addMessage, updateMessage, setStreamingMessageId, setIsStreaming, getMessages, getActiveAgent, getActiveProvider, searchConfig]
   );
 
   const stopStreaming = useCallback(() => {
