@@ -14,12 +14,15 @@
 # subset.
 
 # ---- 1. Builder -------------------------------------------------------------
-FROM node:22-alpine AS builder
+FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
 
 # Install all deps (including dev) so we can build. We are in /app; the
 # server's package.json is at /app/server/package.json.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 COPY server/package.json server/package-lock.json* ./server/
 WORKDIR /app/server
 RUN npm install --no-audit --no-fund
@@ -39,9 +42,16 @@ RUN npm prune --omit=dev
 
 
 # ---- 2. Runtime -------------------------------------------------------------
-FROM node:22-alpine AS runtime
+FROM node:22-bookworm-slim AS runtime
 
 WORKDIR /app/server
+
+# Prisma's migration engine needs OpenSSL in the runtime image. Install the
+# shared library and certificates here so `prisma migrate deploy` works inside
+# the container without Alpine-specific compatibility packages.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
 # Run as a non-root user. The `node` image ships with a `node` user (uid 1000).
 COPY --from=builder --chown=node:node /app/server/package.json /app/server/package-lock.json* ./
@@ -59,6 +69,6 @@ EXPOSE 4000
 
 # Healthcheck against the live `/api/health` endpoint.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget -qO- http://localhost:4000/api/health >/dev/null 2>&1 || exit 1
+  CMD node -e "fetch('http://localhost:4000/api/health').then((r) => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
 
 CMD ["node", "dist/index.js"]
