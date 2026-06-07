@@ -69,9 +69,10 @@ docker compose exec backup rclone ls gdrive-tabs:tabs-backups/db/daily
 ## Pruning behaviour
 
 Pruning runs at the end of every backup. It is approximate:
-`rclone delete --min-age Nd` removes every file in the daily / weekly
-prefix older than N days. The cap is conservative: at least N days of
-backups survive.
+`rclone delete --min-age Nd` removes old files by age. Daily retention is
+interpreted as days. Weekly retention is interpreted as weeks and converted to
+days by the backup script. The cap is conservative: at least the configured
+retention window survives.
 
 If you want a hard "keep the last N" cap, replace the prune with a
 `rclone lsjson ... | sort -k Name | tail -n +N+1 | xargs rclone

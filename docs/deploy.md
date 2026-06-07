@@ -1,195 +1,330 @@
 # Deploying TABS to the VPS
 
-This walkthrough covers the production migration to
-`tabs.brandpreneur.net` on the existing Hetzner VPS. It assumes:
+This walkthrough deploys the browser version of TABS to
+`tabs.brandpreneur.net` on the Hetzner VPS.
 
-- The VPS is reachable as `root@<vps-host>`.
-- The CRM (`crm-app` + `crm-nginx` + the CRM Postgres container) is still
-  running on the VPS and shares the 80/443 ports.
-- DNS for `tabs.brandpreneur.net` is currently pointed **elsewhere** (or
-  not yet configured). The Caddy ACME challenge will not succeed until
-  the A record is in place.
-- The operator has shell access to a workstation with `docker`,
-  `rclone`, and a browser.
+It assumes:
 
-## 0. Pre-flight
+- You can SSH to the VPS as `root@<vps-host>`.
+- Docker and Docker Compose are installed on the VPS.
+- The TABS repo is the source of truth.
+- Google Drive backup credentials are operator-supplied.
+- The old CRM currently owns ports 80 and 443.
 
-Confirm Docker is installed and the daemon is running:
+## 0. Read This First
+
+This is a production cutover. The risky parts are:
+
+- Removing or stopping the old CRM.
+- Running the first Prisma migration.
+- Issuing the first TLS certificate.
+- Proving that backups can restore.
+
+Do not delete old CRM volumes during the first cutover. Stop the CRM first,
+verify TABS, verify restore, then delete old CRM data only if it is no longer
+needed.
+
+Do not use `prisma db push` in production. Production uses committed
+migrations only.
+
+## 1. Preflight the Repo
+
+From the repo root on the VPS:
 
 ```bash
-docker --version
-docker compose version
+test -f docker-compose.yml
+test -f Caddyfile
+test -f server/Dockerfile
+test -f Dockerfile.web
+test -d server/prisma/migrations
+find server/prisma/migrations -name migration.sql -print -quit | grep -q migration.sql
 ```
 
-Confirm the host has the right time zone and NTP sync:
+If the migration check fails, stop. Create and commit a Prisma migration in
+development before deploying.
+
+Render the compose file:
 
 ```bash
-timedatectl status
+docker compose config >/tmp/tabs-compose.rendered.yml
 ```
 
-## 1. Remove the existing CRM
+If this fails, fix `.env` or the compose file before continuing.
 
-The plan and the user's locked-in decisions say the CRM must be fully
-removed before TABS takes over port 80/443.
+## 2. Back Up and Stop the Existing CRM
+
+First, identify what is running:
 
 ```bash
-# SSH into the VPS
 ssh root@<vps-host>
+docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Ports}}'
+ss -ltnp '( sport = :80 or sport = :443 )'
+```
 
-# Stop the CRM containers and remove them.
-cd /root/crm   # or wherever the CRM compose stack lives
+Take a Hetzner snapshot or other CRM backup before stopping it.
+
+Then stop the CRM stack:
+
+```bash
+cd /root/crm   # adjust if the CRM stack lives elsewhere
 docker compose down --remove-orphans
-docker network prune -f
-
-# Remove the CRM's Postgres data volume if it is not shared with TABS.
-docker volume ls | grep -i crm
-docker volume rm <crm-postgres-volume-name>
 ```
 
-Confirm nothing is listening on 80/443:
+Confirm ports are free:
 
 ```bash
-ss -ltn '( sport = :80 or sport = :443 )'
-# Expected: empty.
+ss -ltnp '( sport = :80 or sport = :443 )'
+# Expected: no listeners on 80 or 443.
 ```
 
-## 2. Clone TABS to the VPS
+Do not run `docker volume rm` for CRM volumes yet. Keep them until TABS and
+restore are verified.
+
+## 3. Clone TABS
 
 ```bash
-ssh root@<vps-host>
 git clone <your-tabs-repo> /root/tabs
 cd /root/tabs
 ```
 
-## 3. Create the production environment
+If the repo is already present:
+
+```bash
+cd /root/tabs
+git pull --ff-only
+```
+
+## 4. Create the Production Environment
 
 ```bash
 cp .env.example .env
 $EDITOR .env
 ```
 
-Set, at minimum:
+Set these values:
 
-- `APP_DOMAIN` — the hostname Caddy will issue the certificate for.
-- `APP_URL` — `https://${APP_DOMAIN}`.
-- `POSTGRES_PASSWORD` — a 32+ char random string.
-- `ENCRYPTION_KEY` — 64 hex chars. Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
-- `RCLONE_REMOTE` — the name of the rclone crypt remote (e.g. `gdrypt-tabs:`).
-- `TZ` — the timezone the cron schedule runs in. `Europe/Istanbul` is the
-  default for this user.
+- `APP_DOMAIN`: `tabs.brandpreneur.net`
+- `APP_URL`: `https://tabs.brandpreneur.net`
+- `POSTGRES_PASSWORD`: 32+ random characters
+- `ENCRYPTION_KEY`: 64 hex characters
+- `RCLONE_REMOTE`: the rclone crypt remote, for example `gdrypt-tabs:`
+- `TZ`: the backup schedule timezone
 
-## 4. Configure rclone + Google Drive
+Generate `ENCRYPTION_KEY`:
 
 ```bash
-# Install rclone on the VPS (one-time).
-curl https://rclone.org/install.sh | sudo bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
-# Interactive config wizard. This opens a browser flow to authenticate
-# against the target Google account and creates the `gdrive-tabs:` remote.
+Keep `COOKIE_DOMAIN` blank for the same-origin v1 deployment.
+
+## 5. Configure rclone and Google Drive
+
+Preferred path: configure rclone on a workstation with a browser, then copy the
+resulting `rclone.conf` to the VPS.
+
+On the workstation:
+
+```bash
 rclone config
-
-# Add a `crypt` wrapper above `gdrive-tabs:`. Note the crypt password and
-# salt that rclone asks for; store them somewhere safe (e.g. a password
-# manager). These are the only thing that can decrypt the backups.
-
-# Verify the remote is reachable.
-rclone lsd gdrive-tabs:
 rclone lsd gdrypt-tabs:
 ```
 
-Mount the resulting `rclone.conf` into the backup sidecar:
+On the VPS:
 
 ```bash
 mkdir -p /root/tabs/secrets
-cp ~/.config/rclone/rclone.conf /root/tabs/secrets/rclone.conf
+scp /path/to/rclone.conf root@<vps-host>:/root/tabs/secrets/rclone.conf
 chmod 600 /root/tabs/secrets/rclone.conf
 ```
 
-## 5. Point DNS at the VPS
+If you configure rclone directly on a headless VPS, use rclone's remote
+authorization flow from a machine with a browser. Do not assume the VPS can
+open the OAuth browser flow by itself.
+
+Verify from the VPS:
+
+```bash
+rclone --config /root/tabs/secrets/rclone.conf lsd gdrypt-tabs:
+```
+
+The crypt password and salt are required for restore. Store them in a password
+manager, not only on the VPS.
+
+## 6. Point DNS at the VPS
 
 In the DNS provider for `brandpreneur.net`, set:
 
-- `tabs.brandpreneur.net` → A record → the VPS's public IP.
+- `tabs.brandpreneur.net` A record -> VPS public IP
 
-Wait for propagation. Caddy will retry the ACME challenge until DNS is
-live.
+Verify:
 
-## 6. Boot the stack
+```bash
+dig +short tabs.brandpreneur.net
+```
+
+The result must be the VPS public IP before Caddy can get a certificate.
+
+## 7. Build Images
 
 ```bash
 cd /root/tabs
-docker compose pull   # optional; pulls the public base images
-docker compose up -d --build
+docker compose build
+```
 
-# Tail the logs.
+This builds:
+
+- `api` from `server/Dockerfile`
+- `web` from `Dockerfile.web`
+- `backup` from `backup/Dockerfile`
+
+The web image must use `npm run build`, not `npm run tauri:build`.
+
+## 8. Start Postgres and Run Migrations
+
+Start only Postgres:
+
+```bash
+docker compose up -d postgres
+docker compose exec postgres sh -lc 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
+Run migrations from the API image:
+
+```bash
+docker compose run --rm --no-deps api ./node_modules/.bin/prisma migrate deploy
+```
+
+Expected result:
+
+- Prisma finds `server/prisma/migrations/`.
+- Every migration is applied.
+- The command exits 0.
+
+If the command says there are no migrations, stop. Do not bootstrap users
+against an unmigrated or `db push` database.
+
+## 9. Start the Full Stack
+
+```bash
+docker compose up -d
+docker compose ps
+```
+
+Expected:
+
+- `postgres` is healthy.
+- `api` is healthy.
+- `web` is running.
+- `caddy` is running.
+- `backup` is running.
+
+Watch logs:
+
+```bash
 docker compose logs -f --tail=200
 ```
 
-Watch for:
+Look for:
 
-- `caddy-1` printing `obtained certificate` and `serving HTTPS on :443`.
-- `api-1` printing `[tabs-server] listening on port 4000 (env=production)`.
-- `postgres-1` printing `database system is ready to accept connections`.
-- `web-1` exiting 0 (the `nginx:alpine` image starts fast).
-- `backup-1` printing `[backup] cron installed: ...`.
+- `api`: `[tabs-server] listening on port 4000 (env=production)`
+- `postgres`: `database system is ready to accept connections`
+- `caddy`: certificate issued and HTTPS serving
+- `backup`: `[backup] cron installed: ...`
 
-## 7. Run Prisma migrations
+If `web` exits, treat that as a failure. The nginx container should keep
+running.
+
+## 10. Verify the Running App
+
+Use the public HTTPS origin:
 
 ```bash
-docker compose exec api npx prisma migrate deploy
+curl -fsS https://tabs.brandpreneur.net/api/health
+# Expected: {"status":"ok"}
+
+curl -fsS https://tabs.brandpreneur.net/api/ready
+# Expected: {"status":"ready"}
+
+curl -fsS https://tabs.brandpreneur.net/api/auth/status
+# Expected before bootstrap: {"hasUsers":false}
 ```
 
-The output should list every migration in `server/prisma/migrations/` and
-end with `All migrations have been successfully applied.`
+Then verify in a browser:
 
-## 8. Bootstrap the first admin
+1. Open `https://tabs.brandpreneur.net/`.
+2. Confirm the auth gate appears before the app shell.
+3. Bootstrap the first admin user.
+4. Create an invite.
+5. Register a second user in a private browser window.
+6. Confirm the second user cannot see the first user's data.
+7. Create a project, task, and comment.
+8. Upload a file to a task comment.
+9. Open the uploaded file through the file viewer.
+10. Restart the API container and refresh the browser.
 
-Open `https://tabs.brandpreneur.net/` in a browser. The login screen
-should be the auth gate. The `/api/auth/status` endpoint will return
-`{"hasUsers":false}`, which the gate renders as the Bootstrap form.
-
-Create the first user. This user is automatically promoted to `admin`
-role and can create invites for the rest of the team.
-
-## 9. Trigger the first backup
+Restart check:
 
 ```bash
-# One-shot backup so a snapshot exists before the cron schedule fires.
+docker compose restart api
+```
+
+The task and file should still be available after refresh.
+
+## 11. Trigger the First Backup
+
+```bash
 docker compose exec backup /backup/backup.sh
-
-# Verify it landed.
-docker compose exec backup rclone ls gdrypt-tabs:db/daily
-docker compose exec backup rclone ls gdrypt-tabs:uploads/daily
 ```
 
-## 10. Run a restore test
+Expected final line:
 
-The plan explicitly requires a restore test before declaring the
-deployment complete. Follow `docs/restore.md` end-to-end on a temporary
-Docker stack (e.g. on a separate VPS, or in a different directory on
-the same VPS with a different compose project name). The test must show:
+```text
+BACKUP OK
+```
 
-1. The database restores cleanly (`pg_restore` finishes without error).
-2. The uploads archive extracts and the file-service can serve the
-   restored bytes.
-3. Login as the first admin still works.
-4. At least one task with an attachment is viewable end-to-end.
+Verify the remote:
 
-## 11. Hand off
+```bash
+docker compose exec backup rclone ls gdrypt-tabs:/db/daily
+docker compose exec backup rclone ls gdrypt-tabs:/uploads/daily
+```
 
-- Save `rclone.conf` and the crypt password + salt in a password
-  manager. The deploy is unrecoverable without them.
-- Add a calendar reminder to run `docs/restore.md` end-to-end every
-  quarter.
-- Subscribe to the TABS server logs: `docker compose logs -f api`.
+Run backups off-peak. The backup script dumps the database and then archives
+uploads. If users delete files during that window, a restore may have a DB row
+for a file that was removed before the upload archive was created.
 
-## Common issues
+## 12. Run the Restore Test
+
+Follow `docs/restore.md` on a clean temporary stack.
+
+The restore test must prove:
+
+1. `pg_restore` exits 0.
+2. The uploads archive extracts into the expected `users/<ownerId>/...` layout.
+3. Login works.
+4. At least one task with a file attachment opens end to end.
+5. A second user cannot see the first user's data.
+
+Do not declare the deployment complete until restore succeeds.
+
+## 13. Final Cleanup
+
+After TABS is verified and restore succeeds:
+
+- Save `.env` secrets in a password manager.
+- Save `rclone.conf`, crypt password, and salt in a password manager.
+- Add a quarterly calendar reminder to run `docs/restore.md`.
+- Only then consider deleting old CRM volumes.
+
+## Common Issues
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| Caddy logs `dial tcp: lookup api on ...: no such host` | The `tabs_internal` network is missing or `api` hasn't started | `docker compose up -d api` first, then `caddy` |
-| Caddy logs `obtained certificate: ... challenge failed` | DNS A record not pointing at the VPS | Check DNS with `dig +short tabs.brandpreneur.net` |
-| `api-1` exits with `ENCRYPTION_KEY must be 32 bytes hex` | `.env` not loaded, or `ENCRYPTION_KEY` is wrong | Verify with `docker compose exec api env \| grep ENCRYPTION` |
-| `pg_isready` fails inside the postgres container | `POSTGRES_PASSWORD` mismatch between `postgres` service and `api` service | They read the same `.env`; check for quoting issues |
-| `backup-1` exits with `rclone: config file not found` | `secrets/rclone.conf` missing on the host | `mkdir -p secrets && cp /path/to/rclone.conf secrets/` |
-| Login redirect loop | Cookie `Secure` flag mismatched (Caddy serving HTTP, not HTTPS) | Confirm `https://` in the browser; Caddy should have the cert by now |
+| `prisma migrate deploy` finds no migrations | `server/prisma/migrations/` was not committed | Stop and create a migration in development |
+| Caddy cannot issue a certificate | DNS does not point to the VPS or ports 80/443 are blocked | Fix DNS and confirm ports are free |
+| `api` exits with `ENCRYPTION_KEY must be 32 bytes hex` | `.env` has a bad key | Generate a 64-character hex key and rebuild/restart |
+| `/api/ready` returns 503 | Database is unreachable | Check `docker compose logs postgres api` |
+| Login redirects or does not stick | HTTPS/cookie mismatch | Use `https://tabs.brandpreneur.net`, keep `COOKIE_DOMAIN` blank |
+| Backup cannot find rclone config | `secrets/rclone.conf` is missing or permissions are wrong | Copy the file and run `chmod 600` |
+| File viewer returns 404 after restore | Upload archive did not restore to `/data/uploads/users/...` | Re-run the upload restore step from `docs/restore.md` |

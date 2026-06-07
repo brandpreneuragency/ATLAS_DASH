@@ -7,7 +7,8 @@
 #   2. tar uploads volume -> /backup/cache/uploads-<stamp>.tar.gz
 #   3. rclone copyto both into ${RCLONE_REMOTE}/db/daily/... and .../uploads/daily/...
 #   4. On Sundays, promote the most recent daily to weekly/
-#   5. Prune daily older than ${BACKUP_RETAIN_DAILY}, weekly older than ${BACKUP_RETAIN_WEEKLY}
+#   5. Prune daily older than ${BACKUP_RETAIN_DAILY} days and weekly older than
+#      ${BACKUP_RETAIN_WEEKLY} weeks.
 #   6. Log success or failure
 #
 # Required environment:
@@ -119,9 +120,9 @@ fi
 
 # ---- 5. Prune -----------------------------------------------------------
 # Approximate prune via rclone's `--min-age` flag: delete every file in the
-# prefix that was last modified more than `${retain}` days ago. The cap is
-# conservative (at least N days of snapshots survive) and matches the
-# "keep the last N days" policy from the plan.
+# prefix that was last modified more than `${retain}` days ago. For daily
+# snapshots this is the configured daily retention. For weekly snapshots we
+# convert the configured number of weeks to days below.
 #
 # Note: `--min-age` uses the file's modification time on the remote, which
 # for our rclone copyto flow is the upload time. That is what we want.
@@ -145,8 +146,10 @@ prune_prefix() {
   done
 }
 
+WEEKLY_RETAIN_DAYS=$(( RETAIN_WEEKLY * 7 ))
+
 prune_prefix daily  "${RETAIN_DAILY}"
-prune_prefix weekly "${RETAIN_WEEKLY}"
+prune_prefix weekly "${WEEKLY_RETAIN_DAYS}"
 
 # ---- 6. Local cache cleanup ---------------------------------------------
 # Keep the most recent 3 local snapshots so a failed upload can be retried

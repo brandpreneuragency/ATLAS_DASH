@@ -1,59 +1,104 @@
-# Restoring TABS from a backup
+# Restoring TABS from a Backup
 
-This walkthrough is the **required** restore test for the Agent 8
-deployment. Per the plan: "Backup is not complete until restore is
-tested." Run this end-to-end on a fresh stack before declaring the
-production deploy successful, and re-run it every quarter as a fire
-drill.
+This is the required restore test for the VPS deployment.
 
-The procedure assumes:
+Backup is not complete until restore is tested. Run this after the first
+production backup and repeat it quarterly.
 
-- You have the rclone `crypt` password and salt. **Without these the
-  encrypted backups are unrecoverable.** Store them in a password
-  manager.
-- The `rclone.conf` is intact and the Google Drive token has not been
-  revoked.
-- The target machine has Docker and the `tabs` repo checked out.
+## What This Test Proves
 
-## 1. Pick the snapshots to restore
+The restore test must prove:
+
+- The encrypted Google Drive backup can be decrypted.
+- The Postgres dump can be restored cleanly.
+- The uploads archive lands in the path the API expects.
+- Users can log in after restore.
+- Task attachments still open.
+- Cross-user isolation still works.
+
+## Hard Rules
+
+- Do not restore into production volumes.
+- Do not reuse the production database.
+- Do not reuse the production uploads volume.
+- Do not ignore `pg_restore` errors.
+- Do not use the production hostname for a temporary restore stack.
+
+Use a separate VPS or local Docker host when possible. A same-host restore test
+is only safe if the temporary stack uses separate volume names, a separate
+network name, and a separate hostname or port plan.
+
+## 1. Pick Matching Snapshots
+
+List database backups:
 
 ```bash
-# From the host (or any machine with the rclone.conf).
-rclone ls gdrypt-tabs:db/daily
-# Example output:
-#   12345678 db-20260607T023000Z.dump
-#   12345678 db-20260606T023000Z.dump
-#   ...
-
-rclone ls gdrypt-tabs:uploads/daily
-# Example output:
-#   98765432 uploads-20260607T023000Z.tar.gz
-#   98765432 uploads-20260606T023000Z.tar.gz
-#   ...
+rclone --config /path/to/rclone.conf ls gdrypt-tabs:/db/daily
 ```
 
-Pick the matching `db-*` and `uploads-*` pair from the same timestamp.
+List upload backups:
 
-## 2. Bring up a temporary stack
+```bash
+rclone --config /path/to/rclone.conf ls gdrypt-tabs:/uploads/daily
+```
 
-The temporary stack should NOT share volumes with the production
-stack. Use a different compose project name so Docker creates fresh
-named volumes.
+Pick a matching pair with the same timestamp:
+
+```text
+db-20260607T023000Z.dump
+uploads-20260607T023000Z.tar.gz
+```
+
+Set variables for the rest of the run:
+
+```bash
+export DB_BACKUP='gdrypt-tabs:/db/daily/db-20260607T023000Z.dump'
+export UPLOADS_BACKUP='gdrypt-tabs:/uploads/daily/uploads-20260607T023000Z.tar.gz'
+export RCLONE_CONFIG_PATH='/path/to/rclone.conf'
+```
+
+## 2. Create a Clean Restore Checkout
 
 ```bash
 git clone <your-tabs-repo> /tmp/tabs-restore
 cd /tmp/tabs-restore
 cp .env.example .env
-$EDITOR .env
-# Set POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD to fresh values
-# (this is a temporary database). Keep everything else the same.
 ```
 
-Edit `docker-compose.yml` to prefix the volume names so they do not
-collide with the production stack. Quickest way: at the bottom of the
-file, edit the `volumes:` block to append `-restore` to each name:
+Edit `.env`:
 
-```yaml
+```bash
+$EDITOR .env
+```
+
+Use fresh temporary values:
+
+- `APP_DOMAIN=restore-tabs.brandpreneur.net`
+- `APP_URL=https://restore-tabs.brandpreneur.net`
+- `POSTGRES_DB=tabs_restore`
+- `POSTGRES_USER=tabs_restore`
+- `POSTGRES_PASSWORD=<fresh random password>`
+- `ENCRYPTION_KEY=<same production key if provider config decrypt must be tested>`
+- `RCLONE_REMOTE=gdrypt-tabs:`
+- `COOKIE_DOMAIN=`
+
+Important:
+
+- If you restore production provider configs, use the same production
+  `ENCRYPTION_KEY` or encrypted provider keys will not decrypt.
+- For a full browser login test, use HTTPS. Production cookies are `Secure`.
+- If you cannot provide HTTPS for the restore host, you can still do a DB/API
+  restore test, but it is not a full production-equivalent login test.
+
+## 3. Create a Restore Compose Override
+
+The production compose file uses explicit volume and network names. The
+compose project name alone is not enough to avoid collisions.
+
+Create a temporary override file:
+
+```bash
+cat > compose.restore.yml <<'EOF'
 volumes:
   postgres_data:
     name: tabs_restore_postgres_data
@@ -65,116 +110,166 @@ volumes:
     name: tabs_restore_caddy_config
   backups_cache:
     name: tabs_restore_backups_cache
+
+networks:
+  tabs_internal:
+    name: tabs_restore_internal
+    driver: bridge
+EOF
 ```
 
-Also override the project name in `.env` (or use `-p` on the command
-line):
+Use this compose command for every restore step:
 
 ```bash
-docker compose -p tabs-restore up -d postgres
+export RESTORE_COMPOSE='docker compose -p tabs-restore -f docker-compose.yml -f compose.restore.yml'
 ```
 
-## 3. Restore the database
+## 4. Start the Temporary Database
 
 ```bash
-# Stream-encrypt-decrypt the dump straight into pg_restore.
-rclone cat gdrypt-tabs:db/daily/db-20260607T023000Z.dump \
-  | pg_restore --format=custom --no-owner --no-privileges \
-              --dbname=<POSTGRES_DB> --username=<POSTGRES_USER> \
-              --host=127.0.0.1 --port=5432
-
-# The pg_restore connection has to land inside the temporary postgres
-# container. Easier: drop the file into the container with `rclone
-# cat` piped through `docker exec`:
-rclone cat gdrypt-tabs:db/daily/db-20260607T023000Z.dump \
-  | docker compose -p tabs-restore exec -T postgres \
-        pg_restore --format=custom --no-owner --no-privileges \
-                   --dbname=$POSTGRES_DB --username=$POSTGRES_USER
+$RESTORE_COMPOSE up -d postgres
+$RESTORE_COMPOSE exec postgres sh -lc 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 ```
 
-The second form pipes directly into the container, avoiding the need
-to expose Postgres on the host. `pg_restore` exits 0 on success. Any
-"ERROR" lines on stderr that come from `pg_restore` itself are
-non-fatal when restoring a `--format=custom` dump (it issues CREATE /
-ALTER statements that may warn about already-existing objects if the
-DB was not empty; that is expected).
+## 5. Restore the Database
 
-## 4. Restore the uploads
+Stream the encrypted backup through the crypt remote and into the temporary
+Postgres container:
 
 ```bash
-# Stream-decrypt and untar into the temporary stack's uploads volume.
-docker compose -p tabs-restore exec -T api mkdir -p /data/uploads
-rclone cat gdrypt-tabs:uploads/daily/uploads-20260607T023000Z.tar.gz \
-  | tar -xz -C /tmp/uploads-restore
-docker compose -p tabs-restore cp /tmp/uploads-restore/. api:/data/uploads/
+rclone --config "$RCLONE_CONFIG_PATH" cat "$DB_BACKUP" \
+  | $RESTORE_COMPOSE exec -T postgres sh -lc \
+      'pg_restore --format=custom --clean --if-exists --no-owner --no-privileges --exit-on-error --dbname="$POSTGRES_DB" --username="$POSTGRES_USER"'
 ```
 
-Verify the bytes are where the API expects them:
+Expected:
+
+- `pg_restore` exits 0.
+- There are no `ERROR` lines.
+
+If `pg_restore` reports an error, treat the restore as failed. Drop the
+temporary volumes and retry from a clean stack.
+
+## 6. Restore Uploads
+
+The backup archive contains the contents of `/data/uploads`, not the parent
+directory. Extract it into the root of the temporary `uploads_data` volume.
 
 ```bash
-docker compose -p tabs-restore exec api ls /data/uploads
-# Expected: one directory per user, e.g. users/<userId>/<fileId>/<storedName>
+rclone --config "$RCLONE_CONFIG_PATH" cat "$UPLOADS_BACKUP" \
+  | docker run --rm -i -v tabs_restore_uploads_data:/restore alpine:3.20 \
+      sh -lc 'rm -rf /restore/* /restore/.[!.]* /restore/..?*; tar -xz -C /restore'
 ```
 
-## 5. Boot the rest of the stack
+Verify the layout:
 
 ```bash
-docker compose -p tabs-restore up -d api web caddy
-docker compose -p tabs-restore logs -f api
+docker run --rm -v tabs_restore_uploads_data:/restore alpine:3.20 \
+  sh -lc 'find /restore -maxdepth 4 -type d | head -40'
 ```
 
-Wait for `[tabs-server] listening on port 4000 (env=production)`.
+Expected layout:
 
-## 6. Verify
+```text
+/restore/users/<ownerId>/<fileId>/<storedName>
+```
 
-### a) API health
+If you see `/restore/data/uploads/...`, the archive was extracted at the wrong
+level.
+
+## 7. Boot the Restored App
 
 ```bash
-curl -sf https://<APP_DOMAIN>/api/health
+$RESTORE_COMPOSE up -d api web caddy
+$RESTORE_COMPOSE ps
+$RESTORE_COMPOSE logs -f --tail=200 api caddy
+```
+
+Wait for:
+
+- `api`: `[tabs-server] listening on port 4000 (env=production)`
+- `caddy`: HTTPS certificate issued for the restore hostname
+
+Check health:
+
+```bash
+curl -fsS https://restore-tabs.brandpreneur.net/api/health
 # Expected: {"status":"ok"}
 
-curl -sf https://<APP_DOMAIN>/api/ready
-# Expected: {"ready":true}
+curl -fsS https://restore-tabs.brandpreneur.net/api/ready
+# Expected: {"status":"ready"}
 ```
 
-### b) Login as the first admin
+## 8. Verify in the Browser
 
-Open `https://<APP_DOMAIN>/` in a browser. The login screen should
-appear. Sign in as the original first admin. Expected: the dashboard
-loads, projects / tasks / documents / chat threads all show the data
-from the dump.
+Open:
 
-### c) At least one task with a file attachment
+```text
+https://restore-tabs.brandpreneur.net/
+```
 
-Open a task that you know had a file attachment before the backup.
-Click the attachment thumbnail. Expected: the image / file viewer
-loads the bytes. The file URL is `https://<APP_DOMAIN>/api/files/<id>/content`
-and the API streams them from `/data/uploads/users/<ownerId>/<fileId>/...`.
+Verify:
 
-### d) Cross-user safety sanity
+1. The login screen appears.
+2. The original first admin can log in.
+3. Projects, tasks, documents, and chat threads are visible.
+4. A known task with an attachment opens.
+5. The file URL is `/api/files/<fileId>/content`.
+6. A second user can log in and sees only that user's data.
 
-Sign in as a second user (created via invite before the backup).
-Expected: only that user's data is visible. No leakage of user A's
-projects, tasks, or files.
+If login works but provider-backed AI calls fail, check whether the restore
+used the same `ENCRYPTION_KEY` as production.
 
-## 7. Tear down
+## 9. Optional API-Level File Check
 
-When the test is done:
+If you know a restored file ID, check it from the browser after login. The
+response should stream bytes and should not expose a filesystem path:
+
+```text
+https://restore-tabs.brandpreneur.net/api/files/<fileId>/content
+```
+
+Expected:
+
+- HTTP 200 while logged in as the owner.
+- HTTP 404 or 401 when logged out or using another user.
+- No `/data/uploads/...` path in the response body.
+
+## 10. Tear Down the Temporary Stack
 
 ```bash
-docker compose -p tabs-restore down -v
-# -v removes the temporary volumes.
+$RESTORE_COMPOSE down -v
 rm -rf /tmp/tabs-restore
 ```
 
-The production stack on the original host is unaffected.
+Confirm temporary volumes are gone:
 
-## If something is wrong
+```bash
+docker volume ls | grep tabs_restore || true
+```
+
+Production volumes must be untouched.
+
+## Same-Host Restore Caveat
+
+Running the restore stack on the same VPS as production is harder because:
+
+- Production Caddy already owns ports 80 and 443.
+- Production cookies require HTTPS.
+- ACME certificate issuance needs the public hostname and port 80/443.
+
+For a full restore test, prefer a separate temporary VPS or a local Docker host
+with a restore hostname. If you only run `postgres` and `api` on the same VPS,
+that is useful for DB and uploads validation, but it is not a complete browser
+login restore test.
+
+## If Something Fails
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| `pg_restore: error: could not execute query: ... already exists` | The temporary database was not empty | Drop and recreate the database before retrying |
-| File viewer shows 404 for an attachment | The uploads archive did not extract to the path the API expects | `docker compose exec api ls /data/uploads` should show `users/...`; if it shows the contents of the tarball directly, the tar extraction was wrong |
-| `/api/ready` returns 503 with `pg_isready: ...` | DATABASE_URL mismatch | Check the `.env` on the temporary host; the URL must point at the temporary postgres container, not `localhost` |
-| Caddy can't obtain a certificate on the temporary host | DNS for `APP_DOMAIN` is still pointed at the production VPS | Use a different `APP_DOMAIN` for the restore test (e.g. a localhost-only test with Caddy in HTTP mode) |
-| Login succeeds but the dashboard is empty | Wrong dump timestamp; older dump than the current data | Pick a more recent daily; the daily cron keeps 14 |
+| `pg_restore` errors | Dirty temporary database or incompatible dump | Run `$RESTORE_COMPOSE down -v` and retry from a clean stack |
+| `/api/ready` returns 503 | Database URL or restored DB is wrong | Check `.env` and `postgres` logs |
+| File viewer returns 404 | Uploads restored at the wrong path or backup overlapped deletion | Verify `/restore/users/...`; try a newer matching backup |
+| Login fails after restore | Wrong domain, HTTP instead of HTTPS, or wrong password | Use restore HTTPS hostname and original credentials |
+| Provider keys fail to decrypt | `ENCRYPTION_KEY` differs from production | Use the production key for the restore test |
+| Second user sees first user's data | Ownership bug | Stop using the restored stack and investigate before production use |

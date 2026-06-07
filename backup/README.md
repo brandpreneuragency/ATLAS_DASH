@@ -72,10 +72,10 @@ The container's local time is whatever `TZ` resolves to. If you set
 - **Daily**: `BACKUP_RETAIN_DAILY` most recent daily snapshots (default 14).
 - **Weekly**: `BACKUP_RETAIN_WEEKLY` most recent weekly snapshots (default 8).
 
-Pruning uses `rclone delete --min-age Nd` which is approximate (it deletes
-every file older than N days in the prefix). On a typical run this keeps
-between N and N+1 snapshots because of clock drift. The cap is conservative:
-**at least** N days of backups survive.
+Pruning uses `rclone delete --min-age Nd` which is approximate. Daily
+retention is treated as days. Weekly retention is treated as weeks and
+converted to days by `backup.sh`. The cap is conservative: at least the
+configured retention window survives.
 
 ## Restore
 
