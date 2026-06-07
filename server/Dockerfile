@@ -53,7 +53,12 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-# Run as a non-root user. The `node` image ships with a `node` user (uid 1000).
+# Seed the uploads mount point with node-owned permissions. Docker copies this
+# directory into a fresh named volume the first time the volume is created.
+RUN mkdir -p /data/uploads \
+  && chown -R node:node /data/uploads \
+  && chmod 775 /data/uploads
+
 COPY --from=builder --chown=node:node /app/server/package.json /app/server/package-lock.json* ./
 COPY --from=builder --chown=node:node /app/server/node_modules ./node_modules
 COPY --from=builder --chown=node:node /app/server/dist ./dist
@@ -62,13 +67,12 @@ COPY --from=builder --chown=node:node /app/server/dist ./dist
 # container) can find it.
 COPY --from=builder --chown=node:node /app/server/prisma ./prisma
 
-USER node
 ENV NODE_ENV=production
 
 EXPOSE 4000
 
 # Healthcheck against the live `/api/health` endpoint.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD node -e "fetch('http://localhost:4000/api/health').then((r) => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+  CMD ["node", "-e", "fetch('http://localhost:4000/api/health').then((r) => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
 
 CMD ["node", "dist/index.js"]
