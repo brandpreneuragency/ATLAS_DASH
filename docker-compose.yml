@@ -1,0 +1,175 @@
+# TABS production stack. Five services + five named volumes.
+#
+# Boot order (handled by `depends_on` + healthchecks):
+#   postgres  ->  api  ->  caddy, web
+#                            |
+#                            v
+#                          backup  (sidecar, no exposed ports)
+#
+# Required environment: a `.env` file at the repo root with all the values
+# listed in `.env.example`. The api, postgres, and backup services read the
+# same file.
+#
+# Quick start (on the VPS):
+#   1. cp .env.example .env  &&  edit the values
+#   2. mkdir -p /root/tabs/secrets && cp /path/to/rclone.conf /root/tabs/secrets/rclone.conf
+#   3. docker compose up -d --build
+#   4. docker compose exec api npx prisma migrate deploy
+#   5. Open https://<your-domain>/ and bootstrap the first admin user.
+
+services:
+  # -- 1. Postgres ------------------------------------------------------------
+  # Owns the `tabs` database. Persistent volume `postgres_data` survives
+  # `docker compose down` (but not `down -v`). Only the `api` and `backup`
+  # services have network access to it; the `web` and `caddy` services do not
+  # know its hostname.
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Reasonable WAL defaults for a small VPS.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - tabs_internal
+
+  # -- 2. API -----------------------------------------------------------------
+  # Node 22 + Express + Prisma. Built from `server/Dockerfile`. Reads its
+  # config from the `.env` file at the repo root.
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      APP_URL: ${APP_URL}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      FILE_STORAGE_ROOT: /data/uploads
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+    volumes:
+      - uploads_data:/data/uploads
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - tabs_internal
+    # No ports exposed. Caddy is the only thing that talks to the API, and it
+    # does so over the private network.
+
+  # -- 3. Web (static files) --------------------------------------------------
+  # nginx serving the Vite production build. Caddy proxies all non-/api
+  # requests here.
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        VITE_API_BASE_URL: /api
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - tabs_internal
+    # No ports exposed. Caddy is the only thing that talks to the web service.
+
+  # -- 4. Caddy (reverse proxy + TLS) -----------------------------------------
+  # The only service with published ports. Handles automatic HTTPS via Let's
+  # Encrypt (the caddy image is ACME-aware out of the box).
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - tabs_internal
+
+  # -- 5. Backup (sidecar) ----------------------------------------------------
+  # No exposed ports. Runs on a daily cron schedule inside the container.
+  # The operator can also trigger a one-shot backup with:
+  #   docker compose exec backup /backup/backup.sh
+  #
+  # Persistent state:
+  #   * `backup_cache` holds the last successful local snapshot + a small
+  #     state file so a failed `rclone` upload can be retried on the next run.
+  #   * The `uploads_data` volume is mounted read-only so the sidecar can tar
+  #     it without ever being able to mutate it.
+  #   * The rclone config file is bind-mounted read-only from the host so
+  #     the Google Drive OAuth token never lives inside the image.
+  backup:
+    build:
+      context: ./backup
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      RCLONE_CONFIG: /secrets/rclone.conf
+      RCLONE_REMOTE: ${RCLONE_REMOTE}
+      BACKUP_RETAIN_DAILY: ${BACKUP_RETAIN_DAILY:-14}
+      BACKUP_RETAIN_WEEKLY: ${BACKUP_RETAIN_WEEKLY:-8}
+      BACKUP_SCHEDULE_HOUR: ${BACKUP_SCHEDULE_HOUR:-2}
+      BACKUP_SCHEDULE_MINUTE: ${BACKUP_SCHEDULE_MINUTE:-30}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - backups_cache:/backup/cache
+      - uploads_data:/data/uploads:ro
+      - ./secrets/rclone.conf:/secrets/rclone.conf:ro
+    networks:
+      - tabs_internal
+
+volumes:
+  postgres_data:
+    name: tabs_postgres_data
+  uploads_data:
+    name: tabs_uploads_data
+  caddy_data:
+    name: tabs_caddy_data
+  caddy_config:
+    name: tabs_caddy_config
+  backups_cache:
+    name: tabs_backups_cache
+
+networks:
+  tabs_internal:
+    name: tabs_internal
+    driver: bridge

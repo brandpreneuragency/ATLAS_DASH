@@ -1,0 +1,323 @@
+// TABS Prisma schema.
+// Owner-scoped multi-user model. Every private table has `ownerId` and every
+// server query MUST filter by it.
+//
+// Timestamps are stored as BigInt (Unix ms) to match the existing frontend,
+// which uses `Date.now()` everywhere. The previous Int/INT4 columns overflowed
+// in 2004 — we now use BIGINT which is safe until the year 292277026596.
+// Postgres transparently serialises BigInt into JSON in modern node-postgres,
+// but we explicitly cast to Number at the response boundary so the wire
+// format stays plain JSON.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ──────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  admin
+  user
+}
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  displayName  String
+  passwordHash String
+  role         UserRole @default(user)
+  createdAt    BigInt
+  updatedAt    BigInt
+
+  sessions             Session[]
+  createdInvites       Invite[]            @relation("InviteCreator")
+  usedInvites          Invite[]            @relation("InviteUser")
+  projects             Project[]
+  tasks                Task[]
+  taskComments         TaskComment[]
+  files                File[]
+  documents            Document[]
+  chatThreads          ChatThread[]
+  chatMessages         ChatMessage[]
+  agents               Agent[]
+  providerConfigs      ProviderConfig[]
+  quickPrompts         QuickPrompt[]
+  settings             Setting[]
+  taskAIChangeBatches  TaskAIChangeBatch[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt BigInt
+  createdAt BigInt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Invite {
+  id              String  @id @default(cuid())
+  codeHash        String  @unique
+  createdByUserId String
+  usedByUserId    String?
+  expiresAt       BigInt
+  usedAt          BigInt?
+  createdAt       BigInt
+
+  createdBy User  @relation("InviteCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  usedBy    User? @relation("InviteUser", fields: [usedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([createdByUserId])
+}
+
+// ── Project & Tasks ────────────────────────────────────────────────────────
+
+model Project {
+  id        String @id
+  ownerId   String
+  name      String
+  color     String
+  createdAt BigInt
+
+  owner User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@index([ownerId])
+}
+
+model Task {
+  id                  String  @id
+  ownerId             String
+  title               String
+  content             String  @default("")
+  status              String  @default("pending") // pending | in_progress | completed
+  importance          String  @default("medium") // low | medium | high
+  date                String  @default("")        // ISO YYYY-MM-DD
+  projectId           String?
+  assignees           String[] @default([])
+  createdAt           BigInt
+  updatedAt           BigInt
+  sourcePath          String?
+  order               Int     @default(0)
+  parentId            String?
+  sourceChatMessageId String?
+  deletedAt           BigInt?
+
+  owner           User                @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  project         Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  parent          Task?               @relation("SubtaskParent", fields: [parentId], references: [id], onDelete: SetNull)
+  subtasks        Task[]              @relation("SubtaskParent")
+  comments        TaskComment[]
+  aiChangeBatches TaskAIChangeBatch[]
+
+  @@index([ownerId])
+  @@index([projectId])
+  @@index([parentId])
+  @@index([deletedAt])
+}
+
+model TaskComment {
+  id             String  @id
+  ownerId        String
+  taskId         String
+  sender         String?
+  text           String  @default("")
+  attachmentName String?
+  attachmentSize String?
+  attachmentPath String?
+  // attachmentDataUrl is intentionally NOT stored. Files go through the
+  // File service and the comment references them by `fileId`.
+  fileId         String?
+  replyTo        Json?   // { id: string, text: string, sender: string }
+  createdAt      BigInt
+
+  owner User  @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  file  File? @relation(fields: [fileId], references: [id], onDelete: SetNull)
+
+  @@index([ownerId])
+  @@index([taskId])
+}
+
+// ── Files ──────────────────────────────────────────────────────────────────
+
+model File {
+  id           String  @id @default(cuid())
+  ownerId      String
+  taskId       String?
+  commentId    String?
+  originalName String
+  storedName   String
+  // storagePath is private. The /api/files/:id/content endpoint streams the
+  // file directly from disk; the client never sees this path.
+  storagePath  String
+  mimeType     String  @default("application/octet-stream")
+  sizeBytes    Int
+  sha256       String
+  createdAt    BigInt
+  deletedAt    BigInt?
+
+  owner    User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  comments TaskComment[]
+
+  @@index([ownerId])
+  @@index([taskId])
+  @@index([deletedAt])
+}
+
+// ── Documents ──────────────────────────────────────────────────────────────
+
+model Document {
+  id              String  @id
+  ownerId         String
+  title           String
+  content         String  @default("") // TipTap JSON string
+  createdAt       BigInt
+  updatedAt       BigInt
+  order           Int     @default(0)
+  sourcePath      String?
+  isDirty         Boolean @default(false)
+  splitEditorOpen Boolean @default(false)
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+}
+
+// ── Chat ───────────────────────────────────────────────────────────────────
+
+model ChatThread {
+  id        String @id
+  ownerId   String
+  mode      String // "writer" | "task"
+  title     String
+  createdAt BigInt
+  updatedAt BigInt
+
+  owner    User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([ownerId])
+  @@index([mode])
+}
+
+model ChatMessage {
+  id              String  @id
+  ownerId         String
+  threadId        String
+  mode            String
+  documentId      String?
+  taskId          String?
+  agentId         String
+  role            String  // "user" | "assistant"
+  content         String  @default("")
+  selectedText    String?
+  selectionFrom   Int?
+  selectionTo     Int?
+  suggestedText   String?
+  replyTo         Json?
+  // Chat attachments also reference uploaded files (fileId) instead of
+  // dataUrl. Shape: { fileId, name, size, mimeType }[]
+  attachments     Json?
+  taskDraft       Json?
+  taskDraftStatus String?
+  timestamp       BigInt
+
+  owner  User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([threadId])
+}
+
+// ── AI Config ──────────────────────────────────────────────────────────────
+
+model Agent {
+  id           String  @id
+  ownerId      String
+  name         String
+  avatarUrl    String  @default("")
+  systemPrompt String  @default("")
+  isDefault    Boolean @default(false)
+  scope        String  // "writer" | "task"
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+}
+
+model ProviderConfig {
+  id            String   @id
+  ownerId       String
+  name          String
+  provider      String   @default("custom")
+  // apiKey is stored encrypted (AES-256-GCM with ENCRYPTION_KEY).
+  // The browser never receives the raw value.
+  apiKey        String   @default("")
+  selectedModel String   @default("")
+  isActive      Boolean  @default(true)
+  baseUrl       String   @default("")
+  customModels  String[] @default([])
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+}
+
+model QuickPrompt {
+  id        String @id
+  ownerId   String
+  title     String
+  prompt    String
+  scope     String // "writer" | "task"
+  createdAt BigInt
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+}
+
+// ── User Settings (UI prefs, last-active ids, etc.) ────────────────────────
+
+model Setting {
+  ownerId   String
+  key       String
+  valueJson String // arbitrary JSON-encoded value
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@id([ownerId, key])
+}
+
+// ── Task AI Change Batches (undo history) ──────────────────────────────────
+
+model TaskAIChangeBatch {
+  id                 String  @id
+  ownerId            String
+  taskId             String
+  summary            String
+  operations         Json    // TaskAIOperation[]
+  inverseOperations  Json    // TaskAIOperation[]
+  createdAt          BigInt
+  expiresAt          BigInt
+  undoneAt           BigInt?
+  appliedByMessageId String?
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  task  Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([taskId])
+  @@index([expiresAt])
+}

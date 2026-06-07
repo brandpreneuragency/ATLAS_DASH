@@ -1,0 +1,322 @@
+import { useEffect, useRef, useState } from 'react';
+import type { Editor } from '@tiptap/react';
+import { Search, Undo2, Redo2, ChevronUp, ChevronDown, Replace, ReplaceAll, Save } from 'lucide-react';
+import { useDocumentStore } from '../../stores/documentStore';
+
+interface EditorTopBarProps {
+  editor: Editor | null;
+  onSave: (editor: Editor) => void;
+}
+
+interface FindState {
+  matches: number[];
+  index: number;
+}
+
+export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [replaceText, setReplaceText] = useState('');
+  const [findState, setFindState] = useState<FindState>({ matches: [], index: 0 });
+  const findInputRef = useRef<HTMLInputElement>(null);
+
+  const activeDoc = useDocumentStore((s) =>
+    s.documents.find((d) => d.id === s.activeDocumentId) ?? null
+  );
+  const updateDocument = useDocumentStore((s) => s.updateDocument);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditingTitle) {
+      setTimeout(() => {
+        titleInputRef.current?.focus();
+        titleInputRef.current?.select();
+      }, 0);
+    }
+  }, [isEditingTitle]);
+
+  const startEditingTitle = () => {
+    if (!activeDoc) return;
+    setTitleDraft(activeDoc.title);
+    setIsEditingTitle(true);
+  };
+
+  const commitTitle = () => {
+    const next = titleDraft.trim();
+    if (next && activeDoc && next !== activeDoc.title) {
+      void updateDocument(activeDoc.id, { title: next });
+    }
+    setIsEditingTitle(false);
+  };
+
+  const cancelTitleEdit = () => {
+    setIsEditingTitle(false);
+  };
+
+  useEffect(() => {
+    if (searchOpen) {
+      setTimeout(() => findInputRef.current?.focus(), 0);
+    } else {
+      setQuery('');
+      setReplaceText('');
+      setFindState({ matches: [], index: 0 });
+    }
+  }, [searchOpen]);
+
+  const computeMatches = (q: string): number[] => {
+    if (!editor || !q) return [];
+    const text = editor.state.doc.textBetween(0, editor.state.doc.content.size, '\n', '\n');
+    const lower = text.toLowerCase();
+    const needle = q.toLowerCase();
+    const positions: number[] = [];
+    let from = 0;
+    while (from <= lower.length - needle.length) {
+      const idx = lower.indexOf(needle, from);
+      if (idx === -1) break;
+      positions.push(idx);
+      from = idx + needle.length;
+    }
+    return positions;
+  };
+
+  const updateQuery = (q: string) => {
+    setQuery(q);
+    setFindState({ matches: computeMatches(q), index: 0 });
+  };
+
+  const goNext = () => {
+    if (findState.matches.length === 0) return;
+    setFindState((s) => ({ ...s, index: (s.index + 1) % s.matches.length }));
+  };
+
+  const goPrev = () => {
+    if (findState.matches.length === 0) return;
+    setFindState((s) => ({
+      ...s,
+      index: (s.index - 1 + s.matches.length) % s.matches.length,
+    }));
+  };
+
+  const replaceOne = () => {
+    if (!editor || !query || findState.matches.length === 0) return;
+    const { state } = editor;
+    const { doc } = state;
+    let charPos = 0;
+    let targetFrom = -1;
+    let targetTo = -1;
+    doc.descendants((node, pos) => {
+      if (targetFrom !== -1) return false;
+      if (node.isText) {
+        const nodeText = node.text ?? '';
+        const start = charPos;
+        const end = charPos + nodeText.length;
+        if (start <= findState.matches[findState.index] && findState.matches[findState.index] < end) {
+          const offset = findState.matches[findState.index] - start;
+          targetFrom = pos + offset;
+          targetTo = targetFrom + query.length;
+          return false;
+        }
+        charPos = end;
+      }
+      return true;
+    });
+    if (targetFrom === -1) return;
+    editor
+      .chain()
+      .focus()
+      .insertContentAt({ from: targetFrom, to: targetTo }, replaceText)
+      .run();
+    setFindState((s) => ({
+      matches: computeMatches(query),
+      index: Math.min(s.index, computeMatches(query).length - 1),
+    }));
+  };
+
+  const replaceAll = () => {
+    if (!editor || !query) return;
+    const text = editor.state.doc.textBetween(0, editor.state.doc.content.size, '\n', '\n');
+    const regex = new RegExp(escapeRegex(query), 'gi');
+    const replaced = text.replace(regex, replaceText);
+    if (replaced === text) return;
+    editor.chain().focus().setContent(replaced).run();
+    setFindState({ matches: [], index: 0 });
+  };
+
+  const handleUndo = () => {
+    if (!editor) return;
+    editor.chain().focus().undo().run();
+  };
+
+  const handleRedo = () => {
+    if (!editor) return;
+    editor.chain().focus().redo().run();
+  };
+
+  return (
+    <div id="editor-topbar" className="editor-topbar">
+      <div className="editor-topbar-col">
+        {activeDoc && (
+          <button
+            id="editor-topbar-save"
+            type="button"
+            className="tbar-btn"
+            onClick={() => {
+              if (!editor || !activeDoc) return;
+              onSave(editor);
+            }}
+            disabled={!editor}
+            title="Save"
+            aria-label="Save"
+          >
+            <Save size={14} />
+          </button>
+        )}
+        {activeDoc && (
+          isEditingTitle ? (
+            <input
+              ref={titleInputRef}
+              className="ctrl-xs editor-topbar-title-input"
+              value={titleDraft}
+              title="Document name"
+              placeholder="Document name"
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onBlur={commitTitle}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  commitTitle();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  cancelTitleEdit();
+                }
+              }}
+              spellCheck={false}
+            />
+          ) : (
+            <button
+              type="button"
+              className="ctrl-xs editor-topbar-title"
+              onClick={startEditingTitle}
+              title="Click to rename"
+            >
+              {activeDoc.title || 'Untitled'}
+            </button>
+          )
+        )}
+      </div>
+      <div className="editor-topbar-col editor-topbar-col--right">
+        {searchOpen && (
+          <div className="editor-topbar-search">
+            <input
+              ref={findInputRef}
+              className="ctrl-xs editor-topbar-search-input"
+              placeholder="Find"
+              value={query}
+              onChange={(e) => updateQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.shiftKey ? goPrev() : goNext();
+                } else if (e.key === 'Escape') {
+                  setSearchOpen(false);
+                }
+              }}
+            />
+            <input
+              className="ctrl-xs editor-topbar-search-input"
+              placeholder="Replace"
+              value={replaceText}
+              onChange={(e) => setReplaceText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  replaceOne();
+                } else if (e.key === 'Escape') {
+                  setSearchOpen(false);
+                }
+              }}
+            />
+            <span className="meta editor-topbar-search-count">
+              {query
+                ? findState.matches.length === 0
+                  ? '0/0'
+                  : `${findState.index + 1}/${findState.matches.length}`
+                : ''}
+            </span>
+            <button
+              type="button"
+              className="tbar-btn"
+              onClick={goPrev}
+              disabled={findState.matches.length === 0}
+              title="Previous match"
+            >
+              <ChevronUp size={13} />
+            </button>
+            <button
+              type="button"
+              className="tbar-btn"
+              onClick={goNext}
+              disabled={findState.matches.length === 0}
+              title="Next match"
+            >
+              <ChevronDown size={13} />
+            </button>
+            <button
+              type="button"
+              className="tbar-btn"
+              onClick={replaceOne}
+              disabled={findState.matches.length === 0}
+              title="Replace current"
+            >
+              <Replace size={13} />
+            </button>
+            <button
+              type="button"
+              className="tbar-btn"
+              onClick={replaceAll}
+              disabled={findState.matches.length === 0}
+              title="Replace all"
+            >
+              <ReplaceAll size={13} />
+            </button>
+          </div>
+        )}
+        <button
+          id="editor-topbar-find"
+          type="button"
+          className={`tbar-btn${searchOpen ? ' tbar-btn--on' : ''}`}
+          onClick={() => setSearchOpen((v) => !v)}
+          title="Find & Replace"
+        >
+          <Search size={14} />
+        </button>
+        <button
+          id="editor-topbar-undo"
+          type="button"
+          className="tbar-btn"
+          onClick={handleUndo}
+          disabled={!editor}
+          title="Undo (Ctrl+Z)"
+        >
+          <Undo2 size={13} />
+        </button>
+        <button
+          id="editor-topbar-redo"
+          type="button"
+          className="tbar-btn"
+          onClick={handleRedo}
+          disabled={!editor}
+          title="Redo (Ctrl+Y)"
+        >
+          <Redo2 size={13} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}

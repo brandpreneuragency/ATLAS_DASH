@@ -1,0 +1,58 @@
+# Caddy reverse proxy + TLS for TABS.
+#
+# Routes:
+#   * /api/*  -> http://api:4000
+#   * everything else -> http://web:80 (the nginx-served Vite build)
+#
+# HTTPS is automatic via the ACME issuer built into the `caddy` image. The
+# `tabs.brandpreneur.net` domain below is a placeholder — replace it with the
+# real production hostname before the first `docker compose up`.
+#
+# Caddy reads the placeholder and resolves the certificate on first boot. If
+# the domain's DNS is not pointed at the VPS yet, the caddy container will
+# still start (it just won't issue the cert) and traffic will be served over
+# plain HTTP until DNS is fixed.
+
+{$APP_DOMAIN:tabs.brandpreneur.net} {
+    # The {$APP_DOMAIN} placeholder is set by the `caddy` service's
+    # `environment` block in docker-compose.yml. Caddy substitutes the value
+    # at boot. The `:tabs.brandpreneur.net` after the colon is the fallback
+    # when the env var is missing — useful for local `docker compose up`
+    # testing without TLS.
+    encode zstd gzip
+
+    # Reverse-proxy API requests to the api service.
+    # `header_up -Cookie` is NOT stripped — the session cookie must flow
+    # through so the API can authenticate the user.
+    reverse_proxy /api/* http://api:4000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Everything else -> the static-file `web` service.
+    reverse_proxy http://web:80 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Security headers (mirror the ones the web service sets, in case a
+    # non-asset response comes from the API instead of the SPA).
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Remove the `Server` header.
+        -Server
+    }
+
+    # Cache the ACME http-01 challenge through Caddy (handled automatically
+    # when the caddy image is used with the placeholder domain above).
+    log {
+        output stdout
+        level INFO
+    }
+}

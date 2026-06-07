@@ -1,0 +1,111 @@
+import { useState, useMemo } from 'react';
+import { Plus, Pencil, Folder } from 'lucide-react';
+import type { Task } from '../../types';
+import { useProjectStore } from '../../stores/projectStore';
+
+interface TaskProjectViewProps {
+  tasks: Task[];
+  onPrefillText: (text: string) => void;
+}
+
+export function TaskProjectView({ tasks, onPrefillText }: TaskProjectViewProps) {
+  const { projects } = useProjectStore();
+  const [maxDate, setMaxDate] = useState<string>('');
+
+  const filtered = useMemo(() => {
+    return tasks.filter((t) => {
+      if (t.parentId) return false;
+      if (maxDate && t.date > maxDate) return false;
+      return true;
+    });
+  }, [tasks, maxDate]);
+
+  const grouped = useMemo(() => {
+    const map: Record<string, { project: typeof projects[0] | null; tasks: Task[] }> = {};
+    for (const t of filtered) {
+      const key = t.projectId ?? '__none__';
+      if (!map[key]) {
+        map[key] = {
+          project: t.projectId ? projects.find((p) => p.id === t.projectId) ?? null : null,
+          tasks: [],
+        };
+      }
+      map[key].tasks.push(t);
+    }
+    // Add empty projects
+    for (const p of projects) {
+      if (!map[p.id]) {
+        map[p.id] = { project: p, tasks: [] };
+      }
+    }
+    return Object.entries(map).sort(([, a], [, b]) => {
+      const aName = a.project?.name ?? 'Uncategorized';
+      const bName = b.project?.name ?? 'Uncategorized';
+      return aName.localeCompare(bName);
+    });
+  }, [filtered, projects]);
+
+  const importanceDot = (imp: string) => {
+    const cls = imp === 'high' ? 'task-dot-high' : imp === 'medium' ? 'task-dot-medium' : 'task-dot-low';
+    return <span className={cls} />;
+  };
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  };
+
+  return (
+    <div>
+      <div className="project-filter-bar">
+        <input
+          type="date"
+          value={maxDate}
+          onChange={(e) => setMaxDate(e.target.value)}
+          className="ctrl-xs c-ptr"
+          placeholder="Due before"
+          style={{ flex: 1 }}
+        />
+      </div>
+
+      {grouped.map(([, { project, tasks: groupTasks }]) => {
+        const projectName = project?.name ?? 'Uncategorized';
+        return (
+          <div key={project?.id ?? '__none__'} className="project-group-card">
+            <div className="project-group-header">
+              <div className="project-group-title">
+                <Folder size={12} className="subtle" />
+                <span>{projectName}</span>
+              </div>
+              <div className="project-group-actions">
+                <button type="button" className="project-group-btn" title="Edit project">
+                  <Pencil size={11} />
+                </button>
+                <button
+                  type="button"
+                  className="project-group-btn"
+                  onClick={() => onPrefillText('#' + projectName + ' ')}
+                  title="Add task"
+                >
+                  <Plus size={12} />
+                </button>
+              </div>
+            </div>
+            {groupTasks.length === 0 && (
+              <div style={{ fontSize: 'var(--fs-11)', color: 'var(--c-text-2)', fontStyle: 'italic', padding: '4px 0' }}>
+                No tasks
+              </div>
+            )}
+            {groupTasks.map((t) => (
+              <button key={t.id} type="button" className="calendar-task-row">
+                {importanceDot(t.importance)}
+                <span className="trunc">{t.title}</span>
+                <span className="calendar-task-project">{formatDate(t.date)}</span>
+              </button>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}

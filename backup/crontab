@@ -1,0 +1,7 @@
+# TABS backup cron schedule. The numbers below are placeholders; the
+# `entrypoint.sh` script substitutes `BACKUP_SCHEDULE_HOUR` and
+# `BACKUP_SCHEDULE_MINUTE` at container boot. This file exists so the
+# Dockerfile has something to copy at build time and so a quick `docker run`
+# without env vars still installs a working crontab (defaults to 02:30).
+#
+30 2 * * * /usr/local/bin/run-backup.sh >/proc/1/fd/1 2>/proc/1/fd/2

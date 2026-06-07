@@ -1,0 +1,37 @@
+# rclone configuration template for the TABS backup sidecar.
+#
+# DO NOT COMMIT A REAL CONFIG. Copy this file to `secrets/rclone.conf` on
+# the VPS host and fill in the real values. The `secrets/` directory is
+# bind-mounted read-only into the backup container at /secrets/rclone.conf.
+#
+# Layout (per plan.md § "Backup Plan"):
+#   [gdrive-tabs]    -- plain Google Drive remote, OAuth2 token
+#   [gdrypt-tabs]    -- crypt wrapper around gdrive-tabs:tabs-backups/
+#
+# Run `rclone config` interactively to set up `gdrive-tabs` the first time.
+# Then `rclone obscure <password>` and `rclone obscure <salt>` to encrypt
+# the crypt password and salt (you can paste the obscured strings in this
+# config so they are not stored in plaintext on disk).
+
+# ---- Plain Google Drive remote ------------------------------------------
+# Set up via `rclone config`. The token field is filled in by the config
+# wizard; do not paste the raw OAuth2 token here by hand.
+[gdrive-tabs]
+type = drive
+client_id =
+client_secret =
+scope = drive
+token = {"access_token":"...","token_type":"Bearer","refresh_token":"...","expiry":"..."}
+team_drive =
+
+# ---- Encrypted wrapper above the Google Drive remote -------------------
+# Passwords MUST be `rclone-obscure`d. The cleartext passwords only ever
+# exist on the host that generated the config; the obscured strings are
+# what rclone stores.
+[gdrypt-tabs]
+type = crypt
+remote = gdrive-tabs:tabs-backups
+password = <output-of-rclone-obscure>
+password2 = <output-of-rclone-obscure-for-salt>
+filename_encryption = standard
+directory_name_encryption = true
