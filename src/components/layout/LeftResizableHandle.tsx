@@ -7,14 +7,26 @@ export function LeftResizableHandle() {
     <div
       id="left-resize-handle"
       onMouseDown={onMouseDown}
-      className="resize-handle shrink-0 relative"
+      className="resize-handle shrink-0 relative workspace-handle"
       style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minWidth: 2,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'col-resize',
+        userSelect: 'none',
+        background: 'var(--c-background-2)',
+        height: '100%',
         zIndex: 1,
       }}
     >
-      {/* thin separating line */}
-
+      <div
+        style={{
+          width: 1,
+          height: '100%',
+          background: 'var(--c-border-2)',
+        }}
+      />
     </div>
   );
 }

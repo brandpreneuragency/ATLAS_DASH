@@ -1,0 +1,184 @@
+/* =========================================================
+ * Panel shell — the size, background, and border contract
+ * for each top-level column. Component-internal styles
+ * (sub-headers, lists, controls) stay alongside the
+ * component. This file owns ONLY the panel-root rules so
+ * the cascade is unambiguous.
+ *
+ * Width tokens (consumed by AppLayout.tsx + AISidebarPanel.tsx):
+ *   --left-panel-width
+ *   --right-panel-width
+ *   --main-panel-min-width
+ *
+ * Tokens are defined in src/styles/tokens.css.
+ * ========================================================= */
+
+/* ---- Left panel — file tree ---------------------------- */
+#file-tree-panel {
+  background: var(--c-background-3);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0; /* allow JSX width to win */
+}
+
+#file-tree-panel .panel-body.ai-scroll {
+  background-color: rgba(245, 245, 245, 0);
+  border-radius: 0;
+  border-top: none;
+  border-image: none;
+}
+
+#file-tree-panel input[type="search"] {
+  outline: none;
+  box-shadow: none;
+  border: 1px solid transparent;
+}
+
+#file-tree-panel input[type="search"]:focus,
+#file-tree-panel input[type="search"]:focus-visible {
+  outline: none;
+  border: 1px solid transparent;
+  box-shadow: none;
+}
+
+/* ---- Center panel — editor / task detail -------------- */
+#center-panel-body {
+  height: 100%;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+#editor-column {
+  padding: 0;
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  margin-left: 0;
+  margin-right: 0;
+  gap: 0;
+  height: 100%;
+  background: var(--center-bg);
+}
+
+#editor-card-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+  margin: 5px 5px 10px 10px;
+  border-radius: 12px;
+  background: transparent;
+}
+
+#editor-card-wrapper > .card.h-full {
+  background: transparent;
+}
+
+/* ---- Center panel — task detail (alternative content) - */
+#task-detail-panel {
+  background-color: rgba(233, 233, 233, 0);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  max-height: 100vw;
+  min-height: 0;
+  margin: 0;
+  border-radius: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+#task-detail-panel > div {
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-bottom: 12px;
+}
+
+#task-detail-panel > .tdp-subtasks-bar {
+  background-color: transparent;
+  border-bottom: none;
+  padding-top: 0px;
+  padding-bottom: 6px;
+  padding-left: 15px;
+  padding-right: 15px;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+#task-detail-panel > .tdp-subtasks-bar > div {
+  border: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+#task-detail-panel > #tdc-thread,
+#task-detail-panel > .tdp-comment-footer {
+  border-bottom: none;
+}
+
+#task-detail-card {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* ---- Right panel — AI sidebar / file viewer ----------- */
+#ai-sidebar-panel {
+  background: var(--c-background-1);
+  padding: 0 16px 0 16px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+#ai-sidebar {
+  background: rgba(233, 233, 233, 0);
+  border-radius: 8px;
+  padding: 5px 10px 15px 10px;
+}
+
+#scroll-ai {
+  padding: 0;
+  margin: 0;
+  background: transparent;
+}
+
+#chat-header {
+  padding: 0;
+  background: var(--right-bg);
+  border-radius: 0;
+}
+
+#chat-empty-state {
+  background: var(--c-background-2);
+  margin: 0;
+  padding: 0;
+}
+
+#file-viewer-panel {
+  border-left: 1px solid var(--layout-border);
+  background: var(--right-bg);
+}
+
+/* ---- Narrow sidebars ---------------------------------- */
+#nav-bar {
+  background: var(--c-background-3);
+  border-top: none;
+  border-bottom: none;
+  border-left: none;
+  border-right: 1px solid var(--c-border-2);
+  padding: 0;
+  justify-content: flex-start;
+}
+
+#right-nav-bar {
+  background: var(--right-bg);
+  border-left: 1px solid var(--layout-border);
+  width: 34px;
+  padding: 0;
+}

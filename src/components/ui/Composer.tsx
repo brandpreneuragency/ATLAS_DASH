@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, CSSProperties, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
 import { ArrowUp } from 'lucide-react';
 
 function cx(...classes: Array<string | undefined | false>) {
@@ -16,7 +16,7 @@ export function ComposerRoot({
   className?: string;
 }) {
   return (
-    <div id={id} className={cx('composer-root', className)} style={{ borderRadius: 0 }}>
+    <div id={id} className={cx('composer-root', className)}>
       {children}
     </div>
   );
@@ -32,7 +32,7 @@ export function ComposerCard({
   className?: string;
 }) {
   return (
-    <div id={id} className={cx('composer-card card flex flex-col', className)} style={{ borderRadius: 0, boxShadow: 'none' }}>
+    <div id={id} className={cx('composer-card card flex flex-col', className)} style={{ boxShadow: 'none', height: 'fit-content', paddingTop: 0 }}>
       {children}
     </div>
   );
@@ -46,19 +46,17 @@ export function ComposerAttachments({ children, className }: { children: ReactNo
   );
 }
 
-export function ComposerRow({ children, className }: { children: ReactNode; className?: string }) {
+export function ComposerRow({ children, className, style }: { children: ReactNode; className?: string; style?: CSSProperties }) {
   return (
-    <div className={cx('composer-row relative', className)}>
-      <div className="composer-row-inner flex items-center">
-        {children}
-      </div>
+    <div className={cx('composer-row relative flex items-center', className)} style={{ display: 'flex', flexWrap: 'nowrap', minHeight: '0px', ...style }}>
+      {children}
     </div>
   );
 }
 
-export function ComposerLeft({ children, className }: { children: ReactNode; className?: string }) {
+export function ComposerLeft({ children, className, style }: { children: ReactNode; className?: string; style?: CSSProperties }) {
   return (
-    <div className={cx('composer-left flex items-center', className)}>
+    <div className={cx('composer-left flex items-center', className)} style={{ height: 'fit-content', ...style }}>
       {children}
     </div>
   );
@@ -70,6 +68,7 @@ export const ComposerIconButton = forwardRef<HTMLButtonElement, ButtonHTMLAttrib
       ref={ref}
       type="button"
       className={cx('btn-icon composer-tool-button', className)}
+      style={{ height: 'var(--control-height-sm)' }}
       {...props}
     />
   )

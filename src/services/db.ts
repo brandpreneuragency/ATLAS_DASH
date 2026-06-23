@@ -133,6 +133,20 @@ class ZenEditorDB extends Dexie {
       // the table; users will reconnect their folders in the Tauri app.
       await tx.table('fileHandles').clear();
     });
+    this.version(9).stores({
+      documents: 'id, title, updatedAt, order',
+      chatMessages: 'id, threadId, mode, agentId, timestamp',
+      agents: 'id, name, isDefault, scope',
+      providerConfigs: 'id, provider, isActive',
+      settings: 'key',
+      quickPrompts: 'id, createdAt, scope',
+      fileHandles: 'key',
+      tasks: 'id, title, updatedAt, order, projectId, status, parentId',
+      projects: 'id, name',
+      taskComments: 'id, taskId, createdAt',
+      taskAIChangeBatches: 'id, taskId, createdAt, expiresAt',
+      chatThreads: 'id, mode, updatedAt, documentId, taskId',
+    });
   }
 }
 

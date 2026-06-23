@@ -36,20 +36,20 @@ export function ModelsPanel() {
         )}
 
         {providerConfigs.map((config) => {
-          const visibleModels = config.customModels
-            .filter((m) => !isModelHidden(config.id, m));
+          const visibleModels = (config.models ?? [])
+            .filter((m) => !isModelHidden(config.id, m.id));
           if (visibleModels.length === 0) return null;
           return (
             <div key={config.id} style={{ marginBottom: 2 }}>
               <div className="label-sm" style={{ padding: '8px 8px 4px 8px' }}>
                 {config.name}
               </div>
-              {visibleModels.map((modelId) => {
-                const isActive = config.id === activeProviderId && config.selectedModel === modelId;
+              {visibleModels.map((model) => {
+                const isActive = config.id === activeProviderId && config.selectedModel === model.id;
                 return (
                   <button
-                    key={modelId}
-                    onClick={() => { setActiveProvider(config.id); setActiveModel(config.id, modelId); }}
+                    key={model.id}
+                    onClick={() => { setActiveProvider(config.id); setActiveModel(config.id, model.id); }}
                     className="w-full trans-color"
                     style={{
                       textAlign: 'left',
@@ -66,7 +66,7 @@ export function ModelsPanel() {
                     onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'var(--c-background-4)'; }}
                     onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                   >
-                    {modelId}
+                    {model.name}
                   </button>
                 );
               })}

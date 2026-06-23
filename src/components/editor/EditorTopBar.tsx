@@ -19,6 +19,7 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
   const [replaceText, setReplaceText] = useState('');
   const [findState, setFindState] = useState<FindState>({ matches: [], index: 0 });
   const findInputRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const activeDoc = useDocumentStore((s) =>
     s.documents.find((d) => d.id === s.activeDocumentId) ?? null
@@ -54,6 +55,18 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
   const cancelTitleEdit = () => {
     setIsEditingTitle(false);
   };
+
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
+      }
+    };
+    if (searchOpen) {
+      document.addEventListener('mousedown', onDocClick);
+    }
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [searchOpen]);
 
   useEffect(() => {
     if (searchOpen) {
@@ -207,97 +220,100 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
         )}
       </div>
       <div className="editor-topbar-col editor-topbar-col--right">
-        {searchOpen && (
-          <div className="editor-topbar-search">
-            <input
-              ref={findInputRef}
-              className="ctrl-xs editor-topbar-search-input"
-              placeholder="Find"
-              value={query}
-              onChange={(e) => updateQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  e.shiftKey ? goPrev() : goNext();
-                } else if (e.key === 'Escape') {
-                  setSearchOpen(false);
-                }
-              }}
-            />
-            <input
-              className="ctrl-xs editor-topbar-search-input"
-              placeholder="Replace"
-              value={replaceText}
-              onChange={(e) => setReplaceText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  replaceOne();
-                } else if (e.key === 'Escape') {
-                  setSearchOpen(false);
-                }
-              }}
-            />
-            <span className="meta editor-topbar-search-count">
-              {query
-                ? findState.matches.length === 0
-                  ? '0/0'
-                  : `${findState.index + 1}/${findState.matches.length}`
-                : ''}
-            </span>
-            <button
-              type="button"
-              className="tbar-btn"
-              onClick={goPrev}
-              disabled={findState.matches.length === 0}
-              title="Previous match"
-            >
-              <ChevronUp size={13} />
-            </button>
-            <button
-              type="button"
-              className="tbar-btn"
-              onClick={goNext}
-              disabled={findState.matches.length === 0}
-              title="Next match"
-            >
-              <ChevronDown size={13} />
-            </button>
-            <button
-              type="button"
-              className="tbar-btn"
-              onClick={replaceOne}
-              disabled={findState.matches.length === 0}
-              title="Replace current"
-            >
-              <Replace size={13} />
-            </button>
-            <button
-              type="button"
-              className="tbar-btn"
-              onClick={replaceAll}
-              disabled={findState.matches.length === 0}
-              title="Replace all"
-            >
-              <ReplaceAll size={13} />
-            </button>
-          </div>
-        )}
-        <button
-          id="editor-topbar-find"
-          type="button"
-          className={`tbar-btn${searchOpen ? ' tbar-btn--on' : ''}`}
-          onClick={() => setSearchOpen((v) => !v)}
-          title="Find & Replace"
-        >
-          <Search size={14} />
-        </button>
+        <div className="relative" ref={searchRef}>
+          <button
+            id="editor-topbar-find"
+            type="button"
+            className={`tbar-btn${searchOpen ? ' tbar-btn--on' : ''}`}
+            onClick={() => setSearchOpen((v) => !v)}
+            title="Find & Replace"
+          >
+            <Search size={14} />
+          </button>
+
+          {searchOpen && (
+            <div className="editor-topbar-search">
+              <input
+                ref={findInputRef}
+                className="ctrl-xs editor-topbar-search-input"
+                placeholder="Find"
+                value={query}
+                onChange={(e) => updateQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.shiftKey ? goPrev() : goNext();
+                  } else if (e.key === 'Escape') {
+                    setSearchOpen(false);
+                  }
+                }}
+              />
+              <input
+                className="ctrl-xs editor-topbar-search-input"
+                placeholder="Replace"
+                value={replaceText}
+                onChange={(e) => setReplaceText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    replaceOne();
+                  } else if (e.key === 'Escape') {
+                    setSearchOpen(false);
+                  }
+                }}
+              />
+              <span className="meta editor-topbar-search-count">
+                {query
+                  ? findState.matches.length === 0
+                    ? '0/0'
+                    : `${findState.index + 1}/${findState.matches.length}`
+                  : ''}
+              </span>
+              <button
+                type="button"
+                className="tbar-btn"
+                onClick={goPrev}
+                disabled={findState.matches.length === 0}
+                title="Previous match"
+              >
+                <ChevronUp size={13} />
+              </button>
+              <button
+                type="button"
+                className="tbar-btn"
+                onClick={goNext}
+                disabled={findState.matches.length === 0}
+                title="Next match"
+              >
+                <ChevronDown size={13} />
+              </button>
+              <button
+                type="button"
+                className="tbar-btn"
+                onClick={replaceOne}
+                disabled={findState.matches.length === 0}
+                title="Replace current"
+              >
+                <Replace size={13} />
+              </button>
+              <button
+                type="button"
+                className="tbar-btn"
+                onClick={replaceAll}
+                disabled={findState.matches.length === 0}
+                title="Replace all"
+              >
+                <ReplaceAll size={13} />
+              </button>
+            </div>
+          )}
+        </div>
         <button
           id="editor-topbar-undo"
           type="button"
           className="tbar-btn"
           onClick={handleUndo}
-          disabled={!editor}
+          disabled={!editor || !editor.can().undo()}
           title="Undo (Ctrl+Z)"
         >
           <Undo2 size={13} />
@@ -307,7 +323,7 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
           type="button"
           className="tbar-btn"
           onClick={handleRedo}
-          disabled={!editor}
+          disabled={!editor || !editor.can().redo()}
           title="Redo (Ctrl+Y)"
         >
           <Redo2 size={13} />

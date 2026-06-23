@@ -1,0 +1,103 @@
+/* =========================================================
+ * tokens.css — Design Token Foundation
+ * Stable, scalable sizing/layout/typography tokens.
+ * No `vh` is used for component tokens — only `rem`, `px`,
+ * `clamp()`, and `minmax()`.
+ *
+ * Color tokens already live in src/index.css and are NOT
+ * redefined here. This file is additive only.
+ * ========================================================= */
+
+:root {
+
+  /* ---------- Line heights ---------- */
+  --line-tight: 1.2;
+  --line-normal: 1.5;
+  --line-relaxed: 1.65;
+
+  /* ---------- Spacing ---------- */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Controlled fluid spacing */
+  --space-fluid-sm: clamp(0.5rem, 0.6vw, 0.875rem);
+  --space-fluid-md: clamp(0.75rem, 1vw, 1.25rem);
+  --space-fluid-lg: clamp(1rem, 1.4vw, 1.75rem);
+
+  /* ---------- Radii ---------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
+  --radius-full: 999px;
+
+  /* ---------- Borders ---------- */
+  --border-width: 1px;
+
+  /* ---------- Icon sizes ---------- */
+  --icon-size-xs: 14px;
+  --icon-size-sm: 16px;
+  --icon-size-md: 20px;
+  --icon-size-lg: 24px;
+
+  /* ---------- Control sizes ---------- */
+  --control-height-xs: 28px;
+  --control-height-sm: 32px;
+  --control-height-md: 40px;
+  --control-height-lg: 48px;
+  --control-height-xl: 56px;
+
+  /* ---------- App shell ---------- */
+  --app-min-height: 560px;
+  --topbar-height: 40px;
+  --sidebar-width: 36px;
+
+  /* ---------- Workspace columns ---------- */
+  --task-list-width: clamp(280px, 24vw, 420px);
+  --main-panel-min-width: 420px;
+  /* Right panel — minimum width only. No max cap; the grid track
+   * (`auto` in `#main-row`) controls how wide it can grow. */
+  --right-panel-width: 360px;
+
+  /* ---------- Panel structure ---------- */
+  --panel-header-height: 48px;
+  --panel-footer-min-height: 72px;
+  --panel-padding: var(--space-4);
+  --panel-gap: var(--space-3);
+
+  /* ---------- Component structure ----------
+   * Task card / row min-heights are intentionally NOT
+   * tokenised. They live in index.css as hard-coded
+   * values so the team can tweak them without an
+   * extra layer of indirection. */
+  --composer-min-height: 72px;
+  --toolbar-height: 40px;
+  --subtasks-bar-height: 40px;
+  --task-list-header-height: 32px;
+
+  /* ---------- Modal / overlay sizes ---------- */
+  --modal-max-width: 560px;
+  --modal-max-width-lg: 672px;
+  --modal-max-width-md: 512px;
+  --modal-max-width-sm: 448px;
+  --modal-max-width-xl: 768px;
+  --modal-max-height: 80vh; /* reserved for content-driven modals only — never for shell */
+
+  /* ---------- Z-index ---------- */
+  --z-base: 0;
+  --z-dropdown: 20;
+  --z-sticky: 30;
+  --z-drawer: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+}

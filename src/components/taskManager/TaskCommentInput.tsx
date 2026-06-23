@@ -1,17 +1,23 @@
-import { useState, useRef } from 'react';
-import { Paperclip, Reply, X, Loader2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Loader2, Paperclip, Plus, Reply, X } from 'lucide-react';
 import {
   ComposerCard,
   ComposerIconButton,
-  ComposerInput,
   ComposerLeft,
   ComposerRoot,
   ComposerRow,
   ComposerSendButton,
+  ComposerTextarea,
 } from '../ui/Composer';
 import type { TaskComment } from '../../types';
 import { useTaskCommentStore } from '../../stores/taskCommentStore';
 import { useTaskStore } from '../../stores/taskStore';
+import { useThemedPlaceholder } from '../../utils/placeholders';
+
+/** Max height for the comment box, expressed as 50vw in pixels. */
+function maxHeightVw(): number {
+  return Math.round(window.innerWidth * 0.5);
+}
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -31,7 +37,52 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
   const [progress, setProgress] = useState(0);
   const { addComment } = useTaskCommentStore();
   const { activeTaskId, updateTask } = useTaskStore();
+  const activeTabColorIndex = useTaskStore((s) => s.getActiveTabColorIndex());
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const userHeightRef = useRef<number>(0);
+  const accentColor = 'var(--c-accent-2)';
+  const transmitPlaceholder = useThemedPlaceholder('transmitMessage');
+
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    const max = maxHeightVw();
+    const base = Math.max(ta.scrollHeight, userHeightRef.current || 0);
+    ta.style.height = `${Math.min(Math.max(base, 44), max)}px`;
+  }, [activeTaskId]);
+
+  const handleInput = () => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    const max = maxHeightVw();
+    const base = Math.max(ta.scrollHeight, userHeightRef.current || 0);
+    ta.style.height = `${Math.min(Math.max(base, 44), max)}px`;
+  };
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const startY = e.clientY;
+    const startHeight = ta.offsetHeight;
+    const max = maxHeightVw();
+
+    const onMove = (ev: MouseEvent) => {
+      // Dragging the handle up (negative delta) grows the box upward.
+      const next = Math.min(Math.max(startHeight - (ev.clientY - startY), 44), max);
+      userHeightRef.current = next;
+      ta.style.height = `${next}px`;
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -74,10 +125,13 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
       );
       if (result.comment) {
         // Bump the parent task's updatedAt to reflect new activity.
-        void updateTask(activeTaskId, { updatedAt: Date.now() });
+        void updateTask(activeTaskId, {});
         setText('');
         setAttachment(null);
         setProgress(0);
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+        }
         onClearReply?.();
       } else {
         // Error toast was already shown by the store; keep the input
@@ -104,16 +158,21 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
   return (
     <ComposerRoot id="task-comment-input" className="composer-root--clear">
       <ComposerCard id="task-comment-card">
+        <div
+          className="composer-resize-handle"
+          onMouseDown={handleResizeStart}
+          title="Drag up to expand"
+        />
         {replyToComment && (
-          <div style={{ marginBottom: 4, marginLeft: 0, marginRight: 0, marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, borderRadius: 6, padding: '4px 8px', fontSize: 'var(--fs-11)', border: '1px solid var(--c-border-1)' }}>
-            <Reply size={11} style={{ color: 'var(--c-accent-center-panel)', flexShrink: 0 }} />
+          <div style={{ marginBottom: 4, marginLeft: 0, marginRight: 0, marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, borderRadius: 6, padding: '4px 8px', fontSize: 'var(--fs-sm)', border: '1px solid var(--c-border-1)' }}>
+            <Reply size={11} style={{ color: accentColor, flexShrink: 0 }} />
             <div style={{ display: 'flex', alignItems: 'stretch', gap: 4, flex: 1, overflow: 'hidden' }}>
-              <div style={{ width: 2, borderRadius: 1, background: 'var(--c-accent-center-panel)', flexShrink: 0 }} />
+              <div style={{ width: 2, borderRadius: 1, background: accentColor, flexShrink: 0 }} />
               <div style={{ overflow: 'hidden', minWidth: 0 }}>
-                <div className="semibold" style={{ fontSize: 'var(--fs-10)', color: 'var(--c-accent-center-panel)', marginBottom: 1 }}>
+                <div className="semibold" style={{ fontSize: 'var(--fs-sm)', color: accentColor, marginBottom: 1 }}>
                   You
                 </div>
-                <div className="subtle trunc" style={{ fontSize: 'var(--fs-10)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div className="subtle trunc" style={{ fontSize: 'var(--fs-sm)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {replyToComment.text.slice(0, 120)}
                 </div>
               </div>
@@ -123,12 +182,13 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
               onClick={onClearReply}
               className="btn-icon shrink-0"
               title="Cancel reply"
-              style={{ width: 16, height: 16 }}
+              style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)', paddingRight: '0px' }}
             >
               <X size={9} />
             </button>
           </div>
         )}
+
         {attachment && (
           <div className="px-3 pt-3 pb-1">
             <span className="row-xs" style={{ background: 'var(--c-background-4)', borderRadius: 6, padding: '4px 8px', fontSize: 'var(--fs-xs)' }}>
@@ -140,22 +200,38 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
                 </button>
               )}
               {sending && showProgress && (
-                <span className="subtle" style={{ fontSize: 'var(--fs-10)' }}>
+                <span className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>
                   {Math.round(progress * 100)}%
                 </span>
               )}
             </span>
           </div>
         )}
-        <ComposerRow>
-          <ComposerLeft>
+
+        <ComposerTextarea
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            handleInput();
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={sending ? 'Uploading...' : transmitPlaceholder}
+          title="Message input"
+          rows={1}
+          disabled={sending}
+          style={{ height: 'fit-content' }}
+        />
+
+        <ComposerRow className="task-comment-bottom-row" style={{ height: 'fit-content' }}>
+          <ComposerLeft className="task-comment-bottom-col task-comment-bottom-col--left" style={{ height: 'fit-content' }}>
             <ComposerIconButton
               onClick={() => fileInputRef.current?.click()}
               className="composer-attach-button"
               title="Attach file"
               disabled={sending}
             >
-              <Paperclip size={16} />
+              <Plus size={14} />
             </ComposerIconButton>
             <input
               ref={fileInputRef}
@@ -164,27 +240,21 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
               onChange={handleFileSelect}
             />
           </ComposerLeft>
-          <ComposerInput
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={sending ? 'Uploading…' : 'Type a message...'}
-            title="Message input"
-            disabled={sending}
-          />
-          {sending ? (
-            <button
-              type="button"
-              className="composer-send-btn"
-              title="Sending"
-              disabled
-              aria-label="Sending"
-            >
-              <Loader2 size={14} className="spin" />
-            </button>
-          ) : (
-            <ComposerSendButton onClick={handleSend} disabled={sendDisabled} title="Send message" />
-          )}
+          <div className="task-comment-bottom-col task-comment-bottom-col--send">
+            {sending ? (
+              <button
+                type="button"
+                className="composer-send-btn"
+                title="Sending"
+                disabled
+                aria-label="Sending"
+              >
+                <Loader2 size={14} className="spin" />
+              </button>
+            ) : (
+              <ComposerSendButton onClick={handleSend} disabled={sendDisabled} title="Send message" />
+            )}
+          </div>
         </ComposerRow>
       </ComposerCard>
     </ComposerRoot>

@@ -1,28 +1,19 @@
-// Bridge between the TABS frontend and Tauri's file system + dialog plugins.
+// Bridge between the TABS frontend and the platform's file system.
 //
 // All file I/O in the app flows through these functions so that:
 //   1. fs/dialog call sites in stores and components are typed and uniform
 //   2. Unit tests can mock this module to test behaviour without touching disk
-//   3. The backend (Tauri vs the old browser File System Access API) can be
-//      swapped in one place if we ever ship a web build again
+//   3. The backend (Tauri native vs browser fallback) is chosen via the
+//      FolderConnector service boundary
 //
 // Paths are stored with forward slashes everywhere; Tauri accepts both
 // forward and backward slashes on Windows, so this is a lossless normalisation.
-import {
-  open as dialogOpen,
-  save as dialogSave,
-  type DialogFilter,
-} from '@tauri-apps/plugin-dialog';
-import {
-  readDir as tauriReadDir,
-  readTextFile as tauriReadTextFile,
-  writeTextFile as tauriWriteTextFile,
-  mkdir as tauriMkdir,
-  remove as tauriRemove,
-  rename as tauriRename,
-  exists as tauriExists,
-  stat as tauriStat,
-} from '@tauri-apps/plugin-fs';
+//
+// IMPORTANT: In browser mode, folder operations gracefully return empty
+// results or null instead of throwing. The UI layer checks the connector
+// state to show appropriate messaging.
+
+import { getFolderConnector, isTauriRuntime } from './runtime';
 
 export interface FsDirEntry {
   name: string;
@@ -44,12 +35,8 @@ function normalize(p: string): string {
   return p.replace(/\\/g, '/');
 }
 
-function join(parent: string, name: string): string {
-  return normalize(parent).replace(/\/+$/, '') + '/' + name;
-}
-
 export function joinPath(parent: string, name: string): string {
-  return join(parent, name);
+  return normalize(parent).replace(/\/+$/, '') + '/' + name;
 }
 
 export function basename(p: string): string {
@@ -61,22 +48,30 @@ export function getExt(p: string): string {
   return m ? m[1].toLowerCase() : '';
 }
 
-// Dialog picks -------------------------------------------------------------
+// Runtime check for callers that need a boolean before async init ---------
+
+/** Returns true if native folder access is available (Tauri or File System Access API). */
+export function isNativeFsAvailable(): boolean {
+  if (isTauriRuntime()) return true;
+  return 'showDirectoryPicker' in window;
+}
+
+// Dialog picks ---------------------------------------------------------
 
 /** Show a native folder picker. Returns the absolute path, or null if the
- *  user cancelled. */
+ *  user cancelled or native access is unavailable. */
 export async function openFolderDialog(): Promise<string | null> {
-  const result = await dialogOpen({ directory: true, multiple: false });
-  return typeof result === 'string' ? normalize(result) : null;
+  const connector = await getFolderConnector();
+  return connector.connectFolder();
 }
 
 /** Show a native file-open picker. Returns the absolute path, or null if the
- *  user cancelled. */
+ *  user cancelled or native access is unavailable. */
 export async function openFileDialog(
-  filters: DialogFilter[] = []
+  filters: { name: string; extensions: string[] }[] = []
 ): Promise<string | null> {
-  const result = await dialogOpen({ multiple: false, filters });
-  return typeof result === 'string' ? normalize(result) : null;
+  const connector = await getFolderConnector();
+  return connector.pickOpenFile(filters);
 }
 
 /** Show a native Save As dialog. `defaultPath` may be either a file name
@@ -84,66 +79,74 @@ export async function openFileDialog(
  *  file name is appended. */
 export async function pickSaveTabsPath(
   suggestedName: string,
-  filters: DialogFilter[] = [{ name: 'All Files', extensions: ['*'] }],
+  filters: { name: string; extensions: string[] }[] = [{ name: 'All Files', extensions: ['*'] }],
   defaultPath?: string
 ): Promise<string | null> {
-  return await dialogSave({
-    defaultPath: defaultPath ? join(defaultPath, suggestedName) : suggestedName,
-    filters,
-  });
+  const connector = await getFolderConnector();
+  return connector.pickSavePath(suggestedName, defaultPath, filters);
 }
 
 // Directory and file I/O ---------------------------------------------------
 
 /** List a directory's immediate children (non-recursive). */
 export async function readDir(path: string): Promise<FsDirEntry[]> {
-  const entries = await tauriReadDir(path);
+  const connector = await getFolderConnector();
+  if (!connector.isAvailable()) return [];
+  const entries = await connector.readDir(path);
   return entries.map((e) => ({
     name: e.name,
-    path: join(path, e.name),
-    kind: e.isDirectory ? 'directory' : 'file',
+    path: e.path,
+    kind: e.kind,
   }));
 }
 
-/** Read a UTF-8 text file. */
+/** Read a UTF-8 text file. Throws if native FS is unavailable. */
 export async function readTextFile(path: string): Promise<string> {
-  return await tauriReadTextFile(path);
+  const connector = await getFolderConnector();
+  return connector.readTextFile(path);
 }
 
 /** Write a UTF-8 text file. Creates the file if it does not exist;
- *  overwrites if it does. */
+ *  overwrites if it does. Throws if native FS is unavailable. */
 export async function writeTextFile(path: string, content: string): Promise<void> {
-  await tauriWriteTextFile(path, content);
+  const connector = await getFolderConnector();
+  await connector.writeTextFile(path, content);
 }
 
 /** Create a directory. */
 export async function mkdir(path: string, recursive = false): Promise<void> {
-  await tauriMkdir(path, { recursive });
+  const connector = await getFolderConnector();
+  await connector.mkdir(path, recursive);
 }
 
 /** Delete a file or directory. `recursive` must be true to delete a
  *  non-empty directory. */
 export async function remove(path: string, recursive = false): Promise<void> {
-  await tauriRemove(path, { recursive });
+  const connector = await getFolderConnector();
+  await connector.remove(path, recursive);
 }
 
 /** Rename or move a file or directory (atomic, single call). */
 export async function rename(from: string, to: string): Promise<void> {
-  await tauriRename(from, to);
+  const connector = await getFolderConnector();
+  await connector.rename(from, to);
 }
 
-/** Check whether a path exists on disk. */
+/** Check whether a path exists on disk. Returns false in browser. */
 export async function exists(path: string): Promise<boolean> {
-  return await tauriExists(path);
+  const connector = await getFolderConnector();
+  if (!connector.isAvailable()) return false;
+  return connector.exists(path);
 }
 
-/** Get file metadata (size, mtime, kind). */
+/** Get file metadata (size, mtime, kind). Throws if native FS unavailable. */
 export async function getMetadata(path: string): Promise<FsMetadata> {
-  const info = await tauriStat(path);
+  const connector = await getFolderConnector();
+  const meta = await connector.getMetadata(path);
   return {
-    size: info.size,
-    modifiedAt: info.mtime ?? null,
-    isDirectory: info.isDirectory,
-    isFile: info.isFile,
+    size: meta.size,
+    modifiedAt: meta.modifiedAt,
+    isDirectory: meta.isDirectory,
+    isFile: meta.isFile,
   };
 }

@@ -1,27 +1,17 @@
-// Chat store. Server-backed as of Agent 6 (Frontend AI Migration).
-//
-// The store is now a thin client for the chat thread and message endpoints
-// exposed by the server. Thread / message rows live in Postgres; the local
-// Zustand state mirrors what the server returned.
-//
-// `loadThreads` → `GET /api/chat-threads?mode=…`
-// `newChat`     → `POST /api/chat-threads` (server auto-bumps `updatedAt`
-//                 on the first message — see chatMessages.ts).
-// `selectThread`→ `GET /api/chat-threads/:id/messages`
-// `addMessage`  → `POST /api/chat-threads/:id/messages` (server may
-//                 auto-rename the thread on the first user message).
-// `updateMessage` → `PATCH /api/chat-messages/:id`
-// `deleteMessage` → `DELETE /api/chat-messages/:id`
-//
-// The local optimistic update in `addMessage` / `updateMessage` keeps the UI
-// snappy; on success we replace the optimistic row with the server's
-// authoritative one (which is the same shape). On failure the optimistic row
-// is rolled back.
+// Chat store. Local-first using Dexie (Tauri desktop).
+// Threads and messages stored in IndexedDB.
 
 import { create } from 'zustand';
-import { nanoid } from 'nanoid';
 import type { ChatMessage, ChatThreadMeta } from '../types';
-import { chatRepository } from '../repositories/chatRepository';
+import { db } from '../services/db';
+import { nanoid } from 'nanoid';
+
+/** Context key for lastViewedPerContext map. */
+function contextKey(params: { documentId?: string; taskId?: string }): string | null {
+  if (params.documentId) return `doc:${params.documentId}`;
+  if (params.taskId) return `task:${params.taskId}`;
+  return null;
+}
 
 interface ChatStore {
   threads: ChatThreadMeta[];
@@ -30,9 +20,15 @@ interface ChatStore {
   streamingMessageId: string | null;
   isStreaming: boolean;
 
-  loadThreads: (mode: 'writer' | 'task') => Promise<void>;
-  newChat: (mode: 'writer' | 'task') => Promise<void>;
+  // Context tracking
+  currentContext: { documentId?: string; taskId?: string } | null;
+  lastViewedPerContext: Record<string, string>;
+
+  loadThreadsForContext: (params: { documentId?: string; taskId?: string }) => Promise<void>;
+  setActiveContext: (params: { documentId?: string; taskId?: string }) => void;
+  newChat: (params: { mode: 'writer' | 'task'; documentId?: string; taskId?: string }) => Promise<void>;
   selectThread: (threadId: string) => Promise<void>;
+  deleteThread: (id: string) => Promise<void>;
   addMessage: (msg: ChatMessage) => Promise<void>;
   updateMessage: (id: string, updates: Partial<ChatMessage>) => Promise<void>;
   deleteMessage: (id: string) => Promise<void>;
@@ -41,46 +37,95 @@ interface ChatStore {
   getActiveThreadMessages: () => ChatMessage[];
 }
 
-/** Replace an optimistic message with the server's authoritative version
- *  (or insert it if it's not in the local cache yet). */
-function upsertMessage(
-  messages: ChatMessage[],
-  message: ChatMessage,
-): ChatMessage[] {
-  const idx = messages.findIndex((m) => m.id === message.id);
-  if (idx === -1) return [...messages, message];
-  const next = messages.slice();
-  next[idx] = { ...messages[idx], ...message };
-  return next;
-}
-
-function replaceOrRemoveMessage(messages: ChatMessage[], id: string): ChatMessage[] {
-  return messages.filter((m) => m.id !== id);
-}
-
 export const useChatStore = create<ChatStore>((set, get) => ({
   threads: [],
   activeThreadId: null,
   messagesByThread: {},
   streamingMessageId: null,
   isStreaming: false,
+  currentContext: null,
+  lastViewedPerContext: {},
 
-  loadThreads: async (mode) => {
+  loadThreadsForContext: async (params) => {
     try {
-      const { threads } = await chatRepository.listThreads(mode);
-      set({ threads });
+      let threads: ChatThreadMeta[] = [];
+      if (params.documentId) {
+        threads = await db.chatThreads
+          .where('documentId')
+          .equals(params.documentId)
+          .toArray();
+      } else if (params.taskId) {
+        threads = await db.chatThreads
+          .where('taskId')
+          .equals(params.taskId)
+          .toArray();
+      }
+      
+      set({ threads, currentContext: params });
+
+      // Auto-select the thread already associated with this context when possible.
+      const key = contextKey(params);
+      if (key) {
+        const lastViewed = get().lastViewedPerContext[key];
+        const currentActiveThreadId = get().activeThreadId;
+        const preferredThreadId = lastViewed ?? currentActiveThreadId;
+        const match = preferredThreadId && threads.find((t) => t.id === preferredThreadId);
+        if (match) {
+          set({ activeThreadId: match.id });
+          if (lastViewed !== match.id) {
+            set((s) => ({
+              lastViewedPerContext: { ...s.lastViewedPerContext, [key]: match.id },
+            }));
+          }
+          // Load messages for the auto-selected thread
+          try {
+            const messages = await db.chatMessages
+              .where('threadId')
+              .equals(match.id)
+              .toArray();
+            set(s => ({
+              messagesByThread: { ...s.messagesByThread, [match.id]: messages },
+            }));
+          } catch {
+            // Will load on demand
+          }
+        } else {
+          set({ activeThreadId: null });
+        }
+      } else {
+        set({ activeThreadId: null });
+      }
     } catch {
       // Keep the previous list on transient errors.
     }
   },
 
-  newChat: async (mode) => {
+  setActiveContext: (params) => {
+    const current = get().currentContext;
+    const changed =
+      !current ||
+      current.documentId !== params.documentId ||
+      current.taskId !== params.taskId;
+    if (changed) {
+      get().loadThreadsForContext(params);
+    }
+  },
+
+  newChat: async (params) => {
     const id = nanoid(8);
     const nowMs = Date.now();
+    const key = contextKey(params);
+    // Generate date-prefixed title: YY-MM-DD-chat
+    const now = new Date();
+    const datePrefix = `${String(now.getFullYear()).slice(2)}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const seq = get().threads.length + 1;
+    const title = `${datePrefix}-chat-${String(seq).padStart(2, '0')}`;
     const optimistic: ChatThreadMeta = {
       id,
-      mode,
-      title: 'New Chat',
+      mode: params.mode,
+      documentId: params.documentId ?? undefined,
+      taskId: params.taskId ?? undefined,
+      title,
       createdAt: nowMs,
       updatedAt: nowMs,
     };
@@ -88,11 +133,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       threads: [optimistic, ...s.threads],
       activeThreadId: id,
       messagesByThread: { ...s.messagesByThread, [id]: [] },
+      lastViewedPerContext: key
+        ? { ...s.lastViewedPerContext, [key]: id }
+        : s.lastViewedPerContext,
     }));
     try {
-      const { thread } = await chatRepository.createThread({ id, mode, title: 'New Chat' });
+      await db.chatThreads.add(optimistic);
+      
+      // Load messages for the new thread (should be empty)
       set((s) => ({
-        threads: s.threads.map((t) => (t.id === id ? { ...t, ...thread } : t)),
+        messagesByThread: { ...s.messagesByThread, [id]: [] },
       }));
     } catch {
       // Roll back the optimistic insert on failure.
@@ -111,8 +161,21 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       activeThreadId: threadId,
       messagesByThread: { ...s.messagesByThread, [threadId]: s.messagesByThread[threadId] ?? [] },
     }));
+    // Remember this as the last viewed thread for the current context
+    const ctx = get().currentContext;
+    if (ctx) {
+      const key = contextKey(ctx);
+      if (key) {
+        set(s => ({
+          lastViewedPerContext: { ...s.lastViewedPerContext, [key]: threadId },
+        }));
+      }
+    }
     try {
-      const { messages } = await chatRepository.listMessages(threadId);
+      const messages = await db.chatMessages
+        .where('threadId')
+        .equals(threadId)
+        .toArray();
       set((s) => ({ messagesByThread: { ...s.messagesByThread, [threadId]: messages } }));
     } catch {
       // Keep whatever we already had cached.
@@ -130,34 +193,23 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       },
     }));
     try {
-      const { message } = await chatRepository.createMessage(msg.threadId, {
-        id: msg.id,
-        mode: msg.mode,
-        documentId: msg.documentId ?? null,
-        taskId: msg.taskId ?? null,
-        agentId: msg.agentId,
-        role: msg.role,
-        content: msg.content,
-        selectedText: msg.selectedText ?? null,
-        selectionFrom: msg.selectionFrom ?? null,
-        selectionTo: msg.selectionTo ?? null,
-        suggestedText: msg.suggestedText ?? null,
-        replyTo: msg.replyTo ?? null,
-        attachments: msg.attachments,
-        taskDraft: msg.taskDraft,
-        taskDraftStatus: msg.taskDraftStatus,
-        timestamp: msg.timestamp,
-      });
+      await db.chatMessages.add(msg);
+
+      // Keep the thread's updatedAt timestamp in sync with message activity
+      // so the context window can show an accurate "Last Activity" value.
+      const now = Date.now();
+      await db.chatThreads.update(msg.threadId, { updatedAt: now });
       set((s) => ({
-        messagesByThread: {
-          ...s.messagesByThread,
-          [msg.threadId]: upsertMessage(s.messagesByThread[msg.threadId] ?? [], message),
-        },
+        threads: s.threads.map((t) => (t.id === msg.threadId ? { ...t, updatedAt: now } : t)),
       }));
+
       // The server may have renamed the thread on the first user message.
       // We refresh the thread list so the sidebar title updates.
       if (msg.role === 'user') {
-        await get().loadThreads(msg.mode);
+        const ctx = get().currentContext;
+        if (ctx) {
+          await get().loadThreadsForContext(ctx);
+        }
       }
     } catch {
       // Roll back the optimistic insert.
@@ -180,19 +232,23 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       return { messagesByThread: next };
     });
     try {
-      const { message } = await chatRepository.updateMessage(id, {
-        content: updates.content,
-        suggestedText: updates.suggestedText ?? null,
-        taskDraft: updates.taskDraft,
-        taskDraftStatus: updates.taskDraftStatus,
-      });
-      set((s) => {
-        const next: Record<string, ChatMessage[]> = {};
-        for (const [tid, msgs] of Object.entries(s.messagesByThread)) {
-          next[tid] = upsertMessage(msgs, message);
+      await db.chatMessages.update(id, updates);
+      
+      // We don't have a direct get-by-id endpoint, so reload each thread
+      // cache that referenced this id. Simpler: just refetch the active
+      // thread.
+      const { activeThreadId } = get();
+      if (activeThreadId) {
+        try {
+          const messages = await db.chatMessages
+            .where('threadId')
+            .equals(activeThreadId)
+            .toArray();
+          set((s) => ({ messagesByThread: { ...s.messagesByThread, [activeThreadId]: messages } }));
+        } catch {
+          /* ignore */
         }
-        return { messagesByThread: next };
-      });
+      }
     } catch {
       // Re-fetch the message from the server to recover authoritative state.
       // We don't have a direct get-by-id endpoint, so reload each thread
@@ -201,12 +257,49 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       const { activeThreadId } = get();
       if (activeThreadId) {
         try {
-          const { messages } = await chatRepository.listMessages(activeThreadId);
+          const messages = await db.chatMessages
+            .where('threadId')
+            .equals(activeThreadId)
+            .toArray();
           set((s) => ({ messagesByThread: { ...s.messagesByThread, [activeThreadId]: messages } }));
         } catch {
           /* ignore */
         }
       }
+    }
+  },
+
+  deleteThread: async (id) => {
+    // Optimistically remove from local state.
+    const prev = get().threads;
+    const prevActive = get().activeThreadId;
+    set((s) => {
+      const nextThreads = s.threads.filter((t) => t.id !== id);
+      const { [id]: _, ...rest } = s.messagesByThread;
+      return {
+        threads: nextThreads,
+        activeThreadId: s.activeThreadId === id ? (nextThreads[0]?.id ?? null) : s.activeThreadId,
+        messagesByThread: rest,
+      };
+    });
+    try {
+      await db.chatThreads.delete(id);
+      // Delete associated messages
+      await db.chatMessages.where('threadId').equals(id).delete();
+      
+      // Refresh to get authoritative list using current context
+      const ctx = get().currentContext;
+      if (ctx) await get().loadThreadsForContext(ctx);
+    } catch {
+      // Roll back
+      set((s) => ({
+        threads: prev,
+        activeThreadId: prevActive,
+        messagesByThread: {
+          ...s.messagesByThread,
+          [id]: s.messagesByThread[id] ?? [],
+        },
+      }));
     }
   },
 
@@ -219,13 +312,30 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       return { messagesByThread: next };
     });
     try {
-      await chatRepository.deleteMessage(id);
+      await db.chatMessages.delete(id);
+      
+      // Refetch active thread to recover.
+      const { activeThreadId } = get();
+      if (activeThreadId) {
+        try {
+          const messages = await db.chatMessages
+            .where('threadId')
+            .equals(activeThreadId)
+            .toArray();
+          set((s) => ({ messagesByThread: { ...s.messagesByThread, [activeThreadId]: messages } }));
+        } catch {
+          /* ignore */
+        }
+      }
     } catch {
       // Refetch active thread to recover.
       const { activeThreadId } = get();
       if (activeThreadId) {
         try {
-          const { messages } = await chatRepository.listMessages(activeThreadId);
+          const messages = await db.chatMessages
+            .where('threadId')
+            .equals(activeThreadId)
+            .toArray();
           set((s) => ({ messagesByThread: { ...s.messagesByThread, [activeThreadId]: messages } }));
         } catch {
           /* ignore */
@@ -242,3 +352,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     return activeThreadId ? messagesByThread[activeThreadId] ?? [] : [];
   },
 }));
+
+function replaceOrRemoveMessage(messages: ChatMessage[], id: string): ChatMessage[] {
+  return messages.filter((m) => m.id !== id);
+}

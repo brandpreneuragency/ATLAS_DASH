@@ -3,6 +3,7 @@ import { FileType, Download } from 'lucide-react';
 import type { FileViewerItem } from '../../types';
 import { getFileCategory } from '../../utils/fileType';
 import type { FileCategory } from '../../utils/fileType';
+import { decodeDataUrlText } from '../../utils/fileData';
 
 interface FileViewerContentProps {
   file: FileViewerItem;
@@ -19,9 +20,17 @@ function FileViewerImage({ src, name }: { src: string; name: string }) {
 function FileViewerVideo({ src, name }: { src: string; name: string }) {
   return (
     <div className="file-viewer-content-inner file-viewer-content-video">
-      <video src={src} controls autoPlay>
-        {name}
-      </video>
+      <div className="file-viewer-video-thumbnail">
+        <video 
+          src={src} 
+          preload="metadata" 
+          muted 
+          className="file-viewer-video-preview"
+        />
+      </div>
+      <div className="file-viewer-video-info">
+        <span className="file-viewer-video-name">{name}</span>
+      </div>
     </div>
   );
 }
@@ -41,13 +50,7 @@ function FileViewerPdf({ src, name }: { src: string; name: string }) {
 function FileViewerText({ dataUrl }: { dataUrl: string }) {
   const text = useMemo(() => {
     try {
-      // Handle base64 data URLs
-      if (dataUrl.startsWith('data:')) {
-        const base64 = dataUrl.split(',')[1];
-        return atob(base64);
-      }
-      // Plain text
-      return dataUrl;
+      return decodeDataUrlText(dataUrl);
     } catch {
       return 'Could not decode file content.';
     }
@@ -84,31 +87,49 @@ function FileViewerOther({ file }: { file: FileViewerItem }) {
   );
 }
 
+function FileViewerDownloadAction({ file }: { file: FileViewerItem }) {
+  const href = file.dataUrl || file.path || '#';
+  if (href === '#') return null;
+
+  return (
+    <div className="file-viewer-actions">
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="file-viewer-download-btn"
+        download={file.name}
+      >
+        <Download size={14} />
+        Download file
+      </a>
+    </div>
+  );
+}
+
 export function FileViewerContent({ file }: FileViewerContentProps) {
-  const category: FileCategory = getFileCategory(file.name);
+  const category: FileCategory = getFileCategory(file.name, file.mimeType);
 
   // Build a usable src for media types
   const src = file.dataUrl || file.path || '';
+  const previewable =
+    (category === 'image' || category === 'video' || category === 'pdf') ? Boolean(src) :
+    (category === 'text' || category === 'code') ? Boolean(file.dataUrl) :
+    false;
 
-  switch (category) {
-    case 'image':
-      return <FileViewerImage src={src} name={file.name} />;
-
-    case 'video':
-      return <FileViewerVideo src={src} name={file.name} />;
-
-    case 'pdf':
-      return <FileViewerPdf src={src} name={file.name} />;
-
-    case 'text':
-    case 'code':
-      if (file.dataUrl) {
-        return <FileViewerText dataUrl={file.dataUrl} />;
-      }
-      // If no dataUrl, fall through to download view
-      return <FileViewerOther file={file} />;
-
-    default:
-      return <FileViewerOther file={file} />;
+  if (!previewable) {
+    return <FileViewerOther file={file} />;
   }
+
+  return (
+    <div className="file-viewer-preview-shell">
+      <div className="file-viewer-preview-body">
+        {category === 'image' && <FileViewerImage src={src} name={file.name} />}
+        {category === 'video' && <FileViewerVideo src={src} name={file.name} />}
+        {category === 'pdf' && <FileViewerPdf src={src} name={file.name} />}
+        {(category === 'text' || category === 'code') && file.dataUrl && <FileViewerText dataUrl={file.dataUrl} />}
+      </div>
+      <FileViewerDownloadAction file={file} />
+    </div>
+  );
 }

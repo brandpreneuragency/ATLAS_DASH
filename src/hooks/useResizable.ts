@@ -1,8 +1,16 @@
 import { useCallback, useRef } from 'react';
 import { useUIStore } from '../stores/uiStore';
 
+const RIGHT_PANEL_MIN_WIDTH = 320;
+// No hard max — the center panel's 260px minimum is the only constraint.
+// The grid track (auto) in #main-row will give the panel as much space
+// as the center panel is willing to give up.
+const RIGHT_PANEL_MAX_WIDTH = Number.POSITIVE_INFINITY;
+const CENTER_PANEL_MIN_WIDTH = 260;
+
 export function useResizable() {
   const setSidebarWidth = useUIStore((s) => s.setSidebarWidth);
+  const panelsSwapped = useUIStore((s) => s.panelsSwapped);
   const isDragging = useRef(false);
 
   const onMouseDown = useCallback(
@@ -11,23 +19,42 @@ export function useResizable() {
       isDragging.current = true;
 
       const handleEl = e.currentTarget as HTMLElement;
-      const sidebarEl = handleEl.parentElement as HTMLElement;
-      const containerEl = sidebarEl?.parentElement as HTMLElement;
-      if (!sidebarEl || !containerEl) return;
+      const rowEl = handleEl.closest('#main-row') as HTMLElement | null;
+      if (!rowEl) return;
 
+      const sidebarEl = (panelsSwapped
+        ? handleEl.previousElementSibling
+        : handleEl.nextElementSibling) as HTMLElement | null;
+      if (!sidebarEl) return;
+
+      const sidebarRect = sidebarEl.getBoundingClientRect();
+      const handleWidth = handleEl.getBoundingClientRect().width;
       const startX = e.clientX;
-      const startWidth = sidebarEl.getBoundingClientRect().width;
+
+      // Preserve the cursor offset inside the handle so the first move does
+      // not snap the sidebar to its minimum width.
+      const pointerToMovingEdge = panelsSwapped
+        ? sidebarRect.right - startX
+        : startX - sidebarRect.left;
+      const fixedEdge = panelsSwapped ? sidebarRect.left : sidebarRect.right;
 
       const onMouseMove = (ev: MouseEvent) => {
         if (!isDragging.current) return;
-        const delta = startX - ev.clientX;
-        const newWidth = Math.max(0, startWidth + delta);
-        const newVw = (newWidth / window.innerWidth) * 100;
 
-        // Clamp so the sidebar never exceeds 40vw or pushes the center panel below 260px
-        const mainColumnsWidth = containerEl.getBoundingClientRect().width;
-        const maxVw = Math.min(40, ((mainColumnsWidth - 260) / window.innerWidth) * 100);
-        setSidebarWidth(Math.min(newVw, Math.max(0, maxVw)));
+        const movingEdge = panelsSwapped
+          ? ev.clientX + pointerToMovingEdge
+          : ev.clientX - pointerToMovingEdge;
+        const newWidth = panelsSwapped
+          ? movingEdge - fixedEdge
+          : fixedEdge - movingEdge;
+
+        const rowWidth = rowEl.getBoundingClientRect().width;
+        const maxWidth = Math.min(
+          RIGHT_PANEL_MAX_WIDTH,
+          Math.max(RIGHT_PANEL_MIN_WIDTH, rowWidth - CENTER_PANEL_MIN_WIDTH - handleWidth)
+        );
+        const clampedWidth = Math.min(Math.max(newWidth, RIGHT_PANEL_MIN_WIDTH), maxWidth);
+        setSidebarWidth((clampedWidth / window.innerWidth) * 100);
       };
 
       const onMouseUp = () => {
@@ -39,7 +66,7 @@ export function useResizable() {
       window.addEventListener('mousemove', onMouseMove);
       window.addEventListener('mouseup', onMouseUp);
     },
-    [setSidebarWidth]
+    [setSidebarWidth, panelsSwapped]
   );
 
   return { onMouseDown };

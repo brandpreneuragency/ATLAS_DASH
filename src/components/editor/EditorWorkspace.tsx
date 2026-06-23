@@ -86,11 +86,11 @@ export function EditorWorkspace({ onEditorReady }: EditorWorkspaceProps) {
   }, [localEditor, htmlViewOpen]);
 
   return (
-    <div id="editor-column" className="col h-full" style={{ background: 'var(--center-bg)' }}>
+    <div id="editor-column" className="panel col h-full" style={{ background: 'var(--center-bg)' }}>
       <EditorTopBar editor={localEditor} onSave={saveDocument} />
       {/* Empty state when all tabs are closed (e.g. X on the only empty tab) */}
       {hasNoDocuments ? (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="panel-body empty-state flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3" style={{ color: 'var(--c-text-2)' }}>
             <FilePlus2 size={40} strokeWidth={1.25} />
             <p className="txt-sm">{t('tabs.noDocumentsOpen') ?? 'No document open'}</p>
@@ -110,15 +110,12 @@ export function EditorWorkspace({ onEditorReady }: EditorWorkspaceProps) {
           <div
             id="scroll-main"
             ref={editorScrollRef}
-            className="ai-scroll flex-1 overflow-y-a"
+            className="panel-body ai-scroll flex-1 overflow-y-a"
             style={{
-              paddingTop: '0px',
-              paddingBottom: '0px',
-              paddingLeft: '20px',
-              paddingRight: '20px',
+              padding: '0 60px',
             }}
           >
-            <div style={{ maxWidth: '48rem', margin: '0 auto', padding: 0 }}>
+            <div style={{ margin: '0 auto', padding: 0 }}>
               <div style={{ display: htmlViewOpen ? 'none' : 'block' }}>
                 <TipTapEditor
                   documentId={activeDocumentId}

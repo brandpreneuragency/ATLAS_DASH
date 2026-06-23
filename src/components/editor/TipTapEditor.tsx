@@ -14,6 +14,7 @@ import FontFamily from '@tiptap/extension-font-family';
 import { Extension } from '@tiptap/core';
 import { UndoRedo } from '@tiptap/extensions/undo-redo';
 import { Fragment, Slice } from '@tiptap/pm/model';
+import { EditorState } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { InlineTextPreset } from './InlineTextPreset';
 import { useAutoSave } from '../../hooks/useAutoSave';
@@ -239,6 +240,14 @@ export function TipTapEditor({ documentId, initialContent, onEditorReady, editab
       } else {
         editor.commands.clearContent();
       }
+      // Clear undo/redo history so it's scoped to this document, not global
+      const { state, view } = editor;
+      view.updateState(
+        EditorState.create({
+          doc: state.doc,
+          plugins: state.plugins,
+        })
+      );
     } catch {
       editor.commands.clearContent();
     }

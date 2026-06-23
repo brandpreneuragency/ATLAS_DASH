@@ -1,0 +1,256 @@
+/* =========================================================================
+   ReusablePageTemplate — self-contained, scoped styles.
+   The root element carries the `.reusable-page-template` class so nothing
+   leaks in or out. All visual tokens are exposed as CSS variables on the
+   root so a host app can override them per-instance.
+   ========================================================================= */
+
+.reusable-page-template {
+  /* Defaults (overridable per instance) */
+  --pt-panel-bg: var(--c-background-1);
+  --pt-panel-border: rgba(0, 0, 0, 0.08);
+  --pt-handle-bg: transparent;
+  --pt-handle-bg-active: var(--c-accent-center-panel);
+  --pt-handle-width: 2px;
+  --pt-handle-hit-width: 10px;
+  --pt-header-height: 4vh;
+  --pt-footer-height: 10vh;
+  --pt-text-color: #111111;
+  --pt-radius: 0px;
+
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: transparent;
+  color: var(--pt-text-color);
+  font: inherit;
+}
+
+.reusable-page-template *,
+.reusable-page-template *::before,
+.reusable-page-template *::after {
+  box-sizing: border-box;
+}
+
+/* ---------------- Root row ---------------- */
+
+.reusable-page-template__row {
+  display: flex;
+  flex-direction: row;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+/* ---------------- Panels ---------------- */
+
+.reusable-page-template__panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background-color: var(--c-background-1);
+  border-color: var(--pt-panel-border);
+  overflow: hidden;
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+
+.reusable-page-template__panel--left {
+  border-right-width: 1px;
+  border-right-style: solid;
+}
+
+.reusable-page-template__panel--right {
+  border-left-width: 1px;
+  border-left-style: solid;
+}
+
+/* Width is supplied per-instance via the --pt-panel-width custom property. */
+.reusable-page-template__panel {
+  width: var(--pt-panel-width, auto);
+}
+
+.reusable-page-template__panel--center {
+  flex: 1 1 auto;
+  border: none;
+}
+
+.reusable-page-template__panel--hidden {
+  display: none !important;
+}
+
+/* ---------------- Panel sections (header / main / footer) ---------------- */
+
+.reusable-page-template__section {
+  display: flex;
+  align-items: center;
+  min-height: 0;
+  width: 100%;
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+
+.reusable-page-template__section--header {
+  height: fit-content;
+}
+
+.reusable-page-template__section--footer {
+  height: var(--pt-footer-height);
+}
+
+.reusable-page-template__section--main {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.reusable-page-template__panel--left .reusable-page-template__section--main {
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.reusable-page-template__section--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.35);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ---------------- Resize handles ---------------- */
+
+.reusable-page-template__handle {
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--pt-handle-width);
+  background: var(--pt-handle-bg);
+  cursor: col-resize;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+  /* The hit area is wider than the visible bar for easier grabbing. */
+}
+
+.reusable-page-template__handle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--pt-panel-border);
+  pointer-events: none;
+}
+
+.reusable-page-template__handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: var(--pt-handle-hit-width);
+  transform: translateX(-50%);
+  background: transparent;
+  pointer-events: none;
+}
+
+.reusable-page-template__handle:hover::after,
+.reusable-page-template__handle[data-dragging="true"]::after {
+  background: var(--pt-handle-bg-active);
+}
+
+.reusable-page-template__handle:focus-visible {
+  outline: 2px solid var(--c-accent-center-panel);
+  outline-offset: 1px;
+}
+
+/* ---------------- Preview-specific (kept inside the template scope) ---------------- */
+
+.reusable-page-template__preview-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-accent-center-panel);
+  background-color: var(--c-background-1);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.reusable-page-template__preview-toggle {
+  appearance: none;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.reusable-page-template__preview-toggle:hover {
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.reusable-page-template__preview-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Preview page wrapper (used by PageTemplatePreview) */
+.reusable-page-template__preview-root {
+  width: 100%;
+  height: 100vh;
+  background: #dddddd;
+}
+
+.reusable-page-template__preview-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.reusable-page-template__preview-section--orange {
+  background: rgba(255, 165, 0, 0.35);
+}
+
+.reusable-page-template__preview-section--orange-strong {
+  background: rgba(255, 140, 0, 0.55);
+}
+
+.reusable-page-template__preview-section--center-main {
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.reusable-page-template__preview-section--center-footer {
+  background: rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.6);
+}

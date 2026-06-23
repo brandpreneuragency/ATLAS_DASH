@@ -12,7 +12,7 @@ export function TaskProfilesManagerModal() {
       <div
         className="modal modal--sm flex-col overflow-h"
         id="task-profiles-manager-modal"
-        style={{ maxHeight: '80vh' }}
+        style={{ maxHeight: 'var(--modal-max-height)' }}
       >
         <div
           className="modal-head shrink-0"

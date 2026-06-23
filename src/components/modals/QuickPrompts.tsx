@@ -61,7 +61,7 @@ export function QuickPrompts({ onSelectPrompt }: QuickPromptsProps) {
 
   return (
     <div className="overlay" id="quick-prompts-overlay">
-      <div className="modal modal--sm flex-col" id="quick-prompts-modal" style={{ maxHeight: '80vh' }}>
+      <div className="modal modal--sm flex-col" id="quick-prompts-modal" style={{ maxHeight: 'var(--modal-max-height)' }}>
         <div className="modal-head shrink-0">
           <h2>Quick Prompts</h2>
           <div className="row gap-2">

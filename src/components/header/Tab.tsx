@@ -16,6 +16,7 @@ interface TabProps {
   onClose: () => void;
   onRename: (newTitle: string) => void;
   charLimit: number;
+  colorIndex?: number;
 }
 
 export function Tab({ doc, isActive, onSelect, onClose, onRename, charLimit }: TabProps) {
@@ -104,7 +105,7 @@ export function Tab({ doc, isActive, onSelect, onClose, onRename, charLimit }: T
           if (hasEdits) { setConfirmClose(true); } else { onClose(); }
         }
       }}
-      className={`group relative justify-start min-w-0 pl-3 pr-1.5 ${isActive ? 'tab-active' : 'tab-passive'}`}
+      className={`group relative justify-start min-w-0 pl-3 pr-1 ${isActive ? 'tab-active' : 'tab-passive'}`}
     >
       <>
         {isEditing ? (
@@ -124,7 +125,7 @@ export function Tab({ doc, isActive, onSelect, onClose, onRename, charLimit }: T
           />
         ) : (
           <span className={`txt-xs med trunc${isReplaceable ? ' italic' : ''}`}>
-            {doc.title.slice(0, charLimit)}{doc.title.length > charLimit ? '…' : ''}
+            {(doc.title ?? '').slice(0, charLimit)}{(doc.title ?? '').length > charLimit ? '…' : ''}
           </span>
         )}
 

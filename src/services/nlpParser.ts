@@ -1,4 +1,5 @@
 import type { TaskImportance } from '../types';
+import { TASK_TITLE_MAX_LENGTH } from '../types';
 
 export interface ParsedTaskInput {
   title: string;
@@ -41,6 +42,6 @@ export function parseTaskInput(text: string): ParsedTaskInput {
     remaining = remaining.replace(isoMatch[1], '').trim();
   }
 
-  const title = remaining.replace(/\s+/g, ' ').trim();
+  const title = remaining.replace(/\s+/g, ' ').trim().slice(0, TASK_TITLE_MAX_LENGTH);
   return { title, date, importance, projectName };
 }

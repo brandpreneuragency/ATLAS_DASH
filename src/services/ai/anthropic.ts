@@ -1,23 +1,18 @@
-// Anthropic Messages streaming. Dormant for the web build — the browser
-// routes through `aiRepository.streamChat()`. See AGENTS.md for the Tauri
-// isolation strategy.
-
 import type { AIProviderConfig } from '../../types';
-import type { ChatMessage } from './types';
-import { resolveFetch } from './fetchResolver';
+import { runtimeFetch } from '../http';
+import type { ChatMessage, StreamChunk } from './types';
 
 export async function* streamAnthropic(
   messages: ChatMessage[],
   config: AIProviderConfig,
   signal?: AbortSignal
-): AsyncGenerator<string, void, unknown> {
+): AsyncGenerator<StreamChunk, void, unknown> {
   const proxyUrl = config.baseUrl || 'https://api.anthropic.com';
   const systemMessages = messages.filter((m) => m.role === 'system');
   const chatMessages = messages.filter((m) => m.role !== 'system');
   const systemPrompt = systemMessages.map((m) => m.content).join('\n');
-  const fetch = await resolveFetch();
 
-  const response = await fetch(`${proxyUrl}/v1/messages`, {
+  const response = await runtimeFetch(`${proxyUrl}/v1/messages`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -56,7 +51,7 @@ export async function* streamAnthropic(
       try {
         const json = JSON.parse(trimmed.slice(6));
         if (json.type === 'content_block_delta' && json.delta?.type === 'text_delta') {
-          yield json.delta.text;
+          yield { content: json.delta.text };
         }
       } catch {
         // skip malformed chunks

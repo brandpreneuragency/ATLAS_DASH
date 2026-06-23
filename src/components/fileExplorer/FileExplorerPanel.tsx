@@ -2,12 +2,11 @@ import { useState, useRef, useEffect } from 'react';
 import type React from 'react';
 import {
   FilePlus, FolderPlus, X,
-  File, Folder, FolderOpen,
+  File, Folder, Monitor,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useFileSystemStore, type TreeNode as TreeNodeType } from '../../stores/fileSystemStore';
 import { useUIStore } from '../../stores/uiStore';
-import { detectTauri } from '../../utils/tauri';
 import { TreeNode } from './TreeNode';
 import { FileTreeTabs } from './FileTreeTabs';
 
@@ -33,11 +32,12 @@ function hasUnloadedDirectory(node: TreeNodeType): boolean {
 export function FileExplorerPanel() {
   const { t } = useTranslation();
   const {
-    rootNode, error,
+    rootNode, error, folderCapability,
     refreshDir,
     createFile, createDirectory, ensureSubtreeLoaded,
   } = useFileSystemStore();
   const { expandedPaths, setExpandedPaths, fileExplorerOpen } = useUIStore();
+  const nativeAvailable = folderCapability === 'available';
 
   // inline input at root level (new file / new folder)
   const [rootInput, setRootInput] = useState<{ mode: 'new-file' | 'new-folder' } | null>(null);
@@ -54,8 +54,6 @@ export function FileExplorerPanel() {
         .filter((child): child is TreeNodeType => child !== null)
       : rootNode.children
     : [];
-
-  const isTauri = detectTauri();
 
   useEffect(() => {
     if (rootInput && rootInputRef.current) {
@@ -106,90 +104,93 @@ export function FileExplorerPanel() {
   };
 
   return (
-    <div className="flex-col h-full" style={{ display: 'flex', minHeight: 0, background: 'var(--c-background-2)' }}>
-      <div className="shrink-0" style={{ height: 42, paddingLeft: 0, paddingRight: 0 }}>
-        <FileTreeTabs />
-      </div>
+    <div className="panel flex-col h-full" style={{ display: 'flex', minHeight: 0, backgroundColor: 'var(--c-background-2)' }}>
+      <div className="panel-header fep-header">
+        <div className="shrink-0" style={{ height: 'fit-content', paddingLeft: 0, paddingRight: 0 }}>
+          <FileTreeTabs />
+        </div>
 
-      {rootNode?.children && (
-        <div
-          role="search"
-          style={{
-            height: 32,
-            borderBottom: '1px solid var(--layout-border)',
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 8px',
-            background: 'var(--left-bg)',
-          }}
-        >
-          <input
-            type="search"
-            aria-label={t('explorer.searchFiles')}
-            title={t('explorer.searchFiles')}
-            placeholder={t('explorer.searchPlaceholder')}
-            value={searchQuery}
-            spellCheck={false}
-            onChange={(e) => setSearchQuery(e.target.value)}
+        {rootNode?.children && (
+          <div
+            role="search"
             style={{
               width: '100%',
               height: 32,
-              border: 'none',
-              borderRadius: 0,
-              background: 'rgba(255, 255, 255, 0)',
-              color: 'var(--c-text-1)',
-              fontSize: 'var(--fs-xs)',
-              padding: '0 8px',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '0 5px',
+              marginLeft: 0,
+              marginRight: 0,
+              background: 'rgba(233,233,233,0)',
+              borderTop: 'none',
+              borderRight: 'none',
+              borderBottom: 'none',
+              borderLeft: 'none',
             }}
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              title={t('explorer.clearSearch')}
-              aria-label={t('explorer.clearSearch')}
-              onClick={() => setSearchQuery('')}
-              style={{ marginLeft: -28, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-text-2)', display: 'flex', alignItems: 'center' }}
-            >
-              <X size={12} />
-            </button>
-          )}
-        </div>
-      )}
+          >
+            <input
+              type="search"
+              aria-label={t('explorer.searchFiles')}
+              title={t('explorer.searchFiles')}
+              placeholder={t('explorer.searchPlaceholder')}
+              value={searchQuery}
+              spellCheck={false}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: '100%',
+                height: 32,
+                borderRadius: 8,
+                background: 'rgba(255, 255, 255, 0)',
+                color: 'var(--c-text-1)',
+                fontSize: 'var(--fs-base)',
+                padding: '0 8px',
+              }}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                title={t('explorer.clearSearch')}
+                aria-label={t('explorer.clearSearch')}
+                onClick={() => setSearchQuery('')}
+                style={{ marginLeft: -28, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-text-2)', display: 'flex', alignItems: 'center' }}
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Body */}
-      <div className="ai-scroll flex-1 overflow-y-a left-scrollbar" style={{ minHeight: 0, padding: 0, background: 'var(--c-background-2)' }}>
+      <div className="panel-body ai-scroll flex-1 overflow-y-a" style={{ minHeight: 0, paddingLeft: 18, paddingRight: 15 }}>
         {error && (
           <p style={{ fontSize: 'var(--fs-xs)', color: '#EF4444', marginBottom: 8, lineHeight: 1.375 }}>{error}</p>
         )}
 
-        {/* Browser-mode disabled state. The file explorer is a Tauri-only
-            feature (path-based filesystem access). In the VPS web build we
-            show a clear empty state instead of offering broken buttons. The
-            Tauri desktop path is untouched. */}
-        {!isTauri && !rootNode && (
-          <div
-            id="file-explorer-browser-empty"
-            className="flex-col items-center justify-center"
-            style={{
-              padding: '32px 16px',
-              gap: 10,
-              color: 'var(--c-text-3)',
-              textAlign: 'center',
-            }}
-          >
-            <FolderOpen size={28} className="subtle" />
-            <p className="txt-sm med" style={{ color: 'var(--c-text-2)' }}>
-              Local folders are available in the desktop app.
-            </p>
-            <p className="txt-xs subtle" style={{ maxWidth: 220, lineHeight: 1.4 }}>
-              Use the TABS desktop build to connect a local folder and work
-              with your files on disk.
+        {!nativeAvailable && !rootNode && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px 16px',
+            textAlign: 'center',
+            gap: 8,
+          }}>
+            <Monitor size={24} style={{ color: 'var(--c-text-2)' }} />
+            <p style={{
+              fontSize: 'var(--fs-xs)',
+              color: 'var(--c-text-2)',
+              lineHeight: 1.5,
+              maxWidth: 200,
+            }}>
+              {t('explorer.desktopRequiredHint')}
             </p>
           </div>
         )}
 
         {rootNode?.children && (
-          <ul id="filetree-list" style={{
+          <ul id="filetree-list" className="ai-scroll" style={{
             display: 'flex', flexDirection: 'column', gap: 1,
             listStyle: 'none', padding: 0, margin: 0,
           }}>
@@ -200,7 +201,7 @@ export function FileExplorerPanel() {
                 title={t('explorer.newFile')}
                 aria-label={t('explorer.newFile')}
                 className="btn-icon"
-                style={{ width: 24, height: 24 }}
+                style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}
               >
                 <FilePlus size={14} />
               </button>
@@ -210,9 +211,9 @@ export function FileExplorerPanel() {
                 title={t('explorer.newFolder')}
                 aria-label={t('explorer.newFolder')}
                 className="btn-icon"
-                style={{ width: 24, height: 24 }}
+                style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}
               >
-                <FolderPlus size={14} />
+                <FolderPlus size={12} />
               </button>
             </li>
             {searchIndexing && (

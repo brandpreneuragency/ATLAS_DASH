@@ -2,17 +2,20 @@ import { X } from 'lucide-react';
 import type { Task } from '../../types';
 
 interface TaskTabProps {
-  task: Task;
+  task: Task | null;
   isActive: boolean;
   onSelect: () => void;
   onClose: () => void;
   charLimit: number;
+  colorIndex: number;
 }
 
 export function TaskTab({ task, isActive, onSelect, onClose, charLimit }: TaskTabProps) {
+  const title = task ? task.title.slice(0, charLimit) + (task.title.length > charLimit ? '…' : '') : 'New tab';
+  const idPart = task ? task.id : 'empty';
   return (
     <div
-      id={`tab-task-${isActive ? 'active' : 'passive'}-${task.id}`}
+      id={`tab-task-${isActive ? 'active' : 'passive'}-${idPart}`}
       onClick={onSelect}
       onMouseDown={(e) => {
         if (e.button === 1) {
@@ -21,8 +24,9 @@ export function TaskTab({ task, isActive, onSelect, onClose, charLimit }: TaskTa
         }
       }}
       className={`group relative justify-start min-w-0 pl-3 pr-1.5 ${isActive ? 'tab-active' : 'tab-passive'}`}
+      style={isActive ? { height: '100%' } : undefined}
     >
-      <span className="txt-xs med trunc">{task.title.slice(0, charLimit)}{task.title.length > charLimit ? '…' : ''}</span>
+      <span className="txt-xs med trunc">{title}</span>
 
       <button
         type="button"

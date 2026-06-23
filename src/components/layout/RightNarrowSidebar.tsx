@@ -5,12 +5,12 @@ export function RightNarrowSidebar() {
   const { sidebarOpen, setSidebarOpen } = useUIStore();
 
   return (
-    <div id="right-nav-bar" className="flex-col items-center shrink-0 overflow-h h-screen" style={{ gap: 0, width: 0, padding: 0 }}>
+    <div id="right-nav-bar" className="nav-bar" style={{ background: 'var(--right-bg)', display: 'none' }}>
       {/* Section 1: Empty top */}
-      <div className="flex-col items-center flex-1" />
+      <div className="nav-section" />
 
       {/* Section 2: AI chat toggle */}
-      <div className="flex-col items-center justify-center flex-1">
+      <div className="nav-section" style={{ justifyContent: 'center' }}>
         <button
           id="nav-btn-ai"
           type="button"
@@ -23,7 +23,7 @@ export function RightNarrowSidebar() {
       </div>
 
       {/* Section 3: Empty bottom */}
-      <div className="flex-col items-center justify-end flex-1" style={{ paddingBottom: 12 }} />
+      <div className="nav-section" style={{ justifyContent: 'flex-end', paddingBottom: 12 }} />
     </div>
   );
 }

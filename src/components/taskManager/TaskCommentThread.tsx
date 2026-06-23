@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import type { TaskComment, FileViewerItem } from '../../types';
-import { Paperclip, FileVideo, Reply, Trash2 } from 'lucide-react';
+import { Paperclip, Play, Reply, Trash2 } from 'lucide-react';
 import { useLongPress } from '../../hooks/useLongPress';
 import { useTaskCommentStore } from '../../stores/taskCommentStore';
 import { useUIStore } from '../../stores/uiStore';
-import { commentFileUrl } from '../../repositories/commentRepository';
+import { getFileCategory, inferMimeTypeFromDataUrl, synthesizeAttachmentName } from '../../utils/fileType';
 
 interface TaskCommentThreadProps {
   comments: TaskComment[];
@@ -12,6 +13,26 @@ interface TaskCommentThreadProps {
 }
 
 const DELETE_WINDOW_MS = 5 * 60 * 1000;
+
+function formatAttachmentSize(bytes?: number): string | undefined {
+  if (typeof bytes !== 'number' || Number.isNaN(bytes)) return undefined;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getCommentAttachmentFile(comment: TaskComment): FileViewerItem | null {
+  if (!comment.attachmentDataUrl) return null;
+
+  const mimeType = comment.attachmentMimeType || inferMimeTypeFromDataUrl(comment.attachmentDataUrl);
+  return {
+    name: synthesizeAttachmentName(comment.attachmentName, mimeType),
+    dataUrl: comment.attachmentDataUrl,
+    mimeType,
+    size: formatAttachmentSize(comment.attachmentSizeBytes),
+    source: 'task-comment',
+  };
+}
 
 function formatTimestamp(ts: number): string {
   const d = new Date(ts);
@@ -25,13 +46,6 @@ function formatTimestamp(ts: number): string {
   if (d.toDateString() === yesterday.toDateString()) return `Yesterday ${time}`;
 
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ` ${time}`;
-}
-
-function getFileType(name: string): 'image' | 'video' | 'other' {
-  const ext = name.split('.').pop()?.toLowerCase() ?? '';
-  if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'bmp', 'ico'].includes(ext)) return 'image';
-  if (['mp4', 'webm', 'ogv', 'mov', 'mkv', 'avi'].includes(ext)) return 'video';
-  return 'other';
 }
 
 function canDeleteComment(comment: TaskComment): boolean {
@@ -120,57 +134,89 @@ function AttachmentPreview({
   comment: TaskComment;
   onOpenFileViewer: (file: FileViewerItem) => void;
 }) {
-  // Prefer the rich file metadata returned by the server. Fall back to the
-  // legacy `attachmentName` for backward compatibility with pre-migration
-  // data (notably the local Dexie import path, Agent 7).
-  const file = comment.file;
-  const fileName = file?.originalName ?? comment.attachmentName;
-  const fileId = comment.fileId ?? file?.id;
-
-  if (!fileName) return null;
-
-  const type = getFileType(fileName);
-  const url = fileId ? commentFileUrl(fileId) : undefined;
+  const fileItem = getCommentAttachmentFile(comment);
+  if (!fileItem) return null;
+  const category = getFileCategory(fileItem.name, fileItem.mimeType);
+  const src = fileItem.dataUrl || fileItem.path || '';
 
   const handleClick = () => {
-    const fileItem: FileViewerItem = {
-      name: fileName,
-      path: url,
-      mimeType: file?.mimeType,
-      size: comment.attachmentSize,
-      source: 'task-comment',
-    };
     onOpenFileViewer(fileItem);
   };
 
-  if (type === 'image' && url) {
+  if (category === 'image' && src) {
     return (
       <button
         type="button"
         onClick={handleClick}
-        className="media-thumb" style={{maxWidth:200}}
+        className="media-thumb"
+        style={{ padding: 0, border: 'none', background: 'transparent' }}
       >
         <img
-          src={url}
-          alt={fileName}
-          style={{width:'fit-content',height:'auto',maxHeight:200,objectFit:'contain',display:'flex',flexDirection:'column'}}
+          src={src}
+          alt={fileItem.name}
+          style={{
+            display: 'block',
+            maxWidth: 200,
+            width: 181,
+            height: 'auto',
+            objectFit: 'contain',
+          }}
         />
       </button>
     );
   }
 
-  if (type === 'video' && url) {
+  if (category === 'video' && src) {
+    if (!comment.attachmentPreviewDataUrl) {
+      return (
+        <button
+          type="button"
+          onClick={handleClick}
+          className="row-xs c-ptr trans-opacity" style={{background:'transparent',padding:12,borderRadius:8,border:'none',color:'var(--c-accent-2)',fontSize:'var(--fs-xs)',width:'100%',textAlign:'left',height:'fit-content'}}
+        >
+          <Paperclip size={11} />
+          <span className="trunc">{fileItem.name}</span>
+        </button>
+      );
+    }
+
     return (
       <button
         type="button"
         onClick={handleClick}
-        className="media-thumb" style={{maxWidth:280}}
+        className="media-thumb"
+        style={{ padding: 0, border: 'none', background: 'transparent' }}
       >
-        <video
-          src={url}
-          preload="metadata"
-          style={{width:'100%',height:'auto',maxHeight:200,pointerEvents:'none'}}
-        />
+        <div style={{ position: 'relative' }}>
+          <img
+            src={comment.attachmentPreviewDataUrl}
+            alt={fileItem.name}
+            style={{
+              display: 'block',
+              maxWidth: 200,
+              width: '100%',
+              height: 'auto',
+              objectFit: 'contain',
+            }}
+          />
+          <span
+            style={{
+              position: 'absolute',
+              right: 10,
+              bottom: 10,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 30,
+              height: 30,
+              borderRadius: '999px',
+              background: 'rgba(0, 0, 0, 0.66)',
+              color: '#fff',
+            }}
+          >
+            <Play size={14} fill="currentColor" />
+          </span>
+        </div>
       </button>
     );
   }
@@ -179,25 +225,20 @@ function AttachmentPreview({
     <button
       type="button"
       onClick={handleClick}
-      className="row-xs c-ptr trans-opacity" style={{background:'transparent',padding:0,borderRadius:8,border:'none',color:'var(--c-info)',fontSize:'var(--fs-xs)',width:'100%',textAlign:'left',height:16}}
+      className="row-xs c-ptr trans-opacity" style={{background:'transparent',padding:12,borderRadius:8,border:'none',color:'var(--c-accent-2)',fontSize:'var(--fs-xs)',width:'100%',textAlign:'left',height:'fit-content'}}
     >
-      {type === 'video' ? <FileVideo size={11} /> : <Paperclip size={11} />}
-      <span className="trunc">{fileName}</span>
-      {comment.attachmentSize && (
-        <span className="subtle">({comment.attachmentSize})</span>
-      )}
+      <Paperclip size={11} />
+      <span className="trunc">{fileItem.name}</span>
     </button>
   );
 }
 
 function CommentBubble({
   comment,
-  index,
   onOpenFileViewer,
   onOpenMenu,
 }: {
   comment: TaskComment;
-  index: number;
   onOpenFileViewer: (file: FileViewerItem) => void;
   onOpenMenu: (comment: TaskComment, pos: { x: number; y: number }) => void;
 }) {
@@ -219,19 +260,10 @@ function CommentBubble({
     }
   };
 
-  // Only render the attachment row if we have something to show. The
-  // legacy `attachmentDataUrl` field is no longer populated in the web
-  // build; the attachment is rendered from `comment.file` (server) or
-  // `comment.attachmentName` (legacy import).
-  const hasAttachment = Boolean(
-    comment.file?.id || comment.fileId || comment.attachmentName,
-  );
+  const hasAttachment = Boolean(comment.attachmentDataUrl);
 
   return (
     <div data-comment-id={comment.id} className="comment-thread">
-      <div className="avatar shrink-0" style={{ fontSize: '10px', fontWeight: 700, paddingLeft: 0, paddingRight: 0, marginRight: 5, marginTop: 3 }}>
-        {index}
-      </div>
       <div className="comment-right-col">
         {comment.replyTo && (
           <div
@@ -243,7 +275,7 @@ function CommentBubble({
               background: 'var(--c-background-4)',
               borderRadius: 6,
               padding: '4px 8px',
-              fontSize: 'var(--fs-11)',
+              fontSize: 'var(--fs-sm)',
               marginBottom: 4,
               border: '1px solid var(--c-border-1)',
               cursor: 'pointer',
@@ -251,10 +283,10 @@ function CommentBubble({
           >
             <div style={{ width: 2, borderRadius: 1, background: 'var(--c-accent-center-panel)', flexShrink: 0 }} />
             <div style={{ overflow: 'hidden', minWidth: 0 }}>
-              <div className="semibold" style={{ fontSize: 'var(--fs-10)', color: 'var(--c-accent-center-panel)', marginBottom: 1 }}>
+              <div className="semibold" style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-accent-center-panel)', marginBottom: 1 }}>
                 {comment.replyTo.sender}
               </div>
-              <div className="subtle trunc" style={{ fontSize: 'var(--fs-10)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div className="subtle trunc" style={{ fontSize: 'var(--fs-sm)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {comment.replyTo.text}
               </div>
             </div>
@@ -280,9 +312,6 @@ function CommentBubble({
       <span className="meta comment-meta">
         {formatTimestamp(comment.createdAt)}
       </span>
-      <span className="meta comment-author">
-        {comment.sender ?? 'You'}
-      </span>
     </div>
   );
 }
@@ -305,7 +334,7 @@ export function TaskCommentThread({ comments, onReplyComment }: TaskCommentThrea
 
   if (comments.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center" style={{color:'var(--c-text-3)',textAlign:'center',marginTop:10,marginBottom:10}}>
+      <div className="flex-1 flex items-center justify-center" style={{color:'var(--c-text-3)',textAlign:'center',marginTop:8,marginBottom:8}}>
         <div>
           <p className="txt-xs" style={{marginBottom:4}}>No comments yet.</p>
           <p className="txt-xs">Start the conversation below.</p>
@@ -317,18 +346,17 @@ export function TaskCommentThread({ comments, onReplyComment }: TaskCommentThrea
   return (
     <>
       <div id="task-comment-thread" className="ai-scroll flex-1 overflow-y-a py-3" style={{display:'flex',flexDirection:'column',gap:16}}>
-        {comments.map((comment, index) => (
+        {comments.map((comment) => (
           <CommentBubble
             key={comment.id}
             comment={comment}
-            index={index + 1}
             onOpenFileViewer={openFileViewer}
             onOpenMenu={handleOpenMenu}
           />
         ))}
       </div>
 
-      {contextMenu && (
+      {contextMenu && createPortal(
         <CommentContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
@@ -336,7 +364,8 @@ export function TaskCommentThread({ comments, onReplyComment }: TaskCommentThrea
           onReply={() => onReplyComment?.(contextMenu.comment)}
           onDelete={() => deleteComment(contextMenu.comment.id, contextMenu.comment.taskId)}
           onClose={() => setContextMenu(null)}
-        />
+        />,
+        document.body
       )}
     </>
   );

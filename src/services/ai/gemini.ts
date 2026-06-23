@@ -1,19 +1,14 @@
-// Google Gemini streaming. Dormant for the web build — the browser routes
-// through `aiRepository.streamChat()`. See AGENTS.md for the Tauri
-// isolation strategy.
-
 import type { AIProviderConfig } from '../../types';
-import type { ChatMessage } from './types';
-import { resolveFetch } from './fetchResolver';
+import { runtimeFetch } from '../http';
+import type { ChatMessage, StreamChunk } from './types';
 
 export async function* streamGemini(
   messages: ChatMessage[],
   config: AIProviderConfig,
   signal?: AbortSignal
-): AsyncGenerator<string, void, unknown> {
+): AsyncGenerator<StreamChunk, void, unknown> {
   const model = config.selectedModel || 'gemini-2.5-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${config.apiKey}`;
-  const fetch = await resolveFetch();
 
   const systemMessages = messages.filter((m) => m.role === 'system');
   const chatMessages = messages.filter((m) => m.role !== 'system');
@@ -26,7 +21,7 @@ export async function* streamGemini(
     parts: [{ text: m.content }],
   }));
 
-  const response = await fetch(url, {
+  const response = await runtimeFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -59,7 +54,7 @@ export async function* streamGemini(
       try {
         const json = JSON.parse(trimmed.slice(6));
         const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) yield text;
+        if (text) yield { content: text };
       } catch {
         // skip malformed chunks
       }

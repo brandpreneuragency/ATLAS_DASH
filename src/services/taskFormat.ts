@@ -143,8 +143,8 @@ export function generateTaskSummary(
     for (const c of comments) {
       const date = new Date(c.createdAt).toLocaleString();
       lines.push(`- **${date}:** ${c.text}`);
-      if (c.attachmentName) {
-        lines.push(`  - Attachment: ${c.attachmentName} (${c.attachmentSize ?? '—'})`);
+      if (c.attachmentDataUrl) {
+        lines.push('  - Attachment: [local file]');
       }
     }
   }

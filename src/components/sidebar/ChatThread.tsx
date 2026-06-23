@@ -40,7 +40,7 @@ export function ChatThread({ taskId, editor, onReplyMessage }: ChatThreadProps) 
       >
         <div style={{ textAlign: 'center' }}>
           <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--c-background-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-            <span style={{ color: 'var(--c-accent-center-panel)', fontSize: 'clamp(12px, 1.1vw, 18px)' }}>✦</span>
+            <span style={{ color: 'var(--c-accent-center-panel)', fontSize: 'var(--font-fluid-12)' }}>✦</span>
           </div>
           <p className="subtle" style={{ fontSize: 'var(--fs-xs)' }}>
             {taskId ? 'Ask about this task...' : t('chat.startConversation')}

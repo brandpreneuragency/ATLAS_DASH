@@ -8,6 +8,7 @@ export interface Document {
   sourcePath?: string;
   isDirty?: boolean;
   splitEditorOpen?: boolean;
+  colorIndex?: number; // 0-5 for rainbow colors
 }
 
 export interface Attachment {
@@ -19,9 +20,20 @@ export interface Attachment {
 export interface ChatThreadMeta {
   id: string;
   mode: 'writer' | 'task';
+  documentId?: string;
+  taskId?: string;
   title: string;
   createdAt: number;
   updatedAt: number;
+}
+
+export interface MessageUsage {
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+  reasoningTokens?: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
 }
 
 export interface ChatMessage {
@@ -47,6 +59,7 @@ export interface ChatMessage {
   taskDraft?: TaskAIDraft;
   taskDraftStatus?: 'draft' | 'applied' | 'rejected' | 'invalid';
   timestamp: number;
+  usage?: MessageUsage;
 }
 
 export interface Project {
@@ -58,6 +71,9 @@ export interface Project {
 
 export type TaskStatus = 'pending' | 'in_progress' | 'completed';
 export type TaskImportance = 'low' | 'medium' | 'high';
+
+/** Maximum character count allowed for task titles. */
+export const TASK_TITLE_MAX_LENGTH = 80;
 
 export interface Task {
   id: string;
@@ -77,39 +93,20 @@ export interface Task {
   deletedAt?: number;             // soft-delete timestamp
 }
 
-export interface TaskCommentFile {
-  id: string;
-  originalName: string;
-  mimeType: string;
-  sizeBytes: number;
-}
-
 export interface TaskComment {
   id: string;
   taskId: string;
   sender?: string;         // display name of the commenter (e.g., "You"). UI falls back to "You".
   text: string;
   /**
-   * Server-set reference to the uploaded file. Always `null` when the
-   * comment was created without an attachment. The server never stores
-   * `attachmentDataUrl` — files are streamed through
-   * `/api/files/:fileId/content`.
+   * For local-first: data URL of attached file (if any).
+   * For server: this field is unused; files are handled via fileId/File.
    */
-  fileId?: string | null;
-  /** Populated by the comment repository after a successful upload. */
-  file?: TaskCommentFile | null;
-  /** Display-only fields. Populated by the store from `file` for components
-   *  that haven't been migrated to read `comment.file` directly. */
-  attachmentName?: string;
-  attachmentSize?: string;
-  /** @deprecated Always undefined in the web build. The server does not
-   *  store a `dataUrl` for attachments. Use `comment.file.id` and
-   *  `/api/files/:fileId/content` instead. Kept in the type for backward
-   *  compatibility with the legacy local-Dexie import path. */
   attachmentDataUrl?: string;
-  /** @deprecated Always undefined in the web build. Files are streamed
-   *  through the backend; the local filesystem path is never exposed. */
-  attachmentPath?: string;
+  attachmentName?: string;
+  attachmentMimeType?: string;
+  attachmentSizeBytes?: number;
+  attachmentPreviewDataUrl?: string;
   replyTo?: {
     id: string;
     text: string;
@@ -129,6 +126,28 @@ export interface Agent {
 
 export type AIProviderType = string;
 
+export type ProviderStatus = 'connected' | 'not_connected' | 'needs_setup';
+
+export interface ModelCapability {
+  vision: boolean;
+  toolCalling: boolean;
+  contextLength: string;
+  speed: 'Slow' | 'Medium' | 'Fast' | 'Unknown';
+  cost: 'Free' | 'Limited' | 'Paid' | 'External' | 'Unknown';
+  reasoning: 'Low' | 'Medium' | 'High' | 'Unknown';
+  endpointType: 'Native' | 'OpenRouter' | 'Custom' | 'Unknown';
+  lastSynced?: string;
+}
+
+export interface ModelItem {
+  id: string;
+  name: string;
+  enabled: boolean;
+  description?: string;
+  capabilities: ModelCapability;
+  custom?: boolean;
+}
+
 export interface AIProviderConfig {
   id: string;
   name: string;
@@ -138,6 +157,27 @@ export interface AIProviderConfig {
   isActive: boolean;
   baseUrl: string;
   customModels: string[];
+  status?: ProviderStatus;
+  models?: ModelItem[];
+  lastImportedAt?: number;
+}
+
+/** Connection-form draft kept per provider inside the model management modal. */
+export interface ProviderConnectionDraft {
+  baseUrl: string;
+  apiKey: string;
+}
+
+/** Per-drawer import state surfaced to the UI. */
+export type ProviderImportPhase =
+  | 'idle'
+  | 'importing'
+  | 'error'
+  | 'success';
+
+export interface ProviderImportUiState {
+  phase: ProviderImportPhase;
+  message?: string;
 }
 
 export interface AppSettings {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import type { Editor } from '@tiptap/react';
 import {
   Bold, Italic, Underline, Strikethrough, Link,
@@ -68,13 +69,46 @@ export function SelectionToolbar({ editor, editorScrollRef }: SelectionToolbarPr
   const [colorOpen, setColorOpen] = useState(false);
   const [href, setHref] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const outsideClickClosed = useRef(false);
 
   const visible = selectedText !== null && pos !== null;
+
+  // Close toolbar when clicking outside
+  useEffect(() => {
+    if (!visible) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
+        outsideClickClosed.current = true;
+        setPos(null);
+        setSavedRange(null);
+        setLinkOpen(false);
+        setColorOpen(false);
+      }
+    };
+
+    // Use setTimeout to avoid closing immediately when the toolbar opens from a click
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [visible]);
   const activeTextPreset = (editor?.getAttributes('textStyle').textPreset ?? null) as InlineTextPresetName | null;
 
   const handleMouseUp = useCallback((e: MouseEvent) => {
     if (e.button !== 0) return;
     if (!editorScrollRef.current?.contains(e.target as Node)) return;
+
+    // Don't re-open if toolbar was just closed by an outside click
+    if (outsideClickClosed.current) {
+      outsideClickClosed.current = false;
+      return;
+    }
 
     const { from, to } = editor?.state.selection || {};
     if (from === undefined || to === undefined || from === to) {
@@ -218,10 +252,20 @@ export function SelectionToolbar({ editor, editorScrollRef }: SelectionToolbarPr
   const alignLabel = ALIGN_LABELS[alignIndex];
   const currentColor = (editor?.getAttributes('textStyle').color ?? null) as string | null;
 
-  return (
+  return createPortal(
     <div
+      ref={toolbarRef}
       className="drop"
-      style={{ position: 'fixed', top: pos.y + 30, left: clampedLeft, zIndex: 200, minWidth: 280 }}
+      style={{
+        position: 'fixed',
+        top: pos.y + 30,
+        left: clampedLeft,
+        zIndex: 200,
+        padding: 8,
+        marginTop: 5,
+        borderRadius: 8,
+        border: '2px solid var(--c-accent-2)',
+      }}
       onMouseDown={(e) => e.preventDefault()}
     >
       {/* Row 1: Link, Bold, Italic, Underline, Strikethrough, Bullet list, Number list */}
@@ -324,7 +368,7 @@ export function SelectionToolbar({ editor, editorScrollRef }: SelectionToolbarPr
           title="Text color"
         >
           <span style={{ position: 'relative', display: 'inline-block', width: 13, height: 13, lineHeight: 1 }}>
-            <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'clamp(12px, 1.1vw, 18px)', fontWeight: 700 }}>A</span>
+            <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--font-fluid-12)', fontWeight: 700 }}>A</span>
             <span style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2.5, background: currentColor ?? 'var(--c-text-2)', borderRadius: 1 }} />
           </span>
         </ToolBtn>
@@ -409,6 +453,7 @@ export function SelectionToolbar({ editor, editorScrollRef }: SelectionToolbarPr
           </button>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }

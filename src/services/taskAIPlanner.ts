@@ -6,6 +6,7 @@ import type {
   TaskStatus,
   TaskImportance,
 } from '../types';
+import { TASK_TITLE_MAX_LENGTH } from '../types';
 import type { TaskAIContextPayload } from './taskAIContext';
 import { completeChat } from './ai/router';
 
@@ -34,7 +35,7 @@ function normalizeOperation(op: any): TaskAIOperation | null {
     return {
       id,
       type: 'create_task',
-      title: op.title.trim(),
+      title: op.title.trim().slice(0, TASK_TITLE_MAX_LENGTH),
       parentId: typeof op.parentId === 'string' ? op.parentId : undefined,
       status,
       importance,
@@ -52,7 +53,9 @@ function normalizeOperation(op: any): TaskAIOperation | null {
       id,
       type: 'update_task',
       taskId: op.taskId,
-      updates: op.updates,
+      updates: op.updates?.title !== undefined
+        ? { ...op.updates, title: op.updates.title.slice(0, TASK_TITLE_MAX_LENGTH) }
+        : op.updates,
     };
   }
   if (op?.type === 'soft_delete_task' && typeof op?.taskId === 'string') {

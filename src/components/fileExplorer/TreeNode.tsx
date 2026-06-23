@@ -236,7 +236,7 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
           color: 'var(--c-text-1)',
           cursor: 'default',
           padding: 0,
-          borderBottom: depth === 0 ? '1px solid var(--layout-border)' : undefined,
+          borderBottom: depth === 0 ? '1px solid var(--c-border-1)' : undefined,
           ...(isDragOver ? { outline: '2px solid var(--c-accent-center-panel)', outlineOffset: -2 } : {}),
         } as React.CSSProperties}
         draggable
@@ -262,14 +262,14 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
                 {expanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
               </span>
               {expanded
-                ? <FolderOpen size={13} className="shrink-0" style={{ color: selectedTreePath === node.path ? 'var(--c-accent-left-panel)' : 'var(--c-text-2)' }} />
-                : <Folder size={13} className="shrink-0" style={{ color: selectedTreePath === node.path ? 'var(--c-accent-left-panel)' : 'var(--c-text-2)' }} />
+                ? <FolderOpen size={13} className="shrink-0" style={{ color: selectedTreePath === node.path ? 'var(--c-accent-center-panel)' : 'var(--c-text-2)' }} />
+                : <Folder size={13} className="shrink-0" style={{ color: selectedTreePath === node.path ? 'var(--c-accent-center-panel)' : 'var(--c-text-2)' }} />
               }
             </>
           ) : (
             <>
               <span className="shrink-0" style={{ width: 14 }} />
-              <File size={13} className="shrink-0" style={{ color: selectedTreePath === node.path ? 'var(--c-accent-left-panel)' : 'var(--c-text-2)' }} />
+              <File size={13} className="shrink-0" style={{ color: selectedTreePath === node.path ? 'var(--c-accent-center-panel)' : 'var(--c-text-2)' }} />
             </>
           )}
 
@@ -287,7 +287,11 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <span className="trunc flex-1 min-w-0" style={{ marginLeft: 4 }}>{node.name}</span>
+            <span className="trunc flex-1 min-w-0" style={{
+              marginLeft: 4,
+              fontWeight: 500,
+              color: selectedTreePath === node.path ? 'var(--c-accent-center-panel)' : 'var(--c-text-2)'
+            }}>{node.name}</span>
           )}
 
           {/* Inline new-file / new-folder / kebab buttons on hover */}
@@ -298,7 +302,7 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
                   <button
                     type="button"
                     className="btn-icon"
-                    style={{ width: 20, height: 20 }}
+                    style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}
                     onClick={(e) => { e.stopPropagation(); startNewFile(); }}
                     title={t('explorer.newFile')}
                     aria-label={t('explorer.newFile')}
@@ -308,7 +312,7 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
                   <button
                     type="button"
                     className="btn-icon"
-                    style={{ width: 20, height: 20 }}
+                    style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}
                     onClick={(e) => { e.stopPropagation(); startNewFolder(); }}
                     title={t('explorer.newFolder')}
                     aria-label={t('explorer.newFolder')}
@@ -320,7 +324,7 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
               <button
                 type="button"
                 className="btn-icon"
-                style={{ width: 20, height: 20, marginRight: 4 }}
+                style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)', marginRight: 4 }}
                 onClick={(e) => { e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY }); }}
                 title="Options"
                 aria-label="Options"

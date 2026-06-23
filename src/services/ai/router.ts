@@ -4,7 +4,7 @@
 // but its API is kept stable for the desktop re-merge.
 
 import type { AIProviderConfig } from '../../types';
-import type { ChatMessage } from './types';
+import type { ChatMessage, StreamChunk } from './types';
 import { streamOpenAI } from './openai';
 
 export async function completeChat(
@@ -14,7 +14,7 @@ export async function completeChat(
 ): Promise<string> {
   let full = '';
   for await (const chunk of streamChat(messages, config, signal)) {
-    full += chunk;
+    full += chunk.content;
   }
   return full;
 }
@@ -23,7 +23,7 @@ export async function* streamChat(
   messages: ChatMessage[],
   config: AIProviderConfig,
   signal?: AbortSignal
-): AsyncGenerator<string, void, unknown> {
+): AsyncGenerator<StreamChunk, void, unknown> {
   // All providers (custom) use OpenAI-compatible streaming
   yield* streamOpenAI(messages, { ...config, baseUrl: config.baseUrl }, signal);
 }

@@ -1,29 +1,16 @@
-// Document store. Server-backed as of Agent 6 (Frontend AI Migration).
-//
-// Documents are stored in Postgres and the editor content in a serialized
-// TipTap JSON string (capped at 2 MB on the server, see documents.ts).
-//
-// Tauri-only methods (`openFileFromTree`, `openFileAsDocument`,
-// `openFileByPath`) keep their signatures for source compatibility with the
-// dormant desktop build, but in the browser web build they short-circuit
-// and return `null` — the browser can not read local filesystem paths.
-//
-// `setActiveDocument` still persists `lastActiveDocumentId` through the
-// settings KV. `loadDocuments` restores the active id from there.
-//
-// On first load (no documents on the server) the store seeds a single
-// `Untitled` document, matching the previous Dexie behaviour.
+// Document store. Local-first using Dexie (Tauri desktop).
+// Documents stored in IndexedDB, editor content as TipTap JSON.
 
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import type { Document, FileViewerItem } from '../types';
-import { documentRepository } from '../repositories/documentRepository';
-import { settingsRepository } from '../repositories/settingsRepository';
+import { db } from '../services/db';
 import { useUIStore } from './uiStore';
-import { detectTauri } from '../utils/tauri';
 import { parseByExt } from '../services/fileFormat';
 import { isTextFile, isImageFile } from '../utils/fileType';
+import { readTextFile } from '../services/fs-adapter';
 import type { TreeNode } from './fileSystemStore';
+import { decodeDataUrlText } from '../utils/fileData';
 
 const toast = (msg: string) => useUIStore.getState().showToast(msg, 'error');
 
@@ -40,10 +27,7 @@ interface DocumentStore {
   duplicateDocument: (id: string) => Promise<Document>;
   getActiveDocument: () => Document | null;
   openFileFromViewer: (file: FileViewerItem) => Promise<Document | null>;
-  // The Tauri-only methods below are kept for source compatibility with the
-  // dormant desktop build. In the browser web build they are no-ops and
-  // return `null`. They are intentionally NOT deleted so the desktop
-  // resumption work later can re-enable them without a re-merge.
+  // Tauri-only methods for desktop build
   openFileAsDocument: (node: TreeNode) => Promise<Document | null>;
   openFileFromTree: (node: TreeNode, forceNewTab?: boolean) => Promise<Document | null>;
   openFileByPath: (path: string) => Promise<Document | null>;
@@ -52,7 +36,7 @@ interface DocumentStore {
   setDocumentSplitEditorOpen: (id: string, v: boolean) => Promise<void>;
 }
 
-function emptyDocumentShell(title: string, order: number): Document {
+function emptyDocumentShell(title: string, order: number, colorIndex: number = 0): Document {
   const now = Date.now();
   return {
     id: nanoid(8),
@@ -61,7 +45,23 @@ function emptyDocumentShell(title: string, order: number): Document {
     createdAt: now,
     updatedAt: now,
     order,
+    colorIndex,
   };
+}
+
+function generateTempTitle(docs: Document[]): string {
+  const existingNumbers = new Set<number>();
+  for (const doc of docs) {
+    const match = doc.title.match(/^(\d+)_Temp$/);
+    if (match) {
+      existingNumbers.add(parseInt(match[1], 10));
+    }
+  }
+  let next = 1;
+  while (existingNumbers.has(next)) {
+    next++;
+  }
+  return `${next}_Temp`;
 }
 
 export const useDocumentStore = create<DocumentStore>((set, get) => ({
@@ -71,61 +71,67 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
 
   loadDocuments: async () => {
     try {
-      const { documents } = await documentRepository.list();
+      const documents = await db.documents.toArray();
       if (documents.length === 0) {
-        const first = await get().createDocument('Untitled');
+        const first = await get().createDocument();
         set({ documents: [first], activeDocumentId: first.id, isLoaded: true });
         return;
       }
-      const lastActiveId = await settingsRepository.get<string>('lastActiveDocumentId');
+      // Backward compatibility: ensure title and colorIndex exist on old records
+      const documentsWithColor = documents.map((doc, index) => ({
+        ...doc,
+        title: doc.title ?? 'Untitled',
+        colorIndex: doc.colorIndex ?? (index % 6),
+      }));
+      const row = await db.settings.get('lastActiveDocumentId');
+      const lastActiveId = row?.value as string | undefined;
       const activeId =
-        (typeof lastActiveId === 'string' && documents.find((d) => d.id === lastActiveId)
+        (typeof lastActiveId === 'string' && documentsWithColor.find((d) => d.id === lastActiveId)
           ? lastActiveId
-          : documents[0].id) ?? documents[0].id;
-      set({ documents, activeDocumentId: activeId, isLoaded: true });
+          : documentsWithColor[0].id) ?? documentsWithColor[0].id;
+      set({ documents: documentsWithColor, activeDocumentId: activeId, isLoaded: true });
     } catch {
       set({ isLoaded: true });
     }
   },
 
-  createDocument: async (title = 'Untitled') => {
+  createDocument: async (title?: string) => {
     const docs = get().documents;
 
-    // Keep only one empty Untitled draft tab at a time.
-    if (title === 'Untitled') {
-      const untitledEmptyIds = docs
-        .filter((d) => d.title === 'Untitled' && !d.sourcePath && !d.content?.includes('"text":'))
+    // Generate a numbered temp title if none provided (e.g., "1_Temp", "2_Temp", ...)
+    const finalTitle = title ?? generateTempTitle(docs);
+
+    // Keep only one empty temp draft tab at a time.
+    if (!title) {
+      const tempEmptyIds = docs
+        .filter((d) => /^\d+_Temp$/.test(d.title) && !d.sourcePath && !d.content?.includes('"text":'))
         .map((d) => d.id);
 
-      if (untitledEmptyIds.length > 0) {
-        for (const id of untitledEmptyIds) {
-          await documentRepository.remove(id).catch(() => undefined);
+      if (tempEmptyIds.length > 0) {
+        for (const id of tempEmptyIds) {
+          await db.documents.delete(id).catch(() => undefined);
         }
-        const filtered = docs.filter((d) => !untitledEmptyIds.includes(d.id));
+        const filtered = docs.filter((d) => !tempEmptyIds.includes(d.id));
         const nextActiveId = filtered[filtered.length - 1]?.id ?? null;
         set({ documents: filtered, activeDocumentId: nextActiveId });
       }
     }
 
-    const shell = emptyDocumentShell(title, get().documents.length);
-    const { document } = await documentRepository.create({
-      id: shell.id,
-      title: shell.title,
-      content: shell.content,
-      order: shell.order,
-    });
+    // Cycle colors based on document count (modulo 6)
+    const colorIndex = get().documents.length % 6;
+    const shell = emptyDocumentShell(finalTitle, get().documents.length, colorIndex);
+    await db.documents.add(shell);
     set((s) => ({
-      documents: [...s.documents, document],
-      activeDocumentId: document.id,
+      documents: [...s.documents, shell],
+      activeDocumentId: shell.id,
     }));
-    return document;
+    return shell;
   },
 
   updateDocument: async (id, updates) => {
     const patch: DocumentUpdatePatch = { ...updates, updatedAt: Date.now() };
     // Optimistic local update so the editor doesn't flicker. Convert
-    // `null` to `undefined` to match the `Document` shape (the server
-    // accepts `null` for clearing the field, but the client-side type
+    // `null` to `undefined` to match the `Document` shape (the client-side type
     // uses `undefined` to mean "no field").
     const optimistic: Partial<Document> = {};
     if (patch.title !== undefined) optimistic.title = patch.title;
@@ -140,20 +146,17 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       documents: s.documents.map((d) => (d.id === id ? { ...d, ...optimistic } : d)),
     }));
     try {
-      const { document } = await documentRepository.update(id, {
+      await db.documents.update(id, {
         title: patch.title,
         content: patch.content,
-        sourcePath: patch.sourcePath === undefined ? undefined : patch.sourcePath,
+        sourcePath: patch.sourcePath === undefined ? undefined : (patch.sourcePath ?? undefined),
         isDirty: patch.isDirty,
         splitEditorOpen: patch.splitEditorOpen,
       });
-      set((s) => ({
-        documents: s.documents.map((d) => (d.id === id ? { ...d, ...document } : d)),
-      }));
     } catch {
       // Best-effort: refetch on failure.
       try {
-        const { documents } = await documentRepository.list();
+        const documents = await db.documents.toArray();
         set({ documents });
       } catch {
         /* ignore */
@@ -165,19 +168,21 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     const closedDoc = get().documents.find((d) => d.id === id);
     const wasEmpty = !closedDoc?.content?.includes('"text":');
     try {
-      await documentRepository.remove(id);
+      await db.documents.delete(id);
     } catch (err) {
       console.warn('[documentStore] failed to delete document:', err);
     }
-    // Cascade: server-side chat message removal isn't a service we own in
-    // the documents route (chat stays even if the document is deleted), so
-    // we don't try to delete chat messages here. The chat route will see an
-    // empty `documentId` and behave accordingly.
+    // Cascade: remove associated chat messages
+    try {
+      await db.chatMessages.where('documentId').equals(id).delete();
+    } catch (err) {
+      console.warn('[documentStore] failed to delete associated chat messages:', err);
+    }
     const docs = get().documents.filter((d) => d.id !== id);
     let activeId = get().activeDocumentId;
     if (activeId === id) activeId = docs[docs.length - 1]?.id ?? null;
     if (docs.length === 0 && !wasEmpty) {
-      const newDoc = await get().createDocument('Untitled');
+      const newDoc = await get().createDocument();
       set({ documents: [newDoc], activeDocumentId: newDoc.id });
       return;
     }
@@ -186,12 +191,13 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
 
   setActiveDocument: (id) => {
     set({ activeDocumentId: id });
-    void settingsRepository.put('lastActiveDocumentId', id).catch(() => undefined);
+    void db.settings.put({ key: 'lastActiveDocumentId', value: id }).catch(() => undefined);
   },
 
   duplicateDocument: async (id) => {
     const source = get().documents.find((d) => d.id === id);
     if (!source) throw new Error('Document not found');
+    const colorIndex = get().documents.length % 6;
     const shell: Document = {
       ...source,
       id: nanoid(8),
@@ -199,19 +205,14 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       createdAt: Date.now(),
       updatedAt: Date.now(),
       order: get().documents.length,
+      colorIndex,
     };
-    const { document } = await documentRepository.create({
-      id: shell.id,
-      title: shell.title,
-      content: shell.content,
-      sourcePath: shell.sourcePath,
-      order: shell.order,
-    });
+    await db.documents.add(shell);
     set((s) => ({
-      documents: [...s.documents, document],
-      activeDocumentId: document.id,
+      documents: [...s.documents, shell],
+      activeDocumentId: shell.id,
     }));
-    return document;
+    return shell;
   },
 
   getActiveDocument: () => {
@@ -224,31 +225,13 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       documents: s.documents.map((d) => (d.id === id ? { ...d, splitEditorOpen: v } : d)),
     }));
     try {
-      const { document } = await documentRepository.update(id, { splitEditorOpen: v });
-      set((s) => ({
-        documents: s.documents.map((d) => (d.id === id ? { ...d, ...document } : d)),
-      }));
+      await db.documents.update(id, { splitEditorOpen: v });
     } catch {
       /* ignore */
     }
   },
 
-  renameDocumentBySourcePath: async (oldPath, newPath, newTitle) => {
-    const doc = get().documents.find((d) => d.sourcePath === oldPath);
-    if (!doc) return;
-    await get().updateDocument(doc.id, { sourcePath: newPath, title: newTitle });
-  },
-
-  deleteDocumentsBySourcePaths: async (paths) => {
-    const pathSet = new Set(paths);
-    const toDelete = get().documents.filter((d) => d.sourcePath && pathSet.has(d.sourcePath));
-    for (const doc of toDelete) {
-      await get().deleteDocument(doc.id);
-    }
-  },
-
   // ── File viewer (image / text via data URL) ──────────────────────────────
-
   openFileFromViewer: async (file) => {
     const { documents } = get();
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
@@ -256,8 +239,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     if (file.dataUrl && isTextFile(file.name)) {
       let text: string;
       try {
-        const base64 = file.dataUrl.split(',')[1];
-        text = atob(base64);
+        text = decodeDataUrlText(file.dataUrl);
       } catch {
         toast('Could not decode file content.');
         return null;
@@ -269,6 +251,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
         toast(`Could not parse file: ${file.name}`);
         return null;
       }
+      const colorIndex = documents.length % 6;
       const shell: Document = {
         id: nanoid(8),
         title: file.name,
@@ -277,19 +260,14 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
         createdAt: Date.now(),
         updatedAt: Date.now(),
         order: documents.length,
+        colorIndex,
       };
-      const { document } = await documentRepository.create({
-        id: shell.id,
-        title: shell.title,
-        content: shell.content,
-        sourcePath: shell.sourcePath,
-        order: shell.order,
-      });
+      await db.documents.add(shell);
       set((s) => ({
-        documents: [...s.documents, document],
-        activeDocumentId: document.id,
+        documents: [...s.documents, shell],
+        activeDocumentId: shell.id,
       }));
-      return document;
+      return shell;
     }
 
     if (file.dataUrl && isImageFile(file.name)) {
@@ -302,6 +280,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
           },
         ],
       };
+      const colorIndex = documents.length % 6;
       const shell: Document = {
         id: nanoid(8),
         title: file.name,
@@ -310,42 +289,125 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
         createdAt: Date.now(),
         updatedAt: Date.now(),
         order: documents.length,
+        colorIndex,
       };
-      const { document } = await documentRepository.create({
-        id: shell.id,
-        title: shell.title,
-        content: shell.content,
-        sourcePath: shell.sourcePath,
-        order: shell.order,
-      });
+      await db.documents.add(shell);
       set((s) => ({
-        documents: [...s.documents, document],
-        activeDocumentId: document.id,
+        documents: [...s.documents, shell],
+        activeDocumentId: shell.id,
       }));
-      return document;
+      return shell;
     }
 
     toast(`Unsupported file type for editor: .${ext}`);
     return null;
   },
 
-  // ── Tauri-only (browser: no-op) ──────────────────────────────────────────
+  // ── Tauri / Browser File System Access ──────────────────────────────────────────────
+  openFileAsDocument: async (node) => {
+    const { documents } = get();
+    const ext = node.name.split('.').pop()?.toLowerCase() ?? '';
 
-  openFileAsDocument: async (_node) => {
-    if (!detectTauri()) return null;
-    // Tauri desktop re-implementation will live here. For the web build we
-    // do nothing.
+    // Check if already open
+    const existing = documents.find((d) => d.sourcePath === node.fullPath);
+    if (existing) {
+      get().setActiveDocument(existing.id);
+      return existing;
+    }
+
+    if (isTextFile(node.name)) {
+      try {
+        const text = await readTextFile(node.fullPath);
+        let json: object;
+        try {
+          json = parseByExt(text, ext);
+        } catch {
+          // Fallback to plain text if parsing fails
+          json = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] };
+        }
+
+        const colorIndex = documents.length % 6;
+        const shell: Document = {
+          id: nanoid(8),
+          title: node.name,
+          content: JSON.stringify(json),
+          sourcePath: node.fullPath,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          order: documents.length,
+          colorIndex,
+        };
+        await db.documents.add(shell);
+        set((s) => ({
+          documents: [...s.documents, shell],
+          activeDocumentId: shell.id,
+        }));
+        return shell;
+      } catch (err) {
+        toast(`Could not read file: ${node.name}`);
+        return null;
+      }
+    }
+
+    toast(`Unsupported file type for editor: .${ext}`);
     return null;
   },
 
-  openFileFromTree: async (_node, _forceNewTab = false) => {
-    if (!detectTauri()) return null;
-    return null;
+  openFileFromTree: async (node, forceNewTab = false) => {
+    const { documents } = get();
+    
+    if (!forceNewTab) {
+      const existing = documents.find((d) => d.sourcePath === node.fullPath);
+      if (existing) {
+        get().setActiveDocument(existing.id);
+        return existing;
+      }
+    }
+
+    return get().openFileAsDocument(node);
   },
 
-  openFileByPath: async (_path) => {
-    if (!detectTauri()) return null;
-    return null;
+  openFileByPath: async (path) => {
+    const { documents } = get();
+    const existing = documents.find((d) => d.sourcePath === path);
+    if (existing) {
+      get().setActiveDocument(existing.id);
+      return existing;
+    }
+
+    // This is trickier because we only have a path, not a TreeNode.
+    // For now, let's assume it's a text file and use the basename as title.
+    const name = path.split('/').pop() ?? 'Untitled';
+    const node: TreeNode = {
+      name,
+      path: name, // This might not be quite right for display path but it's a start
+      fullPath: path,
+      kind: 'file'
+    };
+    return get().openFileAsDocument(node);
+  },
+
+  renameDocumentBySourcePath: async (oldPath, newPath, newTitle) => {
+    try {
+      const doc = get().documents.find((d) => d.sourcePath === oldPath);
+      if (doc) {
+        await db.documents.update(doc.id, { sourcePath: newPath, title: newTitle });
+      }
+    } catch (err) {
+      console.warn('[documentStore] failed to rename document by source path:', err);
+    }
+  },
+
+  deleteDocumentsBySourcePaths: async (paths) => {
+    try {
+      const pathSet = new Set(paths);
+      const toDelete = get().documents.filter((d) => d.sourcePath && pathSet.has(d.sourcePath));
+      for (const doc of toDelete) {
+        await get().deleteDocument(doc.id);
+      }
+    } catch (err) {
+      console.warn('[documentStore] failed to delete documents by source paths:', err);
+    }
   },
 }));
 

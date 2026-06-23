@@ -1,0 +1,608 @@
+/* =========================================================
+ * Task detail + comments styles
+ * Extracted from src/index.css (Phase 2 refactor)
+ * Import this file from the owning component.
+ * ========================================================= */
+
+#task-detail-panel > .tdp-subtasks-toggle-row {
+  height: fit-content;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 18px;
+  padding-right: 24px;
+}
+
+#task-detail-panel > .tdp-meta-bar {
+  flex: 0 0 auto;
+  background-color: transparent;
+  border-bottom: none;
+  padding: 0;
+  margin: 0;
+}
+
+#task-detail-panel .subtasks-toggle-btn {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 0;
+  min-height: 16px;
+  background-color: transparent;
+}
+
+/*TASK METADATA BAR*/
+#task-metadata-bar {
+  background: transparent;
+  padding: 0px 0px 10px 0px;}
+
+
+#tdc-divider{display:none}
+.subtask-status-btn {
+  width: 6px;
+  height: 6px;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--c-border-1);
+  flex-shrink: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  vertical-align: middle;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.subtask-status-btn--completed {
+  border: none;
+  background: var(--c-accent-2);
+}
+.subtask-status-btn svg {
+  width: 10px;
+  height: 10px;
+}
+.subtask-status-btn--active {
+  background: var(--c-text-2);
+  border: none;
+}
+.subtask-status-add-indicator {
+  width: 6px;
+  height: 6px;
+  margin-top: 0;
+  margin-bottom: 0;
+  line-height: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--c-background-4);
+  background-color: var(--c-border-2);
+  flex-shrink: 0;
+}
+.subtask-title {
+  min-width: 0;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.4;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  font-size: var(--fs-base);
+  cursor: text;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+  color: var(--c-text-3);
+}
+.subtask-title:hover {
+  background: var(--c-hover, rgba(0, 0, 0, 0.04));
+}
+#tdc-subtasks-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-text-2);
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+#tdc-subtasks-toggle:hover {
+  color: var(--c-text-1);
+}
+
+
+/* Avatar initials (comment thread) */
+.avatar {
+  width: 14px;
+  height: 14px;
+  margin-top: auto;
+  margin-bottom: auto;
+  margin-left: 0;
+  margin-right: 5px;
+  border-radius: 50%;
+  border: 1px solid var(--c-accent-center-panel);
+  color: var(--c-accent-center-panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  flex-shrink: 0;
+  vertical-align: middle;
+  text-align: center;
+}
+
+/*CENTER PANEL - TASK COMMENTS*/
+#task-detail-panel > .tdp-comment-footer.panel-footer {
+  flex: 0 0 auto;
+  min-height: 0;
+  height: fit-content;
+  width: 100%;
+  padding: 0 12px 12px 12px;
+  background: transparent;
+  border-bottom: none;
+  z-index: 2;
+}
+
+#task-comment-input {
+  padding: 0px 0 0 0;
+  height: fit-content;
+  background-color: var(--c-background-2);
+  border-radius: 8px;
+}
+#task-comment-card {
+  background-color: var(--c-background-2);
+  border-radius: 8px;
+  border: none;
+  padding-left: 0px;
+  padding-right: 0px;
+  padding-bottom: 0;
+  height: 66px;
+  box-shadow: none;
+  position: relative;
+}
+#task-comment-card .composer-input {
+  border: none;
+  background-color: rgba(255, 255, 255, 0);
+  padding: 12px 12px;
+  height: fit-content;
+  min-height: 44px;
+  line-height: 20px;
+  /* Native resize handle is replaced by a custom top-right handle. */
+  resize: none;
+  max-height: 50vw;
+  outline: none;
+}
+/* Custom vertical resize handle (top-right corner, grows upward). */
+#task-comment-card .composer-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 16px;
+  height: 14px;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  color: var(--c-text-3, #999);
+}
+#task-comment-card .composer-resize-handle::before {
+  content: '';
+  width: 8px;
+  height: 2px;
+  border-top: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  opacity: 0.6;
+}
+#task-comment-card .composer-resize-handle:hover::before {
+  opacity: 1;
+}
+#task-comment-card .task-comment-bottom-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: 1fr;
+  height: fit-content;
+  width: 100%;
+  padding: 0 6px 6px;
+  border: none;
+  border-top: none;
+  border-image: none;
+  background: unset;
+}
+#task-comment-card .task-comment-bottom-row > div:last-child {
+  width: 100%;
+}
+#task-comment-card .task-comment-bottom-col {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  min-width: 0;
+}
+#task-comment-card .task-comment-bottom-col--left {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding-right: 0px;
+  padding-left: 0;
+  padding-bottom: 0;
+}
+#task-comment-card .task-comment-bottom-col--send {
+  width: 100%;
+  justify-content: flex-end;
+  padding-right: 0;
+}
+#task-comment-thread {
+  background: transparent;
+  padding-top: 14px;
+  padding-bottom: 14px;
+  padding-left: 24px;
+  padding-right: 24px;
+  width: 100%;
+  justify-content: flex-start;
+  align-items: flex-start;
+  text-align: left;
+  vertical-align: bottom;
+}
+.comment-bubble {
+  display: grid;
+  gap: 0;
+  background: var(--c-background-1);
+  border-radius: 8px;
+  border: 1px solid var(--c-border-1);
+  margin-top: 3px;
+  margin-bottom: 3px;
+  padding: 0;
+  width: fit-content;
+  height: fit-content;
+  flex-wrap: wrap;
+  box-sizing: border-box;
+  vertical-align: middle;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+}
+.comment-bubble p.txt-xs {
+  margin: 0;
+  width: 100%;
+  line-height: 20px;
+  padding: 6px 12px;
+  vertical-align: middle;
+}
+.comment-thread {
+  display: grid;
+  grid-template-columns: 1fr;
+  column-gap: 0px;
+  row-gap: 3px;
+  align-items: start;
+  padding: 0;
+  width: fit-content;
+}
+.comment-thread > .avatar {
+  grid-column: 1;
+  grid-row: 1;
+  margin-top: 3px;
+  border: none;
+}
+.comment-thread > .comment-right-col {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: fit-content;
+  gap: 0;
+}
+.comment-thread > .comment-meta {
+  grid-column: 1;
+  grid-row: 2;
+  text-align: left;
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+#task-comment-thread .comment-meta {
+  font-size: var(--fs-xs);
+}
+.media-thumb {
+  display: block;
+  width: fit-content;
+  height: fit-content;
+  border-radius: 0;
+  overflow: hidden;
+  border: none;
+  background: var(--c-background-3);
+  margin-top: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.media-thumb:hover {
+  opacity: 0.9;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ---- :root overrides (preserved layering) ---- */
+
+/*TASK METADATA BAR*/
+:root #task-metadata-bar {
+  background: transparent;
+  padding: 0;
+}
+:root #tdc-title {
+  padding: 0 14px !important;
+  border-radius: 0 !important;
+  margin-bottom: 0;
+  background: transparent !important;
+  border: none !important;
+}
+:root #tdc-thread {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  padding-left: 0;
+  padding-right: 0;
+  background: unset;
+  background-color: unset;
+  margin-top: 0;
+  border-bottom: none;
+}
+:root #tdc-subtasks {
+  border-radius: 0 !important;
+  padding: 0 14px !important;
+  margin-bottom: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+:root #tdc-divider {
+  display: none;
+}
+:root .subtask-status-btn {
+  width: 6px;
+  height: 6px;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--c-border-1);
+  flex-shrink: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  vertical-align: middle;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+:root .subtask-status-btn--completed {
+  border: none;
+  background: var(--c-accent-2);
+}
+:root .subtask-status-btn svg {
+  width: 10px;
+  height: 10px;
+}
+:root .subtask-status-btn--active {
+  background: var(--c-text-2);
+  border: none;
+}
+:root .subtask-status-add-indicator {
+  width: 6px;
+  height: 6px;
+  margin-top: 0;
+  margin-bottom: 0;
+  line-height: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--c-background-4);
+  background-color: var(--c-border-2);
+  flex-shrink: 0;
+}
+:root #tdc-subtasks-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-text-2);
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+:root #tdc-subtasks-toggle:hover {
+  color: var(--c-text-1);
+}
+
+/* Avatar initials (comment thread) */
+:root .avatar {
+  width: 14px;
+  height: 14px;
+  margin-top: auto;
+  margin-bottom: auto;
+  margin-left: 0;
+  margin-right: 5px;
+  border-radius: 50%;
+  border: 1px solid var(--c-accent-center-panel);
+  color: var(--c-accent-center-panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  flex-shrink: 0;
+  vertical-align: middle;
+  text-align: center;
+}
+
+/*CENTER PANEL - TASK COMMENTS*/
+:root #task-detail-panel > .tdp-comment-footer.panel-footer {
+  flex: 0 0 auto;
+  min-height: 0;
+  height: fit-content;
+  width: 100%;
+  padding: 0 12px 12px 12px;
+  background: transparent;
+  border-bottom: none;
+  z-index: 2;
+}
+
+:root #task-comment-input {
+  padding: 0;
+  height: fit-content;
+  background-color: var(--c-background-2);
+  border-radius: 8px;
+}
+:root #task-comment-thread {
+  background: transparent;
+  padding-top: 14px;
+  padding-bottom: 14px;
+  padding-left: 24px;
+  padding-right: 24px;
+  width: 100%;
+  justify-content: flex-start;
+  align-items: flex-start;
+  text-align: left;
+  vertical-align: bottom;
+}
+:root #task-comment-thread .meta {
+  font-size: var(--fs-sm);
+  color: var(--c-text-2);
+}
+:root #task-comment-thread .comment-meta {
+  font-size: var(--fs-xs);
+}
+:root .comment-bubble {
+  display: grid;
+  gap: 0;
+  background: var(--c-background-1);
+  border-radius: 8px;
+  margin-top: 3px;
+  margin-bottom: 3px;
+  padding: 0;
+  width: fit-content;
+  height: fit-content;
+  flex-wrap: wrap;
+  border: 1px solid var(--c-border-1);
+  box-sizing: border-box;
+  vertical-align: middle;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+}
+:root .comment-bubble p.txt-xs {
+  margin: 0;
+  width: 100%;
+  line-height: 20px;
+  padding: 6px 12px;
+  vertical-align: middle;
+}
+:root .comment-thread {
+  display: grid;
+  grid-template-columns: 1fr;
+  column-gap: 0px;
+  row-gap: 3px;
+  align-items: start;
+  padding: 0;
+  width: fit-content;
+}
+:root .comment-thread > .avatar {
+  grid-column: 1;
+  grid-row: 1;
+  margin-top: 3px;
+  border: none;
+}
+:root .comment-thread > .comment-right-col {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: fit-content;
+  gap: 0;
+}
+:root .comment-thread > .comment-meta {
+  grid-column: 1;
+  grid-row: 2;
+  text-align: left;
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+:root .media-thumb {
+  display: block;
+  width: fit-content;
+  height: fit-content;
+  border-radius: 0;
+  overflow: hidden;
+  border: none;
+  background: var(--c-background-3);
+  margin-top: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+:root .media-thumb:hover {
+  opacity: 0.9;
+}

@@ -125,23 +125,23 @@ export function TaskDraftPreview({ messageId, draft, status }: TaskDraftPreviewP
         <div className="semibold" style={{ fontSize: 'var(--fs-xs)' }}>
           Draft Changes
         </div>
-        <div className="subtle" style={{ fontSize: 'var(--fs-11)' }}>
+        <div className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>
           {draft.operations.length} operation{draft.operations.length === 1 ? '' : 's'}
         </div>
       </div>
 
       {draft.validation.warnings.length > 0 && (
-        <div className="subtle" style={{ fontSize: 'var(--fs-11)', marginBottom: 8, color: '#b45309' }}>
+        <div className="subtle" style={{ fontSize: 'var(--fs-sm)', marginBottom: 8, color: '#b45309' }}>
           {draft.validation.warnings.join(' ')}
         </div>
       )}
       {draft.validation.errors.length > 0 && (
-        <div className="subtle" style={{ fontSize: 'var(--fs-11)', marginBottom: 8, color: '#dc2626' }}>
+        <div className="subtle" style={{ fontSize: 'var(--fs-sm)', marginBottom: 8, color: '#dc2626' }}>
           {draft.validation.errors.join(' ')}
         </div>
       )}
       {draft.needsScopeConfirmation && (
-        <div className="subtle" style={{ fontSize: 'var(--fs-11)', marginBottom: 8, color: '#b45309' }}>
+        <div className="subtle" style={{ fontSize: 'var(--fs-sm)', marginBottom: 8, color: '#b45309' }}>
           {draft.needsScopeConfirmation}
         </div>
       )}
@@ -170,14 +170,14 @@ export function TaskDraftPreview({ messageId, draft, status }: TaskDraftPreviewP
       </div>
 
       {status === 'applied' && (
-        <div className="row-xs" style={{ fontSize: 'var(--fs-11)', color: '#15803d' }}>
+        <div className="row-xs" style={{ fontSize: 'var(--fs-sm)', color: '#15803d' }}>
           <Check size={12} />
           Applied
         </div>
       )}
 
       {status === 'rejected' && (
-        <div className="subtle" style={{ fontSize: 'var(--fs-11)' }}>
+        <div className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>
           Rejected
         </div>
       )}
@@ -185,7 +185,7 @@ export function TaskDraftPreview({ messageId, draft, status }: TaskDraftPreviewP
       {canApply && (
         <div className="row gap-2" style={{ justifyContent: 'flex-end' }}>
           {highRisk && (
-            <span className="row-xs subtle" style={{ fontSize: 'var(--fs-11)', color: '#b45309' }}>
+            <span className="row-xs subtle" style={{ fontSize: 'var(--fs-sm)', color: '#b45309' }}>
               <AlertTriangle size={12} />
               Destructive/bulk confirm required
             </span>
@@ -216,7 +216,7 @@ export function TaskDraftPreview({ messageId, draft, status }: TaskDraftPreviewP
       )}
 
       {status === 'applied' && (
-        <div className="row-xs subtle" style={{ marginTop: 8, fontSize: 'var(--fs-11)' }}>
+        <div className="row-xs subtle" style={{ marginTop: 8, fontSize: 'var(--fs-sm)' }}>
           <Undo2 size={12} />
           Undo is available from the toast or history panel.
         </div>

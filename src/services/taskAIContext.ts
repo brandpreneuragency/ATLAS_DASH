@@ -10,8 +10,8 @@ export interface TaskAIContextPayload {
 
 function formatComment(comment: TaskComment): string {
   const timestamp = new Date(comment.createdAt).toISOString();
-  const attachmentMeta = comment.attachmentName
-    ? ` | attachment: ${comment.attachmentName}${comment.attachmentSize ? ` (${comment.attachmentSize})` : ''}`
+  const attachmentMeta = comment.attachmentDataUrl
+    ? ' | attachment: [local file]'
     : '';
   return `- [${timestamp}] ${comment.text || '(no text)'}${attachmentMeta}`;
 }

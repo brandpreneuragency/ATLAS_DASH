@@ -1,405 +1,595 @@
-import { useState, useRef, useEffect } from 'react';
-import { X, ChevronRight, ChevronDown, Eye, EyeOff, KeyRound, Check, Globe, ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { X, RefreshCw, Globe, Eye, EyeOff, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../../stores/uiStore';
 import { useAIStore } from '../../stores/aiStore';
-import type { AIProviderConfig } from '../../types';
+import { secureStorage } from '../../services/secureStorage';
+import type { AIProviderConfig, ModelItem, ProviderImportPhase } from '../../types';
+import { ProviderAccordionItem } from './modelProvider/ProviderAccordionItem';
+import { ConnectProviderDrawer } from './modelProvider/ConnectProviderDrawer';
 
-function emptyCustomProvider(): AIProviderConfig {
-  return {
-    id: '',
-    name: '',
-    provider: 'custom',
-    apiKey: '',
-    selectedModel: '',
-    isActive: true,
-    baseUrl: '',
-    customModels: [],
-  };
+function providerApiKeyName(providerId: string): string {
+  return `providerApiKey_${providerId}`;
 }
 
-// ---------------------------------------------------------------------------
-// Custom Provider Row
-// ---------------------------------------------------------------------------
-function CustomProviderRow({ config }: { config: AIProviderConfig }) {
+function modelKey(providerId: string, modelId: string): string {
+  return `${providerId}:${modelId}`;
+}
+
+function providerWithoutStatus(provider: AIProviderConfig): Omit<AIProviderConfig, 'status'> {
+  const next = { ...provider };
+  delete (next as Partial<AIProviderConfig>).status;
+  return next;
+}
+
+interface ModelManagementContentProps {
+  isInline?: boolean;
+  onClose?: () => void;
+}
+
+export function ModelManagementContent({ isInline = false, onClose }: ModelManagementContentProps) {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = useState(false);
-  const [keyPopupOpen, setKeyPopupOpen] = useState(false);
-  const [showKey, setShowKey] = useState(false);
-  const [newModelSlug, setNewModelSlug] = useState('');
-  const newModelRef = useRef<HTMLInputElement>(null);
+  const { activeModal, setActiveModal } = useUIStore();
+  const {
+    providerConfigs,
+    hiddenModels,
+    searchConfig,
+    saveSearchConfig,
+    saveProviderConfig,
+    saveProviderApiKey,
+    deleteProviderApiKey,
+    setHiddenModels,
+  } = useAIStore();
 
-  const { hiddenModels, activeProviderId, toggleHiddenModel, setActiveProvider, setActiveModel, addModelToProvider, removeModelFromProvider, deleteCustomProvider, saveCustomProvider } = useAIStore();
+  const isOpen = isInline || activeModal === 'modelManagement';
+  const modalRef = useRef<HTMLDivElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const initialFocusDone = useRef(false);
 
-  const hasKey = Boolean(config.apiKey);
-  const isActiveProvider = config.id === activeProviderId;
-  const modelCount = config.customModels.length;
+  // Draft state initialized from the store when the modal mounts
+  const [draftProviders, setDraftProviders] = useState<AIProviderConfig[]>(providerConfigs);
+  const [draftHiddenModels, setDraftHiddenModels] = useState<string[]>(hiddenModels);
+  const [draftKeys, setDraftKeys] = useState<Record<string, string>>({});
+  const [initialDraftKeys, setInitialDraftKeys] = useState<Record<string, string>>({});
+  const [draftBaseUrls, setDraftBaseUrls] = useState<Record<string, string>>(() => {
+    const out: Record<string, string> = {};
+    for (const p of providerConfigs) out[p.id] = p.baseUrl ?? '';
+    return out;
+  });
+  const [initialDraftBaseUrls, setInitialDraftBaseUrls] = useState<Record<string, string>>(() => {
+    const out: Record<string, string> = {};
+    for (const p of providerConfigs) out[p.id] = p.baseUrl ?? '';
+    return out;
+  });
+  const [importState, setImportState] = useState<Record<string, { phase: ProviderImportPhase; message?: string }>>({});
+  const [connectionState, setConnectionState] = useState<Record<string, { phase: 'idle' | 'connecting' | 'error'; message?: string }>>({});
+  const [expandedIds, setExpandedIds] = useState(() => {
+    const firstConnected = providerConfigs.find((p) => p.status === 'connected');
+    return new Set(firstConnected ? [firstConnected.id] : []);
+  });
+  const [searchDraft, setSearchDraft] = useState({
+    exaKey: searchConfig.exaKey,
+    tavilyKey: searchConfig.tavilyKey,
+  });
+  const [showExaKey, setShowExaKey] = useState(false);
+  const [showTavilyKey, setShowTavilyKey] = useState(false);
 
-  const handleAddModel = () => {
-    const slug = newModelSlug.trim();
-    if (!slug) return;
-    setNewModelSlug('');
-    addModelToProvider(config.id, slug);
-    // Re-focus input after store update triggers re-render
-    requestAnimationFrame(() => newModelRef.current?.focus());
+  const [connectDrawerOpen, setConnectDrawerOpen] = useState(false);
+  const [draftsReady, setDraftsReady] = useState(false);
+
+  // Async load of API key drafts from secure storage
+  useEffect(() => {
+    if (!isOpen) {
+      initialFocusDone.current = false;
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadKeys = async () => {
+      const keys: Record<string, string> = {};
+      for (const provider of providerConfigs) {
+        try {
+          const value = await secureStorage.secureGet(providerApiKeyName(provider.id));
+          keys[provider.id] = value ?? '';
+        } catch {
+          keys[provider.id] = '';
+        }
+      }
+      if (cancelled) return;
+      setDraftKeys(keys);
+      setInitialDraftKeys(keys);
+      setDraftsReady(true);
+    };
+
+    void loadKeys();
+    void useAIStore.getState().refreshAllProviderStatuses();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Focus management
+  useEffect(() => {
+    if (isOpen && !initialFocusDone.current && closeBtnRef.current) {
+      initialFocusDone.current = true;
+      closeBtnRef.current.focus();
+    }
+  }, [isOpen]);
+
+  // Focus trap
+  useEffect(() => {
+    if (!isOpen || isInline) return;
+
+    const modal = modalRef.current;
+    if (!modal) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+
+      const focusable = modal.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      const elements = Array.from(focusable).filter((el) => {
+        const disabled = (el as HTMLButtonElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).disabled;
+        return !disabled && el.offsetParent !== null;
+      });
+      if (elements.length === 0) return;
+
+      const first = elements[0];
+      const last = elements[elements.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    modal.addEventListener('keydown', handleKeyDown);
+    return () => modal.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isInline]);
+
+  // Detect changes compared to persisted state (for auto-save)
+  const providersChanged = (() => {
+    if (draftProviders.length !== providerConfigs.length) return true;
+    for (const draft of draftProviders) {
+      const persisted = providerConfigs.find((p) => p.id === draft.id);
+      if (!persisted) return true;
+      if (JSON.stringify(providerWithoutStatus(draft)) !== JSON.stringify(providerWithoutStatus(persisted))) return true;
+    }
+    return false;
+  })();
+  const baseUrlsChanged = (() => {
+    const keys = Object.keys({ ...initialDraftBaseUrls, ...draftBaseUrls });
+    for (const id of keys) {
+      if ((draftBaseUrls[id] ?? '') !== (initialDraftBaseUrls[id] ?? '')) return true;
+    }
+    return false;
+  })();
+  const hiddenChanged = JSON.stringify(draftHiddenModels) !== JSON.stringify(hiddenModels);
+  const searchChanged =
+    searchDraft.exaKey !== searchConfig.exaKey || searchDraft.tavilyKey !== searchConfig.tavilyKey;
+  const keysChanged = JSON.stringify(draftKeys) !== JSON.stringify(initialDraftKeys);
+  const hasChanges = providersChanged || baseUrlsChanged || hiddenChanged || searchChanged || keysChanged;
+
+  const persistDrafts = useCallback(async () => {
+    for (const provider of draftProviders) {
+      const key = draftKeys[provider.id] ?? '';
+      const baseUrl = (draftBaseUrls[provider.id] ?? provider.baseUrl).trim();
+
+      if (key.trim()) {
+        await saveProviderApiKey(provider.id, key.trim());
+      } else {
+        await deleteProviderApiKey(provider.id);
+      }
+
+      await saveProviderConfig({ ...provider, baseUrl });
+    }
+
+    setHiddenModels(draftHiddenModels);
+    await saveSearchConfig({
+      ...searchConfig,
+      exaKey: searchDraft.exaKey.trim(),
+      tavilyKey: searchDraft.tavilyKey.trim(),
+    });
+    await useAIStore.getState().refreshAllProviderStatuses();
+
+    const state = useAIStore.getState();
+    const active = state.getActiveProvider();
+    if (active) {
+      const enabled = (active.models ?? []).filter((model) =>
+        !state.isModelHidden(active.id, model.id)
+      );
+      if (enabled.length > 0 && !enabled.some((model) => model.id === active.selectedModel)) {
+        state.setActiveModel(active.id, enabled[0].id);
+      }
+    }
+  }, [
+    draftProviders,
+    draftKeys,
+    draftBaseUrls,
+    draftHiddenModels,
+    searchDraft,
+    searchConfig,
+    saveProviderApiKey,
+    deleteProviderApiKey,
+    saveProviderConfig,
+    setHiddenModels,
+    saveSearchConfig,
+  ]);
+
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const handleSave = useCallback(() => {
+    const save = async () => {
+      try {
+        await persistDrafts();
+        setInitialDraftKeys({ ...draftKeys });
+        setInitialDraftBaseUrls({ ...draftBaseUrls });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to save model settings.';
+        useUIStore.getState().showToast(message, 'error');
+      }
+    };
+    saveQueueRef.current = saveQueueRef.current.then(save, save);
+    return saveQueueRef.current;
+  }, [persistDrafts, draftKeys, draftBaseUrls]);
+
+  useEffect(() => {
+    if (!isOpen || !draftsReady || !hasChanges) return;
+    const timer = setTimeout(() => {
+      void handleSave();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [
+    isOpen,
+    draftsReady,
+    hasChanges,
+    draftProviders,
+    draftBaseUrls,
+    draftHiddenModels,
+    draftKeys,
+    searchDraft,
+    handleSave,
+  ]);
+
+  // Close handler — auto-save runs on changes so closing is always safe
+  const handleClose = useCallback(async () => {
+    if (draftsReady && hasChanges) await handleSave();
+    if (onClose) onClose();
+    else setActiveModal(null);
+  }, [draftsReady, hasChanges, handleSave, onClose, setActiveModal]);
+
+  const latestPersistRef = useRef(persistDrafts);
+  const shouldPersistOnUnmountRef = useRef(false);
+  useEffect(() => {
+    latestPersistRef.current = persistDrafts;
+    shouldPersistOnUnmountRef.current = draftsReady && hasChanges;
+  }, [persistDrafts, draftsReady, hasChanges]);
+  useEffect(() => () => {
+    if (shouldPersistOnUnmountRef.current) void latestPersistRef.current();
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen || isInline) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        void handleClose();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isOpen, isInline, handleClose]);
+
+  if (!isOpen) return null;
+
+  // Actions
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      if (prev.has(id)) return new Set<string>();
+      return new Set([id]);
+    });
   };
 
-  const handleKeySave = () => {
-    saveCustomProvider(config);
-    setKeyPopupOpen(false);
+  const toggleModel = (providerId: string, modelId: string, enabled: boolean) => {
+    const key = modelKey(providerId, modelId);
+    setDraftHiddenModels((prev) => {
+      const next = new Set(prev);
+      if (enabled) next.delete(key);
+      else next.add(key);
+      return Array.from(next);
+    });
   };
 
-  return (
-    <div style={{ border: '1px solid var(--c-border-1)', borderRadius: 12, overflow: 'hidden' }}>
-      {/* Provider header row */}
-      <div className="row gap-2" style={{ padding: '10px 12px', background: 'var(--c-background-3)' }}>
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          aria-label={expanded ? t('models.collapse', { provider: config.name }) : t('models.expand', { provider: config.name })}
-          className="row gap-2 flex-1"
-          style={{ textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0 }}
-        >
-          {expanded
-            ? <ChevronDown size={15} className="subtle shrink-0" />
-            : <ChevronRight size={15} className="subtle shrink-0" />
+  const addCustomModel = (providerId: string, slug: string) => {
+    setDraftProviders((prev) =>
+      prev.map((p) => {
+        if (p.id !== providerId) return p;
+        if (p.customModels.includes(slug)) return p;
+        const newModel: ModelItem = {
+          id: slug,
+          name: slug,
+          enabled: true,
+          custom: true,
+          capabilities: {
+            vision: false,
+            toolCalling: true,
+            contextLength: 'Unknown',
+            speed: 'Medium',
+            cost: 'External',
+            reasoning: 'Unknown',
+            endpointType: 'Custom',
+            lastSynced: 'Unknown',
+          },
+        };
+        return {
+          ...p,
+          customModels: [...p.customModels, slug],
+          models: [...(p.models ?? []), newModel],
+        };
+      })
+    );
+  };
+
+  const handleDraftKeyChange = (providerId: string, key: string) => {
+    setDraftKeys((prev) => ({ ...prev, [providerId]: key }));
+    setDraftProviders((prev) =>
+      prev.map((provider) =>
+        provider.id === providerId ? { ...provider, status: 'not_connected' } : provider
+      )
+    );
+    setConnectionState((prev) => ({ ...prev, [providerId]: { phase: 'idle' } }));
+    useAIStore.getState().setProviderStatus(providerId, 'not_connected');
+  };
+
+  const handleDraftBaseUrlChange = (providerId: string, baseUrl: string) => {
+    setDraftBaseUrls((prev) => ({ ...prev, [providerId]: baseUrl }));
+    setDraftProviders((prev) =>
+      prev.map((p) =>
+        p.id === providerId ? { ...p, baseUrl, status: 'not_connected' } : p
+      )
+    );
+    setConnectionState((prev) => ({ ...prev, [providerId]: { phase: 'idle' } }));
+    useAIStore.getState().setProviderStatus(providerId, 'not_connected');
+  };
+
+  const handleConnect = async (providerId: string) => {
+    const baseUrl = draftBaseUrls[providerId] ?? '';
+    const apiKey = draftKeys[providerId] ?? '';
+    setConnectionState((prev) => ({ ...prev, [providerId]: { phase: 'connecting' } }));
+
+    const result = await useAIStore.getState().connectProvider(providerId, baseUrl, apiKey);
+    if (!result.ok) {
+      setConnectionState((prev) => ({
+        ...prev,
+        [providerId]: { phase: 'error', message: result.error },
+      }));
+      useUIStore.getState().showToast(result.error, 'error');
+      return;
+    }
+
+    const connected = useAIStore
+      .getState()
+      .providerConfigs.find((provider) => provider.id === providerId);
+    if (connected) {
+      setDraftProviders((prev) =>
+        prev.map((provider) => (provider.id === providerId ? connected : provider))
+      );
+      setDraftBaseUrls((prev) => ({ ...prev, [providerId]: connected.baseUrl }));
+      setInitialDraftBaseUrls((prev) => ({ ...prev, [providerId]: connected.baseUrl }));
+      setInitialDraftKeys((prev) => ({ ...prev, [providerId]: apiKey.trim() }));
+    }
+    setConnectionState((prev) => ({ ...prev, [providerId]: { phase: 'idle' } }));
+    useUIStore.getState().showToast(t('models.providerConnected'), 'info');
+  };
+
+  const handleImport = async (providerId: string) => {
+    const baseUrl = draftBaseUrls[providerId] ?? '';
+    const apiKey = draftKeys[providerId] ?? '';
+
+    setImportState((prev) => ({ ...prev, [providerId]: { phase: 'importing' } }));
+    const result = await useAIStore
+      .getState()
+      .importProviderModels(providerId, baseUrl, apiKey);
+
+    if (result.ok) {
+      setImportState((prev) => ({
+        ...prev,
+        [providerId]: { phase: 'success' },
+      }));
+      // Sync local drafts with the freshly-persisted store state.
+      const updated = useAIStore
+        .getState()
+        .providerConfigs.find((p) => p.id === providerId);
+      if (updated) {
+        setDraftProviders((prev) =>
+          prev.map((p) => (p.id === providerId ? updated : p))
+        );
+        setDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
+        setInitialDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
+      }
+      useUIStore.getState().showToast(t('models.imported'), 'info');
+      // Clear the success phase after a short delay so the UI returns to
+      // its idle header state while still reflecting the connection.
+      setTimeout(() => {
+        setImportState((prev) => {
+          const current = prev[providerId];
+          if (current?.phase === 'success') {
+            return { ...prev, [providerId]: { phase: 'idle' } };
           }
-          <span className="semibold" style={{ fontSize: 'var(--fs-sm)' }}>{config.name}</span>
-          <span className="subtle" style={{ fontSize: 'var(--fs-xs)', marginLeft: 4 }}>
-            {t(modelCount !== 1 ? 'models.modelCount_plural' : 'models.modelCount', { count: modelCount })}
-          </span>
-        </button>
-        {hasKey && (
-          <span className="row-xs" style={{ fontSize: 'var(--fs-10)', fontWeight: 500, color: '#059669', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '2px 6px', borderRadius: 9999 }}>
-            <Check size={10} /> {t('models.keySet')}
-          </span>
-        )}
-        <button
-          type="button"
-          onClick={() => { setKeyPopupOpen((v) => !v); setExpanded(true); }}
-          className="row-xs"
-          style={{
-            fontSize: 'var(--fs-xs)',
-            color: 'var(--c-accent-center-panel)',
-            fontWeight: 500,
-            padding: '4px 8px',
-            borderRadius: 8,
-            border: '1px solid rgba(34,197,94,0.3)',
-            background: 'transparent',
-            cursor: 'pointer',
-            transition: 'background-color 0.15s',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--c-background-4)')}
-          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-        >
-          <KeyRound size={12} />
-          {t('models.apiKeyLabel')}
-        </button>
-        <button
-          type="button"
-          onClick={() => deleteCustomProvider(config.id)}
-          className="btn-icon"
-          title={t('models.deleteProvider')}
-          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--c-danger)')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--c-text-2)')}
-          style={{ color: 'var(--c-text-2)', padding: 4 }}
-        >
-          <Trash2 size={14} />
-        </button>
-      </div>
+          return prev;
+        });
+      }, 2000);
+      return;
+    }
 
-      {/* API Key popup */}
-      {keyPopupOpen && (
+    setImportState((prev) => ({
+      ...prev,
+      [providerId]: { phase: 'error', message: result.error },
+    }));
+    useUIStore.getState().showToast(result.error, 'error');
+  };
+
+  const handleRefresh = async () => {
+    await useAIStore.getState().refreshAllProviderStatuses();
+  };
+
+  const providerAccordionList = (
+    <>
+      {draftProviders.length > 0 && (
+        <div className="provider-accordion-list">
+          {draftProviders.map((provider) => (
+            <ProviderAccordionItem
+              key={provider.id}
+              provider={{
+                ...provider,
+                status:
+                  providerConfigs.find((candidate) => candidate.id === provider.id)?.status
+                  ?? provider.status,
+              }}
+              expanded={expandedIds.has(provider.id)}
+              hiddenModels={draftHiddenModels}
+              draftKey={draftKeys[provider.id] ?? ''}
+              draftBaseUrl={draftBaseUrls[provider.id] ?? provider.baseUrl}
+              importState={importState[provider.id] ?? { phase: 'idle' }}
+              connectionState={connectionState[provider.id] ?? { phase: 'idle' }}
+              onToggleExpand={() => toggleExpand(provider.id)}
+              onToggleModel={toggleModel}
+              onAddCustomModel={addCustomModel}
+              onDraftKeyChange={(v) => handleDraftKeyChange(provider.id, v)}
+              onDraftBaseUrlChange={(v) => handleDraftBaseUrlChange(provider.id, v)}
+              onImport={() => handleImport(provider.id)}
+              onConnect={() => handleConnect(provider.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {draftProviders.length === 0 && (
         <div
           className="col"
           style={{
-            margin: '0 16px 8px',
-            padding: 12,
-            background: 'rgba(34,197,94,0.05)',
-            border: '1px solid rgba(34,197,94,0.15)',
-            borderRadius: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '48px 16px',
+            textAlign: 'center',
+            border: '1px solid var(--c-border-1)',
+            borderRadius: 14,
+            background: 'var(--c-background-1)',
           }}
         >
-          <div className="label-sm">
-            {t('models.apiKey', { provider: config.name })}
-          </div>
-          <div className="row gap-2">
-            <input
-              autoFocus
-              type={showKey ? 'text' : 'password'}
-              value={config.apiKey}
-              onChange={(e) => saveCustomProvider({ ...config, apiKey: e.target.value })}
-              placeholder={t('models.pasteKey')}
-              className="ctrl ctrl--mono flex-1"
-            />
-            <button type="button" onClick={() => setShowKey((v) => !v)} className="btn-icon">
-              {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </div>
-          <div>
-            <div className="label-sm" style={{ marginBottom: 4 }}>
-              {t('models.baseUrl')}
-            </div>
-            <input
-              type="text"
-              value={config.baseUrl}
-              onChange={(e) => saveCustomProvider({ ...config, baseUrl: e.target.value })}
-              placeholder="https://api.openai.com/v1"
-              className="ctrl ctrl--mono w-full"
-            />
-          </div>
-          <div className="row gap-2" style={{ paddingTop: 4 }}>
-            <button
-              type="button"
-              onClick={handleKeySave}
-              className="btn-brand flex-1"
-            >
-              {t('models.saveKey')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setKeyPopupOpen(false)}
-              className="btn"
-            >
-              {t('models.cancel')}
-            </button>
-          </div>
+          <p className="med" style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-text-1)', marginBottom: 4 }}>
+            {t('models.noCustomProviders')}
+          </p>
+          <p className="subtle" style={{ fontSize: 'var(--fs-xs)', marginBottom: 16 }}>
+            {t('models.noCustomProvidersHint')}
+          </p>
         </div>
       )}
 
-      {/* Model slugs list (expanded) */}
-      {expanded && (
-        <div className="split-t">
-          {config.customModels.length > 0 ? (
-            config.customModels.map((modelSlug) => {
-              const key = `${config.id}:${modelSlug}`;
-              const hidden = hiddenModels.includes(key);
-              const isActive = isActiveProvider && config.selectedModel === modelSlug;
-              return (
-                <div
-                  key={modelSlug}
-                  className="row gap-3"
-                  style={{
-                    padding: '8px 16px',
-                    background: isActive ? 'rgba(34,197,94,0.05)' : 'var(--c-background-4)',
-                    borderBottom: '1px solid var(--c-border-1)',
-                    cursor: !hidden ? 'pointer' : 'default',
-                  }}
-                  onClick={() => {
-                    if (!hidden) {
-                      setActiveProvider(config.id);
-                      setActiveModel(config.id, modelSlug);
-                    }
-                  }}
-                >
-                  {isActive && <Check size={12} style={{ color: 'var(--c-accent-center-panel)', flexShrink: 0 }} />}
-                  <span
-                    className="flex-1 ctrl--mono"
-                    style={{
-                      fontSize: 'var(--fs-xs)',
-                      color: hidden ? 'var(--c-text-2)' : isActive ? 'var(--c-accent-center-panel)' : 'var(--c-text-1)',
-                      textDecoration: hidden ? 'line-through' : undefined,
-                      fontWeight: isActive ? 600 : undefined,
-                    }}
-                  >
-                    {modelSlug}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); toggleHiddenModel(key); }}
-                    title={hidden ? t('models.showInSelector', { model: modelSlug }) : t('models.hideFromSelector', { model: modelSlug })}
-                    aria-label={hidden ? t('models.showInSelector', { model: modelSlug }) : t('models.hideFromSelector', { model: modelSlug })}
-                    className="btn-icon"
-                    style={{ color: hidden ? 'var(--c-text-2)' : 'rgba(34,197,94,0.4)', padding: 4, borderRadius: 4 }}
-                  >
-                    {hidden ? <Eye size={14} /> : <EyeOff size={14} />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); removeModelFromProvider(config.id, modelSlug); }}
-                    className="btn-icon"
-                    title={t('models.removeModel')}
-                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--c-danger)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--c-text-2)')}
-                    style={{ color: 'var(--c-text-2)', padding: 4, borderRadius: 4 }}
-                  >
-                    <Trash2 size={14} />
+      <button
+        type="button"
+        onClick={() => setConnectDrawerOpen(true)}
+        className="connect-provider-btn"
+      >
+        <Plus size={16} />
+        {t('models.connectProvider')}
+      </button>
+    </>
+  );
+
+  const handleProviderConnected = (providerId: string) => {
+    // Sync local drafts with the freshly-persisted store state
+    const updated = useAIStore.getState().providerConfigs.find((p) => p.id === providerId);
+    if (updated) {
+      setDraftProviders((prev) => [...prev, updated]);
+      setDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
+      setInitialDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
+      setExpandedIds(new Set([providerId]));
+    }
+  };
+
+  if (isInline) {
+    return (
+      <div
+        ref={modalRef}
+        className="flex-col h-full w-full"
+        id="model-management-inline"
+        style={{ background: 'var(--c-background-1)', overflow: 'hidden', display: 'flex', borderRadius: 8 }}
+      >
+        {/* Body */}
+        <div className="model-provider-body flex-1 col gap-2" style={{ padding: '0px 0px 16px 0px', overflowY: 'auto' }}>
+          {providerAccordionList}
+
+          {/* Web Search */}
+          <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid var(--c-border-1)' }}>
+            <div className="row gap-2" style={{ padding: '0 4px 8px' }}>
+              <Globe size={14} style={{ color: 'var(--c-accent-center-panel)' }} />
+              <span className="label-sm">{t('settings.webSearch')}</span>
+            </div>
+            <div
+              className="col gap-3"
+              style={{
+                padding: 12,
+                borderRadius: 12,
+              }}
+            >
+              <p className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>
+                {t('settings.tavilyKeyHint')}
+              </p>
+
+              <div className="col gap-1">
+                <div className="label-sm">
+                  Exa API Key <span style={{ fontWeight: 400, textTransform: 'none' }}>(Primary)</span>
+                </div>
+                <div className="row gap-2">
+                  <input
+                    type={showExaKey ? 'text' : 'password'}
+                    value={searchDraft.exaKey}
+                    onChange={(e) => { setSearchDraft((s) => ({ ...s, exaKey: e.target.value })); }}
+                    placeholder="exa_..."
+                    className="ctrl ctrl--mono flex-1"
+                    style={{ fontSize: 'var(--fs-xs)', backgroundColor: 'rgba(194, 194, 194, 0)' }}
+                  />
+                  <button type="button" onClick={() => setShowExaKey((v) => !v)} className="btn-icon">
+                    {showExaKey ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
-              );
-            })
-          ) : (
-            <div className="subtle" style={{ padding: '12px 16px', fontSize: 'var(--fs-xs)', background: 'var(--c-background-4)' }}>
-              {t('models.noModels')}
-            </div>
-          )}
+              </div>
 
-          {/* Add model slug input (subtasks pattern) */}
-          <div className="row gap-2" style={{ padding: '8px 16px', background: 'var(--c-background-4)' }}>
-            <input
-              ref={newModelRef}
-              value={newModelSlug}
-              onChange={(e) => setNewModelSlug(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); handleAddModel(); }
-              }}
-              placeholder={t('models.addModelPlaceholder')}
-              className="ctrl ctrl--mono flex-1"
-              style={{ fontSize: 'var(--fs-xs)' }}
-            />
-            {newModelSlug.trim() && (
-              <button
-                type="button"
-                onClick={handleAddModel}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-accent-center-panel)', padding: 4 }}
-                title={t('models.addModel')}
-              >
-                <Check size={16} />
-              </button>
-            )}
+              <div className="col gap-1">
+                <div className="label-sm">
+                  Tavily API Key <span style={{ fontWeight: 400, textTransform: 'none' }}>(Fallback)</span>
+                </div>
+                <div className="row gap-2">
+                  <input
+                    type={showTavilyKey ? 'text' : 'password'}
+                    value={searchDraft.tavilyKey}
+                    onChange={(e) => { setSearchDraft((s) => ({ ...s, tavilyKey: e.target.value })); }}
+                    placeholder="tvly-..."
+                    className="ctrl ctrl--mono flex-1"
+                    style={{ fontSize: 'var(--fs-xs)', backgroundColor: 'rgba(194, 194, 194, 0)' }}
+                  />
+                  <button type="button" onClick={() => setShowTavilyKey((v) => !v)} className="btn-icon">
+                    {showTavilyKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      )}
-    </div>
-  );
-}
 
-// ---------------------------------------------------------------------------
-// Add Provider Form
-// ---------------------------------------------------------------------------
-function AddProviderForm({ onDone }: { onDone: () => void }) {
-  const { t } = useTranslation();
-  const { saveCustomProvider } = useAIStore();
-  const nameRef = useRef<HTMLInputElement>(null);
-  const [name, setName] = useState('');
-  const [baseUrl, setBaseUrl] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  const [showKey, setShowKey] = useState(false);
-
-  useEffect(() => {
-    nameRef.current?.focus();
-  }, []);
-
-  const handleSubmit = async () => {
-    const trimmedName = name.trim();
-    const trimmedUrl = baseUrl.trim();
-    if (!trimmedName || !trimmedUrl) return;
-    await saveCustomProvider(emptyCustomProvider());
-    // Get the last saved config's ID — actually, let's just create a new one directly
-    const id = `cp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    await saveCustomProvider({
-      id,
-      name: trimmedName,
-      provider: 'custom',
-      apiKey: apiKey.trim(),
-      selectedModel: '',
-      isActive: true,
-      baseUrl: trimmedUrl,
-      customModels: [],
-    });
-    onDone();
-  };
-
-  return (
-    <div
-      className="col gap-2"
-      style={{
-        padding: 16,
-        marginBottom: 8,
-        background: 'rgba(34,197,94,0.03)',
-        border: '1px solid rgba(34,197,94,0.15)',
-        borderRadius: 12,
-      }}
-    >
-      <div>
-        <div className="label-sm" style={{ marginBottom: 4 }}>{t('models.providerName')}</div>
-        <input
-          ref={nameRef}
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-          placeholder={t('models.providerNamePlaceholder')}
-          className="ctrl w-full"
+        <ConnectProviderDrawer
+          open={connectDrawerOpen}
+          onClose={() => setConnectDrawerOpen(false)}
+          onConnected={handleProviderConnected}
         />
       </div>
-      <div>
-        <div className="label-sm" style={{ marginBottom: 4 }}>{t('models.baseUrl')}</div>
-        <input
-          type="text"
-          value={baseUrl}
-          onChange={(e) => setBaseUrl(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-          placeholder="https://api.openai.com/v1"
-          className="ctrl ctrl--mono w-full"
-        />
-      </div>
-      <div>
-        <div className="label-sm" style={{ marginBottom: 4 }}>{t('models.apiKeyLabel')}</div>
-        <div className="row gap-2">
-          <input
-            type={showKey ? 'text' : 'password'}
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-            placeholder={t('models.pasteKey')}
-            className="ctrl ctrl--mono flex-1"
-          />
-          <button type="button" onClick={() => setShowKey((v) => !v)} className="btn-icon">
-            {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
-          </button>
-        </div>
-      </div>
-      <div className="row gap-2" style={{ paddingTop: 4 }}>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!name.trim() || !baseUrl.trim()}
-          className="btn-brand flex-1"
-          style={{ opacity: !name.trim() || !baseUrl.trim() ? 0.4 : 1 }}
-        >
-          <Plus size={14} /> {t('models.addProvider')}
-        </button>
-        <button
-          type="button"
-          onClick={onDone}
-          className="btn"
-        >
-          {t('models.cancel')}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Main Modal
-// ---------------------------------------------------------------------------
-export function ModelManagementModal() {
-  const { t } = useTranslation();
-  const { activeModal, setActiveModal } = useUIStore();
-  const providerConfigs = useAIStore((s) => s.providerConfigs);
-  const searchConfig = useAIStore((s) => s.searchConfig);
-  const saveSearchConfig = useAIStore((s) => s.saveSearchConfig);
-
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [exaKey, setExaKey] = useState(searchConfig.exaKey);
-  const [tavilyKey, setTavilyKey] = useState(searchConfig.tavilyKey);
-  const [showExaKey, setShowExaKey] = useState(false);
-  const [showTavilyKey, setShowTavilyKey] = useState(false);
-  const [searchSaved, setSearchSaved] = useState(false);
-
-  const handleSaveSearchKeys = async () => {
-    await saveSearchConfig({
-      ...searchConfig,
-      exaKey: exaKey.trim(),
-      tavilyKey: tavilyKey.trim(),
-    });
-    setSearchSaved(true);
-    setTimeout(() => setSearchSaved(false), 2000);
-  };
-
-  if (activeModal !== 'modelManagement') return null;
+    );
+  }
 
   return (
     <div
@@ -408,171 +598,125 @@ export function ModelManagementModal() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="model-management-title"
-      onKeyDown={(e) => e.key === 'Escape' && setActiveModal(null)}
-      tabIndex={-1}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
     >
-      <div className="modal modal--lg flex-col" id="model-management-modal">
+      <div
+        ref={modalRef}
+        className="modal model-provider-modal flex-col"
+        id="model-management-modal"
+        tabIndex={-1}
+      >
         {/* Header */}
         <div className="modal-head shrink-0" style={{ padding: '16px 20px' }}>
-          <div className="row gap-3">
-            <button
-              id="model-management-back-btn"
-              type="button"
-              onClick={() => setActiveModal('settings')}
-              aria-label={t('models.back')}
-              className="modal-close"
-            >
-              <ArrowLeft size={18} />
-            </button>
-            <div>
-              <h2 id="model-management-title">{t('models.title')}</h2>
-              <p className="subtle" style={{ fontSize: 'var(--fs-xs)', marginTop: 2 }}>
-                {t('models.subtitle')}
-              </p>
-            </div>
+          <div>
+            <h2 id="model-management-title" style={{ margin: 0, fontSize: 'var(--fs-base)', fontWeight: 600 }}>
+              {t('models.title')}
+            </h2>
+            <p className="subtle" style={{ fontSize: 'var(--fs-xs)', marginTop: 2, marginBottom: 0 }}>
+              {t('models.subtitle')}
+            </p>
           </div>
-          <button
-            id="model-management-close-btn"
-            type="button"
-            onClick={() => setActiveModal(null)}
-            aria-label={t('models.close')}
-            className="modal-close"
-          >
-            <X size={18} />
-          </button>
+          <div className="row gap-1">
+            <button
+              type="button"
+              onClick={handleRefresh}
+              aria-label="Refresh provider status"
+              className="modal-close"
+              style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <RefreshCw size={16} />
+            </button>
+            <button
+              ref={closeBtnRef}
+              type="button"
+              onClick={handleClose}
+              aria-label={t('models.close')}
+              className="modal-close"
+              style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Body */}
-        <div
-          className="flex-1 col gap-1"
-          id="model-management-body"
-          style={{ padding: '16px 20px' }}
-        >
-          {/* Add Provider button / form */}
-          {!showAddForm ? (
-            <button
-              type="button"
-              onClick={() => setShowAddForm(true)}
-              className="row gap-2 w-full"
-              style={{
-                padding: '12px 16px',
-                fontSize: 'var(--fs-sm)',
-                fontWeight: 500,
-                color: 'var(--c-accent-center-panel)',
-                background: 'rgba(34,197,94,0.05)',
-                border: '1px dashed rgba(34,197,94,0.3)',
-                borderRadius: 12,
-                cursor: 'pointer',
-                justifyContent: 'center',
-              }}
-            >
-              <Plus size={16} /> {t('models.addProvider')}
-            </button>
-          ) : (
-            <AddProviderForm onDone={() => setShowAddForm(false)} />
-          )}
-
-          {/* Custom providers list */}
-          {providerConfigs.length === 0 && !showAddForm && (
-            <div className="flex flex-col" style={{ alignItems: 'center', justifyContent: 'center', padding: '48px 0', textAlign: 'center' }}>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--c-background-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-                <Globe size={18} style={{ color: 'var(--c-accent-center-panel)' }} />
-              </div>
-              <p className="med" style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-text-1)', marginBottom: 4 }}>{t('models.noCustomProviders')}</p>
-              <p className="subtle" style={{ fontSize: 'var(--fs-xs)' }}>{t('models.noCustomProvidersHint')}</p>
-            </div>
-          )}
-
-          {providerConfigs.map((config) => (
-            <CustomProviderRow key={config.id} config={config} />
-          ))}
+        <div className="model-provider-body flex-1 col gap-2" style={{ padding: '16px 20px' }}>
+          {providerAccordionList}
 
           {/* Web Search */}
-          <div id="web-search-section" style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--c-border-1)' }}>
-            <div className="row gap-2" style={{ padding: '8px 16px' }}>
+          <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid var(--c-border-1)' }}>
+            <div className="row gap-2" style={{ padding: '0 4px 8px' }}>
               <Globe size={14} style={{ color: 'var(--c-accent-center-panel)' }} />
-              <span className="label-sm">
-                Web Search
-              </span>
+              <span className="label-sm">{t('settings.webSearch')}</span>
             </div>
             <div
               className="col gap-3"
               style={{
-                margin: '0 16px 8px',
                 padding: 12,
                 background: 'rgba(34,197,94,0.05)',
                 border: '1px solid rgba(34,197,94,0.15)',
                 borderRadius: 12,
               }}
             >
-              <p style={{ fontSize: 'var(--fs-10)', color: 'var(--c-text-2)' }}>
-                Add an Exa key (primary, 1000 free/month at{' '}
-                <span className="ctrl--mono">exa.ai</span>) and/or a Tavily key (fallback,
-                1000 free/month at <span className="ctrl--mono">tavily.com</span>). Toggle
-                search on/off with the Globe button in chat.
+              <p className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>
+                {t('settings.tavilyKeyHint')}
               </p>
 
-              {/* Exa Key */}
               <div className="col gap-1">
                 <div className="label-sm">
                   Exa API Key <span style={{ fontWeight: 400, textTransform: 'none' }}>(Primary)</span>
                 </div>
                 <div className="row gap-2">
                   <input
-                    id="exa-api-key-input"
                     type={showExaKey ? 'text' : 'password'}
-                    value={exaKey}
-                    onChange={(e) => setExaKey(e.target.value)}
+                    value={searchDraft.exaKey}
+                    onChange={(e) => { setSearchDraft((s) => ({ ...s, exaKey: e.target.value })); }}
                     placeholder="exa_..."
                     className="ctrl ctrl--mono flex-1"
+                    style={{ fontSize: 'var(--fs-xs)' }}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowExaKey((v) => !v)}
-                    className="btn-icon"
-                  >
+                  <button type="button" onClick={() => setShowExaKey((v) => !v)} className="btn-icon">
                     {showExaKey ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
               </div>
 
-              {/* Tavily Key */}
               <div className="col gap-1">
                 <div className="label-sm">
                   Tavily API Key <span style={{ fontWeight: 400, textTransform: 'none' }}>(Fallback)</span>
                 </div>
                 <div className="row gap-2">
                   <input
-                    id="tavily-api-key-input"
                     type={showTavilyKey ? 'text' : 'password'}
-                    value={tavilyKey}
-                    onChange={(e) => setTavilyKey(e.target.value)}
+                    value={searchDraft.tavilyKey}
+                    onChange={(e) => { setSearchDraft((s) => ({ ...s, tavilyKey: e.target.value })); }}
                     placeholder="tvly-..."
                     className="ctrl ctrl--mono flex-1"
+                    style={{ fontSize: 'var(--fs-xs)' }}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowTavilyKey((v) => !v)}
-                    className="btn-icon"
-                  >
+                  <button type="button" onClick={() => setShowTavilyKey((v) => !v)} className="btn-icon">
                     {showTavilyKey ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
               </div>
-
-              <button
-                id="save-search-keys-btn"
-                type="button"
-                onClick={handleSaveSearchKeys}
-                className="btn-brand"
-              >
-                {searchSaved ? <Check size={12} /> : <KeyRound size={12} />}
-                {searchSaved ? 'Saved' : 'Save Keys'}
-              </button>
             </div>
           </div>
         </div>
+
+        <ConnectProviderDrawer
+          open={connectDrawerOpen}
+          onClose={() => setConnectDrawerOpen(false)}
+          onConnected={handleProviderConnected}
+        />
       </div>
     </div>
   );
+}
+
+export function ModelManagementModal() {
+  const { activeModal, setActiveModal } = useUIStore();
+  if (activeModal !== 'modelManagement') return null;
+  return <ModelManagementContent isInline={false} onClose={() => setActiveModal(null)} />;
 }

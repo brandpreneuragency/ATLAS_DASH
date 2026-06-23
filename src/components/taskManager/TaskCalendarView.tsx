@@ -2,11 +2,13 @@ import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import type { Task } from '../../types';
 import { useProjectStore } from '../../stores/projectStore';
-import { HeaderDropdown } from '../ui/HeaderDropdown';
+import { useTaskStore } from '../../stores/taskStore';
 
 interface TaskCalendarViewProps {
   tasks: Task[];
   onPrefillText: (text: string) => void;
+  assignedDate?: string | null;
+  onSetDate?: (date: string | null) => void;
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -22,10 +24,10 @@ function getDaysInMonth(year: number, month: number): { day: number; weekday: st
   return days;
 }
 
-export function TaskCalendarView({ tasks, onPrefillText }: TaskCalendarViewProps) {
+export function TaskCalendarView({ tasks, onSetDate }: TaskCalendarViewProps) {
   const now = new Date();
   const [currentMonth, setCurrentMonth] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1));
-  const [filterProjectId, setFilterProjectId] = useState<string | null>(null);
+  const [filterProjectId] = useState<string | null>(null);
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
@@ -58,24 +60,13 @@ export function TaskCalendarView({ tasks, onPrefillText }: TaskCalendarViewProps
   };
 
   return (
-    <div>
+    <div className="calendar-view">
       <div className="calendar-month-nav">
-        <button type="button" className="calendar-month-btn" onClick={prevMonth}><ChevronLeft size={14} /></button>
-        <span className="calendar-month-label">{monthLabel}</span>
-        <button type="button" className="calendar-month-btn" onClick={nextMonth}><ChevronRight size={14} /></button>
-      </div>
-
-      <div className="project-filter-bar">
-        <HeaderDropdown
-          value={filterProjectId ?? ''}
-          onChange={(next) => setFilterProjectId(next || null)}
-          wrapperClassName="flex-1 min-w-0"
-          options={[
-            { value: '', label: 'All projects' },
-            ...projects.map((p) => ({ value: p.id, label: p.name })),
-          ]}
-          menuClassName="header-dropdown-menu--match"
-        />
+        <div className="calendar-month-nav-left">
+          <button type="button" className="calendar-month-btn" onClick={prevMonth}><ChevronLeft size={14} /></button>
+          <span className="calendar-month-label">{monthLabel}</span>
+          <button type="button" className="calendar-month-btn" onClick={nextMonth}><ChevronRight size={14} /></button>
+        </div>
       </div>
 
       {days.map(({ day, weekday, dateStr }) => {
@@ -87,8 +78,8 @@ export function TaskCalendarView({ tasks, onPrefillText }: TaskCalendarViewProps
               <button
                 type="button"
                 className="calendar-day-btn"
-                onClick={() => onPrefillText('due:' + dateStr + ' ')}
                 title="Add task on this day"
+                onClick={() => onSetDate?.(dateStr)}
               >
                 <Plus size={12} />
               </button>
@@ -105,6 +96,7 @@ export function TaskCalendarView({ tasks, onPrefillText }: TaskCalendarViewProps
                   key={t.id}
                   type="button"
                   className="calendar-task-row"
+                  onClick={() => useTaskStore.getState().openTaskInActiveTab(t.id)}
                 >
                   {importanceDot(t.importance)}
                   <span className="trunc">{t.title}</span>

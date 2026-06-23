@@ -2,13 +2,16 @@ import { useState, useMemo } from 'react';
 import { Plus, Pencil, Folder } from 'lucide-react';
 import type { Task } from '../../types';
 import { useProjectStore } from '../../stores/projectStore';
+import { useTaskStore } from '../../stores/taskStore';
 
 interface TaskProjectViewProps {
   tasks: Task[];
   onPrefillText: (text: string) => void;
+  assignedProject?: string | null;
+  onSetProject?: (project: string | null) => void;
 }
 
-export function TaskProjectView({ tasks, onPrefillText }: TaskProjectViewProps) {
+export function TaskProjectView({ tasks, onSetProject }: TaskProjectViewProps) {
   const { projects } = useProjectStore();
   const [maxDate, setMaxDate] = useState<string>('');
 
@@ -56,7 +59,7 @@ export function TaskProjectView({ tasks, onPrefillText }: TaskProjectViewProps) 
   };
 
   return (
-    <div>
+    <div className="task-project-view">
       <div className="project-filter-bar">
         <input
           type="date"
@@ -84,20 +87,20 @@ export function TaskProjectView({ tasks, onPrefillText }: TaskProjectViewProps) 
                 <button
                   type="button"
                   className="project-group-btn"
-                  onClick={() => onPrefillText('#' + projectName + ' ')}
                   title="Add task"
+                  onClick={() => onSetProject?.(projectName === 'Uncategorized' ? null : projectName)}
                 >
                   <Plus size={12} />
                 </button>
               </div>
             </div>
             {groupTasks.length === 0 && (
-              <div style={{ fontSize: 'var(--fs-11)', color: 'var(--c-text-2)', fontStyle: 'italic', padding: '4px 0' }}>
+              <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-text-2)', fontStyle: 'italic', padding: '4px 0' }}>
                 No tasks
               </div>
             )}
             {groupTasks.map((t) => (
-              <button key={t.id} type="button" className="calendar-task-row">
+              <button key={t.id} type="button" className="calendar-task-row" onClick={() => useTaskStore.getState().openTaskInActiveTab(t.id)}>
                 {importanceDot(t.importance)}
                 <span className="trunc">{t.title}</span>
                 <span className="calendar-task-project">{formatDate(t.date)}</span>

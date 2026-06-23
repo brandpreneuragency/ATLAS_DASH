@@ -1,28 +1,20 @@
-// Task comment store. Server-backed as of Agent 5 (Frontend Task Migration).
-//
-// Comments live in the server's `TaskComment` table for the currently
-// authenticated user. Reads go through `commentRepository.list`; writes
-// hit the corresponding REST endpoints and the local Zustand state is
-// updated after a successful response.
-//
-// File attachments are uploaded through the comment endpoint's multipart
-// variant (`createWithFile`). The server returns the comment with a
-// `fileId` and a populated `file` object (id, originalName, mimeType,
-// sizeBytes). The store exposes an `addComment(input, file?)` signature
-// that the comment input component uses; the `file` argument is optional
-// and triggers the upload path when present.
+// Task comment store. Local-first using Dexie (Tauri desktop).
+// Uses attachmentDataUrl for local file attachments (Tauri filesystem).
 
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
-import type { TaskComment, TaskCommentFile } from '../types';
-import {
-  commentRepository,
-  type CommentCreateInput,
-  type CommentUpdateInput,
-  type ReplyToPayload,
-} from '../repositories/commentRepository';
-import { ApiError } from '../services/apiClient';
+import type { TaskComment } from '../types';
+import { db } from '../services/db';
 import { useUIStore } from './uiStore';
+import { getFileCategory, inferMimeTypeFromDataUrl } from '../utils/fileType';
+import { generateVideoThumbnailDataUrl } from '../utils/fileData';
+
+export type CommentCreateInput = {
+  id?: string;
+  sender?: string;
+  text?: string;
+  replyTo?: TaskComment['replyTo'];
+};
 
 export interface AddCommentOptions {
   /** Optional upload progress callback (0..1). */
@@ -33,15 +25,16 @@ export interface AddCommentOptions {
 
 export interface AddCommentResult {
   comment: TaskComment | null;
-  file: TaskCommentFile | null;
+  // For local-first, we don't return file metadata separately
+  // as it's embedded in the comment via attachmentDataUrl
 }
 
 function showError(err: unknown, fallback: string): void {
-  const msg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : fallback;
+  const msg = err instanceof Error ? err.message : fallback;
   useUIStore.getState().showToast(msg, 'error');
 }
 
-function buildReplyData(source: TaskComment | null | undefined): ReplyToPayload | undefined {
+function buildReplyData(source: TaskComment | null | undefined): { id: string; text: string; sender: string } | undefined {
   if (!source) return undefined;
   return {
     id: source.id,
@@ -52,16 +45,22 @@ function buildReplyData(source: TaskComment | null | undefined): ReplyToPayload 
 
 function localCommentFromInput(
   taskId: string,
-  input: CommentCreateInput,
+  input: Omit<CommentCreateInput, 'id'>,
   createdAt: number,
 ): TaskComment {
   return {
-    id: input.id,
+    id: nanoid(8),
     taskId,
     sender: input.sender ?? 'You',
     text: input.text ?? '',
     replyTo: input.replyTo ?? undefined,
     createdAt,
+    // For local-first, attachmentDataUrl comes from the file input
+    attachmentDataUrl: undefined,
+    attachmentName: undefined,
+    attachmentMimeType: undefined,
+    attachmentSizeBytes: undefined,
+    attachmentPreviewDataUrl: undefined,
   };
 }
 
@@ -70,10 +69,8 @@ interface TaskCommentStore {
 
   loadComments: (taskId: string) => Promise<void>;
   /**
-   * Create a comment. If `file` is provided, the comment is uploaded
-   * through the multipart variant of the server endpoint; otherwise it's
-   * a text-only JSON request. Returns the created comment (with `file`
-   * metadata if applicable) and `null` on error.
+   * Create a comment. For local-first, handles file attachment via
+   * attachmentDataUrl. Returns the created comment.
    */
   addComment: (
     taskId: string,
@@ -81,7 +78,7 @@ interface TaskCommentStore {
     file?: File,
     options?: AddCommentOptions,
   ) => Promise<AddCommentResult>;
-  updateComment: (id: string, updates: CommentUpdateInput) => Promise<void>;
+  updateComment: (id: string, updates: Partial<Pick<TaskComment, 'text'>>) => Promise<void>;
   deleteComment: (id: string, taskId: string) => Promise<void>;
   clearComments: (taskId: string) => Promise<void>;
   getComments: (taskId: string) => TaskComment[];
@@ -92,7 +89,7 @@ export const useTaskCommentStore = create<TaskCommentStore>((set, get) => ({
 
   loadComments: async (taskId) => {
     try {
-      const { comments } = await commentRepository.list(taskId);
+      const comments = await db.taskComments.where('taskId').equals(taskId).toArray();
       set((s) => ({ commentsByTask: { ...s.commentsByTask, [taskId]: comments } }));
     } catch (err) {
       showError(err, 'Failed to load comments.');
@@ -101,61 +98,64 @@ export const useTaskCommentStore = create<TaskCommentStore>((set, get) => ({
 
   addComment: async (taskId, input, file, options) => {
     const id = nanoid(8);
-    const fullInput: CommentCreateInput = { id, ...input };
-    try {
-      if (file) {
-        const { comment, file: fileRow } = await commentRepository.createWithFile(
-          taskId,
-          fullInput,
-          file,
-          { onProgress: options?.onProgress, signal: options?.signal },
-        );
-        if (!fileRow) {
-          // Defensive: the server's multipart endpoint always returns a
-          // `file` row alongside the comment, so this is unexpected. We
-          // surface a generic error rather than silently dropping the
-          // attachment.
-          showError(new Error('Server did not return file metadata'), 'Failed to upload file.');
-          return { comment: null, file: null };
-        }
-        // Mirror the file metadata into the legacy display fields so
-        // pre-existing components that read `attachmentName` /
-        // `attachmentSize` keep working without churn.
-        const enriched: TaskComment = {
-          ...comment,
-          file: comment.file ?? {
-            id: fileRow.id,
-            originalName: fileRow.originalName,
-            mimeType: fileRow.mimeType,
-            sizeBytes: fileRow.sizeBytes,
-          },
-          attachmentName: fileRow.originalName,
-          attachmentSize:
-            fileRow.sizeBytes < 1024
-              ? `${fileRow.sizeBytes} B`
-              : fileRow.sizeBytes < 1024 * 1024
-                ? `${(fileRow.sizeBytes / 1024).toFixed(1)} KB`
-                : `${(fileRow.sizeBytes / (1024 * 1024)).toFixed(1)} MB`,
-        };
-        set((s) => ({
-          commentsByTask: {
-            ...s.commentsByTask,
-            [taskId]: [...(s.commentsByTask[taskId] ?? []), enriched],
-          },
-        }));
-        return { comment: enriched, file: enriched.file ?? null };
+    const now = Date.now();
+    
+    // Handle file attachment for local-first
+    let attachmentDataUrl: string | undefined = undefined;
+    let attachmentMimeType: string | undefined = undefined;
+    let attachmentPreviewDataUrl: string | undefined = undefined;
+    if (file) {
+      try {
+        // Convert File to data URL for local storage
+        attachmentDataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onprogress = (event) => {
+            if (event.lengthComputable) {
+              options?.onProgress?.(event.loaded, event.total);
+            }
+          };
+          reader.onerror = () => reject(reader.error);
+          options?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+          reader.readAsDataURL(file);
+        });
+      } catch (err) {
+        showError(err, 'Failed to process file attachment.');
+        return { comment: null };
       }
-      const { comment } = await commentRepository.createText(taskId, fullInput);
+
+      attachmentMimeType = file.type || inferMimeTypeFromDataUrl(attachmentDataUrl);
+      if (getFileCategory(file.name, attachmentMimeType) === 'video') {
+        attachmentPreviewDataUrl = await generateVideoThumbnailDataUrl(file).catch(() => undefined);
+      }
+    }
+
+    const comment: TaskComment = {
+      id,
+      taskId,
+      sender: input.sender ?? 'You',
+      text: input.text ?? '',
+      replyTo: input.replyTo ?? undefined,
+      attachmentDataUrl, // Local-first: store data URL directly
+      attachmentName: file?.name,
+      attachmentMimeType,
+      attachmentSizeBytes: file?.size,
+      attachmentPreviewDataUrl,
+      createdAt: now,
+    };
+
+    try {
+      await db.taskComments.add(comment);
       set((s) => ({
         commentsByTask: {
           ...s.commentsByTask,
           [taskId]: [...(s.commentsByTask[taskId] ?? []), comment],
         },
       }));
-      return { comment, file: null };
+      return { comment };
     } catch (err) {
       showError(err, 'Failed to send comment.');
-      return { comment: null, file: null };
+      return { comment: null };
     }
   },
 
@@ -170,14 +170,7 @@ export const useTaskCommentStore = create<TaskCommentStore>((set, get) => ({
       return { commentsByTask: updated };
     });
     try {
-      const { comment } = await commentRepository.update(id, updates);
-      set((s) => {
-        const updated: Record<string, TaskComment[]> = {};
-        for (const [taskId, comments] of Object.entries(s.commentsByTask)) {
-          updated[taskId] = comments.map((c) => (c.id === id ? comment : c));
-        }
-        return { commentsByTask: updated };
-      });
+      await db.taskComments.update(id, updates);
     } catch (err) {
       set({ commentsByTask: previous });
       showError(err, 'Failed to update comment.');
@@ -193,7 +186,7 @@ export const useTaskCommentStore = create<TaskCommentStore>((set, get) => ({
       },
     }));
     try {
-      await commentRepository.remove(id);
+      await db.taskComments.delete(id);
     } catch (err) {
       set((s) => ({
         commentsByTask: {
@@ -208,8 +201,11 @@ export const useTaskCommentStore = create<TaskCommentStore>((set, get) => ({
   clearComments: async (taskId) => {
     // Bulk-delete is not part of the v1 comment API; we leave this as a
     // client-side clear so callers that used it (e.g. bulk resets) keep
-    // working. The actual rows persist on the server until the parent
-    // task is hard-deleted.
+    // working. The actual rows are deleted from Dexie.
+    const comments = get().commentsByTask[taskId] ?? [];
+    for (const comment of comments) {
+      await db.taskComments.delete(comment.id).catch(() => undefined);
+    }
     set((s) => ({ commentsByTask: { ...s.commentsByTask, [taskId]: [] } }));
   },
 

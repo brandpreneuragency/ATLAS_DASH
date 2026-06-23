@@ -9,7 +9,7 @@ export function ActionsManagerModal() {
 
   return (
     <div className="overlay" id="actions-manager-overlay">
-      <div className="modal modal--sm flex-col overflow-h" id="actions-manager-modal" style={{ maxHeight: '80vh' }}>
+      <div className="modal modal--sm flex-col overflow-h" id="actions-manager-modal" style={{ maxHeight: 'var(--modal-max-height)' }}>
         <div className="modal-head shrink-0" style={{ padding: '12px 20px', background: 'var(--c-background-3)', borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
           <h2>{actionsManagerScope === 'task' ? 'Manage Task Actions' : 'Manage Actions'}</h2>
           <button

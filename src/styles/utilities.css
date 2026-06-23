@@ -1,0 +1,251 @@
+/* =========================================================
+ * utilities.css — Minimal layout utility classes
+ * Kept small on purpose. This is NOT a full utility
+ * framework — only the primitives needed for the upcoming
+ * shell/panel migration.
+ * ========================================================= */
+
+.min-h-0 {
+  min-height: 0;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.overflow-y-auto {
+  overflow-y: auto;
+}
+
+.overflow-x-hidden {
+  overflow-x: hidden;
+}
+
+.flex-col-min {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.grid-min {
+  min-height: 0;
+  min-width: 0;
+}
+
+/* =========================================================
+ * Agent 7: Responsive visibility hooks
+ * These classes are opt-in. They do not change the layout
+ * of any element that does not carry them. They are
+ * intended for future use (e.g. hiding a secondary label
+ * inside a toolbar) without touching the component itself.
+ *
+ * The breakpoint definitions match the workspace
+ * breakpoints in `src/styles/layout.css`:
+ *   mobile  = <= 640px
+ *   tablet  = <= 900px
+ *   desktop = > 900px
+ *
+ * The default (un-suffixed) state is "always visible".
+ * Naming convention: BEM-style "is-{state}-{viewport}".
+ * ========================================================= */
+
+/* Mobile-only: visible only on phones / very narrow windows. */
+.is-mobile-only {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .is-mobile-only {
+    display: initial;
+  }
+}
+
+/* Hidden on mobile: visible everywhere EXCEPT <= 640px. */
+.is-hidden-mobile {
+  display: initial;
+}
+
+@media (max-width: 640px) {
+  .is-hidden-mobile {
+    display: none !important;
+  }
+}
+
+/* Hidden on tablet-or-mobile: visible only at > 900px. */
+.is-hidden-tablet {
+  display: initial;
+}
+
+@media (max-width: 900px) {
+  .is-hidden-tablet {
+    display: none !important;
+  }
+}
+
+/* Desktop-only: visible only at > 900px. */
+.is-desktop-only {
+  display: initial;
+}
+
+@media (max-width: 900px) {
+  .is-desktop-only {
+    display: none !important;
+  }
+}
+
+/* Wide-only: visible only at > 1280px. Used for labels
+ * that only make sense when the right detail panel is
+ * also visible (e.g. column titles in that panel). */
+.is-wide-only {
+  display: initial;
+}
+
+@media (max-width: 1280px) {
+  .is-wide-only {
+    display: none !important;
+  }
+}
+
+/* Short-only: visible only when the viewport is below
+ * 720 px in height. Used for "compact mode" affordances. */
+.is-short-only {
+  display: none;
+}
+
+@media (max-height: 720px) {
+  .is-short-only {
+    display: initial;
+  }
+}
+
+/* Hidden on short viewports: visible only when >= 720px. */
+.is-hidden-short {
+  display: initial;
+}
+
+@media (max-height: 720px) {
+  .is-hidden-short {
+    display: none !important;
+  }
+}
+
+/* Optional toolbar / panel labels — opt-in. Hidden at
+ * <= 640px so the centre panel keeps its real estate. */
+.optional-toolbar-label,
+.secondary-panel-label,
+.secondary-meta {
+  /* Default: visible. The 640px breakpoint in
+   * `src/styles/layout.css` hides them on phones. */
+  display: initial;
+}
+
+/* =========================================================
+ * Agent 7: Drawer / collapse state hooks
+ * These classes are opt-in. They do not change the layout
+ * of any element that does not carry them. They prepare the
+ * app for a future drawer system without implementing one.
+ * ========================================================= */
+
+/* `is-collapsed` shrinks a panel to its minimal token
+ * width. Apply to `.task-list-panel` or `.detail-panel`
+ * to flip a panel into a collapsed rail. The class only
+ * affects width and overflow; the panel still scrolls
+ * internally if its content overflows. */
+.is-collapsed {
+  width: var(--control-height-md) !important;
+  min-width: var(--control-height-md) !important;
+  max-width: var(--control-height-md) !important;
+}
+
+/* `is-hidden` hides the element completely via a token-
+ * aware selector. It is identical to `display: none` but
+ * is the recognised hook for "responsive hide". */
+.is-hidden {
+  display: none !important;
+}
+
+/* `drawer-open` opt-in hook. Apply to `.workspace` to
+ * activate the scrim and the drawer overlay rules defined
+ * in `src/styles/layout.css`. */
+.drawer-open {
+  /* No default styles; the responsive rules in
+   * layout.css pick this up via `.workspace.is-drawer-open`. */
+}
+
+/* =========================================================
+ * Agent 8: Container-query opt-in utilities
+ * Tiny helpers for components that want to opt into the
+ * container-query system without touching the global
+ * styles. Apply the `container-query` class to the panel
+ * root and the `cq-*` modifiers for the named context.
+ *
+ * Naming convention:
+ *   .container-query          → generic unnamed context
+ *   .container-query--panel   → named `panel` context
+ *   .container-query--toolbar → named `toolbar` context
+ *   .container-query--form    → named `form` context
+ * ========================================================= */
+.container-query {
+  container-type: inline-size;
+}
+
+.container-query--panel {
+  container-type: inline-size;
+  container-name: panel;
+}
+
+.container-query--toolbar {
+  container-type: inline-size;
+  container-name: toolbar;
+}
+
+.container-query--form {
+  container-type: inline-size;
+  container-name: form;
+}
+
+/* Truncation helper — applies the standard truncation
+ * pattern (overflow:hidden + ellipsis + nowrap) with the
+ * `min-width: 0` shrink-safety. */
+.cq-truncate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Wrap helper for multi-line metadata rows. */
+.cq-wrap {
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Optional-label / secondary-meta helpers — opt-in.
+ * Hidden by default and shown at >= 640px viewport. The
+ * container-query rules in `layout.css` hide them at
+ * narrow panel widths regardless of viewport. */
+.cq-optional-label {
+  display: initial;
+}
+
+@media (max-width: 640px) {
+  .cq-optional-label {
+    display: none;
+  }
+}
+
+.cq-secondary-meta {
+  display: initial;
+}
+
+@media (max-width: 640px) {
+  .cq-secondary-meta {
+    display: none;
+  }
+}

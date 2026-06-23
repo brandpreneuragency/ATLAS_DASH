@@ -9,7 +9,7 @@ export function WritersManagerModal() {
 
   return (
     <div className="overlay" id="writers-manager-overlay">
-      <div className="modal modal--sm flex-col overflow-h" id="writers-manager-modal" style={{ maxHeight: '80vh' }}>
+      <div className="modal modal--sm flex-col overflow-h" id="writers-manager-modal" style={{ maxHeight: 'var(--modal-max-height)' }}>
         <div className="modal-head shrink-0" style={{ padding: '12px 20px', background: 'var(--c-background-3)', borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
           <h2>Manage Writers</h2>
           <button

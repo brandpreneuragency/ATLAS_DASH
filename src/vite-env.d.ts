@@ -12,3 +12,20 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// ── File System Access API type declarations ──────────────────────
+// These APIs are not yet in the default TS DOM lib, so we declare
+// the minimal surface used by src/services/browser-folder-connector.ts.
+
+interface FileSystemDirectoryHandle {
+  values(): AsyncIterableIterator<{
+    name: string;
+    kind: 'file' | 'directory';
+  }>;
+}
+
+interface Window {
+  showDirectoryPicker(): Promise<FileSystemDirectoryHandle>;
+  showSaveFilePicker(): Promise<{ name: string }>;
+  showOpenFilePicker(): Promise<Array<{ name: string }>>;
+}

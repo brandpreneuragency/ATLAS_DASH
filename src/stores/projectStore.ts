@@ -1,19 +1,10 @@
-// Project store. Server-backed as of Agent 5 (Frontend Task Migration).
-//
-// The store mirrors the server's `Project` table for the currently
-// authenticated user. Reads go through `projectRepository.list`; writes
-// hit the corresponding REST endpoints and the local Zustand state is
-// updated optimistically after a successful response.
-//
-// The previous Dexie auto-seed of a "General" project (when the user had
-// no projects) is gone. The server has no concept of an implicit project;
-// new users start with an empty project list. See Agent 2's decisions.
+// Project store. Local-first using Dexie (Tauri desktop).
+// No server backend - all data lives in the local IndexedDB.
 
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import type { Project } from '../types';
-import { projectRepository, type ProjectUpdateInput } from '../repositories/projectRepository';
-import { ApiError } from '../services/apiClient';
+import { db } from '../services/db';
 import { useUIStore } from './uiStore';
 
 const PROJECT_COLORS = [
@@ -28,7 +19,7 @@ const PROJECT_COLORS = [
 ];
 
 function showError(err: unknown, fallback: string): void {
-  const msg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : fallback;
+  const msg = err instanceof Error ? err.message : fallback;
   useUIStore.getState().showToast(msg, 'error');
 }
 
@@ -38,7 +29,7 @@ interface ProjectStore {
 
   loadProjects: () => Promise<void>;
   createProject: (name: string) => Promise<Project | null>;
-  updateProject: (id: string, updates: ProjectUpdateInput) => Promise<void>;
+  updateProject: (id: string, updates: Partial<Pick<Project, 'name' | 'color'>>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   getProjectById: (id: string | null) => Project | undefined;
 }
@@ -49,7 +40,19 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
   loadProjects: async () => {
     try {
-      const { projects } = await projectRepository.list();
+      const projects = await db.projects.toArray();
+      // Auto-seed "General" project if user has none (original behavior)
+      if (projects.length === 0) {
+        const generalProject: Project = {
+          id: nanoid(8),
+          name: 'General',
+          color: PROJECT_COLORS[0],
+          createdAt: Date.now(),
+        };
+        await db.projects.add(generalProject);
+        set({ projects: [generalProject], isLoaded: true });
+        return;
+      }
       set({ projects, isLoaded: true });
     } catch (err) {
       set({ isLoaded: true });
@@ -62,8 +65,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     if (!trimmed) return null;
     const id = nanoid(8);
     const color = PROJECT_COLORS[get().projects.length % PROJECT_COLORS.length];
+    const now = Date.now();
+    const project: Project = { id, name: trimmed, color, createdAt: now };
     try {
-      const { project } = await projectRepository.create({ id, name: trimmed, color });
+      await db.projects.add(project);
       set((s) => ({ projects: [...s.projects, project] }));
       return project;
     } catch (err) {
@@ -73,16 +78,12 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   },
 
   updateProject: async (id, updates) => {
-    // Optimistic local update — we revert on error so the UI doesn't drift.
     const previous = get().projects.find((p) => p.id === id);
     set((s) => ({
       projects: s.projects.map((p) => (p.id === id ? { ...p, ...updates } : p)),
     }));
     try {
-      const { project } = await projectRepository.update(id, updates);
-      set((s) => ({
-        projects: s.projects.map((p) => (p.id === id ? project : p)),
-      }));
+      await db.projects.update(id, updates);
     } catch (err) {
       if (previous) {
         set((s) => ({
@@ -97,7 +98,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     const previous = get().projects;
     set((s) => ({ projects: s.projects.filter((p) => p.id !== id) }));
     try {
-      await projectRepository.remove(id);
+      await db.projects.delete(id);
+      // Tasks referencing this project will have projectId set to null by the task store
     } catch (err) {
       set({ projects: previous });
       showError(err, 'Failed to delete project.');

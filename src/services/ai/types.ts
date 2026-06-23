@@ -1,4 +1,4 @@
-import type { AIProviderConfig } from '../../types';
+import type { AIProviderConfig, MessageUsage } from '../../types';
 
 export type ContentPart =
   | { type: 'text'; text: string }
@@ -9,8 +9,13 @@ export interface ChatMessage {
   content: string | ContentPart[];
 }
 
+export interface StreamChunk {
+  content: string;
+  usage?: MessageUsage;
+}
+
 export type StreamChatFn = (
   messages: ChatMessage[],
   config: AIProviderConfig,
   signal?: AbortSignal
-) => AsyncGenerator<string, void, unknown>;
+) => AsyncGenerator<StreamChunk, void, unknown>;

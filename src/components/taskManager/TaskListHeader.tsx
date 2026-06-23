@@ -17,12 +17,20 @@ export function TaskListHeader({ activeTab, onTabChange }: TaskListHeaderProps) 
   return (
     <div
       id="task-list-header"
+      className="panel-header"
       style={{
         display: 'flex',
-        height: '36px',
-        background: 'var(--left-bg)',
+        height: '32px',
+        background: 'var(--c-background-3)',
+        borderTop: 'none',
+        borderLeft: 'none',
+        borderRight: 'none',
         borderBottom: 'none',
         borderImage: 'none',
+        paddingLeft: '0px',
+        paddingRight: '0px',
+        paddingTop: '0px',
+        gap: '0px',
       }}
     >
       {tabs.map((t) => {
@@ -37,17 +45,15 @@ export function TaskListHeader({ activeTab, onTabChange }: TaskListHeaderProps) 
             className={isActive ? 'task-list-header-tab task-list-header-tab--active' : 'task-list-header-tab'}
             style={{
               flex: 1,
-              height: '36px',
+              height: '100%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: 'none',
-              borderRight: 'none',
-              borderImage: 'none',
               borderRadius: 0,
-              background: isActive ? 'var(--c-background-2)' : 'var(--c-background-3)',
               cursor: 'pointer',
               fontSize: 'var(--fs-xs)',
+              border: 'none',
+              background: isActive ? 'var(--c-background-2)' : 'transparent',
             }}
           >
             <Icon size={15} />

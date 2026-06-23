@@ -9,13 +9,21 @@ export function ModelSwitcher() {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const { providerConfigs, activeProviderId, setActiveProvider } = useAIStore();
+  const { providerConfigs, activeProviderId, setActiveProvider, setActiveModel, isModelHidden } = useAIStore();
 
-  const filtered = providerConfigs.filter((cfg) => {
-    const label = cfg.name.toLowerCase();
-    const model = cfg.selectedModel.toLowerCase();
+  const enabledModelOptions = providerConfigs
+    .filter((cfg) => cfg.status === 'connected')
+    .flatMap((cfg) =>
+    (cfg.models ?? [])
+      .filter((m) => !isModelHidden(cfg.id, m.id))
+      .map((m) => ({ provider: cfg, model: m }))
+    );
+
+  const filtered = enabledModelOptions.filter(({ provider, model }) => {
+    const label = provider.name.toLowerCase();
+    const modelName = model.name.toLowerCase();
     const q = query.toLowerCase();
-    return label.includes(q) || model.includes(q);
+    return label.includes(q) || modelName.includes(q);
   });
 
   const close = useCallback(() => {
@@ -24,10 +32,11 @@ export function ModelSwitcher() {
     setActiveIndex(0);
   }, []);
 
-  const select = useCallback((id: string) => {
-    setActiveProvider(id);
+  const select = useCallback((providerId: string, modelId: string) => {
+    setActiveProvider(providerId);
+    setActiveModel(providerId, modelId);
     close();
-  }, [setActiveProvider, close]);
+  }, [setActiveProvider, setActiveModel, close]);
 
   // Global Ctrl+M / Cmd+M toggle
   useEffect(() => {
@@ -46,7 +55,7 @@ export function ModelSwitcher() {
     if (open) setTimeout(() => inputRef.current?.focus(), 0);
   }, [open]);
 
-  useEffect(() => { setActiveIndex(0); }, [query]);
+
 
   // Keyboard navigation inside the panel
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -58,7 +67,7 @@ export function ModelSwitcher() {
       e.preventDefault();
       setActiveIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === 'Enter' && filtered[activeIndex]) {
-      select(filtered[activeIndex].id);
+      select(filtered[activeIndex].provider.id, filtered[activeIndex].model.id);
     }
   };
 
@@ -79,7 +88,7 @@ export function ModelSwitcher() {
             id="model-switcher-search"
             ref={inputRef}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { setQuery(e.target.value); setActiveIndex(0); }}
             onKeyDown={handleKeyDown}
             placeholder="Search models…"
             className="flex-1"
@@ -93,19 +102,18 @@ export function ModelSwitcher() {
         <div id="model-switcher-list" ref={listRef} className="overflow-y-a flex-1" style={{ maxHeight: 256 }}>
           {filtered.length === 0 ? (
             <p className="label" style={{ padding: '24px 16px', textAlign: 'center' }}>
-              {providerConfigs.length === 0
+              {enabledModelOptions.length === 0
                 ? 'No models configured — add one in Settings'
                 : `No models match "${query}"`}
             </p>
           ) : (
-            filtered.map((cfg, i) => {
-              const providerLabel = cfg.name;
-              const isActive = cfg.id === activeProviderId;
+            filtered.map(({ provider, model }, i) => {
+              const isActive = provider.id === activeProviderId && provider.selectedModel === model.id;
               return (
                 <button
-                  key={cfg.id}
+                  key={`${provider.id}:${model.id}`}
                   type="button"
-                  onClick={() => select(cfg.id)}
+                  onClick={() => select(provider.id, model.id)}
                   className="row full"
                   style={{
                     padding: '10px 16px',
@@ -126,10 +134,10 @@ export function ModelSwitcher() {
                     }}
                   />
                   <span className="label trunc shrink-0" style={{ width: 96 }}>
-                    {providerLabel}
+                    {provider.name}
                   </span>
                   <span className="med trunc flex-1" style={{ fontSize: 'var(--fs-xs)' }}>
-                    {cfg.selectedModel}
+                    {model.name}
                   </span>
                   {isActive && (
                     <span className="bold shrink-0" style={{ fontSize: 'var(--fs-xs)', color: 'var(--c-accent-center-panel)', marginLeft: 'auto' }}>

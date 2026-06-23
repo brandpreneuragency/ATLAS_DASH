@@ -17,6 +17,7 @@ import {
   exists as fsExists,
   basename,
   joinPath,
+  isNativeFsAvailable,
 } from '../services/fs-adapter';
 
 const toast = (msg: string) => useUIStore.getState().showToast(msg, 'error');
@@ -43,11 +44,14 @@ export interface ConnectedFolder {
   rootNode: TreeNode | null;
 }
 
+export type FolderCapability = 'unsupported' | 'available';
+
 interface FileSystemStore {
   rootNode: TreeNode | null;
   loading: boolean;
   error: string | null;
   needsReconnect: boolean;
+  folderCapability: FolderCapability;
 
   connectedFolders: ConnectedFolder[];
   activeFolderId: string | null;
@@ -200,6 +204,7 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   loading: false,
   error: null,
   needsReconnect: false,
+  folderCapability: isNativeFsAvailable() ? 'available' : 'unsupported',
 
   connectedFolders: [],
   activeFolderId: null,
@@ -274,6 +279,7 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   },
 
   openFolder: async () => {
+    if (!isNativeFsAvailable()) return;
     set({ loading: true, error: null });
     try {
       const fullPath = await openFolderDialog();
@@ -359,6 +365,18 @@ export const useFileSystemStore = create<FileSystemStore>((set, get) => ({
   },
 
   loadFileSystemSettings: async () => {
+    if (!isNativeFsAvailable()) {
+      set({
+        connectedFolders: [],
+        activeFolderId: null,
+        rootNode: null,
+        needsReconnect: false,
+        loading: false,
+        folderCapability: 'unsupported',
+      });
+      return;
+    }
+    set({ folderCapability: 'available' });
     const records = await db.fileHandles.toArray();
     const folders: ConnectedFolder[] = [];
     for (const record of records) {

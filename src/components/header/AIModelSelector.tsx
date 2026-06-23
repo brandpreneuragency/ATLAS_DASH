@@ -18,8 +18,10 @@ export function AIModelSelector() {
   }, []);
 
   const activeConfig = providerConfigs.find((c) => c.id === activeProviderId);
+  const connectedProviders = providerConfigs.filter((config) => config.status === 'connected');
+  const activeModelName = activeConfig?.models?.find((m) => m.id === activeConfig.selectedModel)?.name ?? activeConfig?.selectedModel;
   const providerLabel = activeConfig
-    ? `${activeConfig.name} / ${activeConfig.selectedModel}`
+    ? `${activeConfig.name} / ${activeModelName || 'No model'}`
     : 'AI Model';
 
   return (
@@ -40,21 +42,22 @@ export function AIModelSelector() {
             Configured Providers
           </div>
 
-          {providerConfigs.length === 0 && (
+          {connectedProviders.length === 0 && (
             <div className="header-dropdown-empty">
-              No providers configured yet.
+              No providers connected yet.
             </div>
           )}
 
-          {providerConfigs.flatMap((config) => {
-            const visibleModels = config.customModels
-              .filter((m) => !isModelHidden(config.id, m));
-            return visibleModels.map((modelId) => (
+          {connectedProviders.flatMap((config) => {
+            const visibleModels = (config.models ?? [])
+              .filter((m) => !isModelHidden(config.id, m.id));
+            if (visibleModels.length === 0) return [];
+            return visibleModels.map((model) => (
               <button
-                key={`${config.id}:${modelId}`}
+                key={`${config.id}:${model.id}`}
                 onClick={() => {
                   setActiveProvider(config.id);
-                  setActiveModel(config.id, modelId);
+                  setActiveModel(config.id, model.id);
                   setOpen(false);
                 }}
                 className="drop-item header-dropdown-item--spacious"
@@ -63,9 +66,9 @@ export function AIModelSelector() {
                   <div className="med" style={{ fontSize: 'var(--fs-xs)' }}>
                     {config.name}
                   </div>
-                  <div className="subtle trunc" style={{ fontSize: 'var(--fs-xs)' }}>{modelId}</div>
+                  <div className="subtle trunc" style={{ fontSize: 'var(--fs-xs)' }}>{model.name}</div>
                 </div>
-                {config.id === activeProviderId && config.selectedModel === modelId && (
+                {config.id === activeProviderId && config.selectedModel === model.id && (
                   <Check size={14} className="shrink-0" style={{ color: 'var(--c-accent-center-panel)' }} />
                 )}
               </button>

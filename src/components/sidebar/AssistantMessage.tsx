@@ -17,13 +17,13 @@ interface AssistantMessageProps {
 }
 
 // ---------------------------------------------------------------------------
-// Thinking-tag parser: splits <think>...</think> from the actual answer
+// Thinking-tag parser: splits 꽁...ground from the actual answer
 // ---------------------------------------------------------------------------
 function parseThinking(raw: string) {
-  const openMatch = raw.match(/^[\s]*<think>/);
+  const openMatch = raw.match(/^[\s]*꽁/);
   if (!openMatch) return { thinking: null, thinkingDone: true, content: raw };
   const afterOpen = raw.slice(openMatch[0].length);
-  const closeIdx = afterOpen.indexOf('</think>');
+  const closeIdx = afterOpen.indexOf('ground');
   if (closeIdx === -1) return { thinking: afterOpen, thinkingDone: false, content: '' };
   return {
     thinking: afterOpen.slice(0, closeIdx).trim(),
@@ -249,7 +249,7 @@ export function AssistantMessage({ message, isStreaming, editor, onReplyMessage 
             background: 'var(--c-background-4)',
             borderRadius: 8,
             padding: '6px 10px',
-            fontSize: 'var(--fs-11)',
+            fontSize: 'var(--fs-sm)',
             border: '1px solid var(--c-border-1)',
             maxWidth: '80%',
             cursor: 'pointer',
@@ -257,10 +257,10 @@ export function AssistantMessage({ message, isStreaming, editor, onReplyMessage 
         >
           <div style={{ width: 3, borderRadius: 2, background: 'var(--c-accent-center-panel)', flexShrink: 0 }} />
           <div style={{ overflow: 'hidden', minWidth: 0 }}>
-            <div className="semibold" style={{ fontSize: 'var(--fs-11)', color: 'var(--c-accent-center-panel)', marginBottom: 2 }}>
+            <div className="semibold" style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-accent-center-panel)', marginBottom: 2 }}>
               {message.replyTo.sender}
             </div>
-            <div className="subtle trunc" style={{ fontSize: 'var(--fs-11)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div className="subtle trunc" style={{ fontSize: 'var(--fs-sm)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {message.replyTo.content}
             </div>
           </div>
@@ -274,7 +274,7 @@ export function AssistantMessage({ message, isStreaming, editor, onReplyMessage 
 
       {/* Content */}
       <div onContextMenu={handleContextMenu} style={{ padding: '4px 0', wordBreak: 'break-word', overflow: 'hidden', cursor: 'context-menu' }}>
-        {/* Still inside <think> block — show spinner/placeholder */}
+        {/* Still inside 꽁 block — show spinner/placeholder */}
         {isStreaming && !content && (
           <p className={thinking ? undefined : 'streaming-cursor'} style={{ fontSize: 'var(--fs-xs)', color: 'var(--c-text-2)', opacity: thinking ? 0.5 : undefined }}>
             {thinking ? 'Thinking…' : ''}

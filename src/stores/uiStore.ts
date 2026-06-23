@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid';
 import { db } from '../services/db';
 import i18n from '../i18n';
 import type { FileViewerItem } from '../types';
+import { DEFAULT_THEME, isTheme, type Theme } from '../types/theme';
 
 export interface Toast {
   id: string;
@@ -35,6 +36,9 @@ interface UIStore {
     | 'writersManager'
     | 'taskProfilesManager'
     | 'actionsManager'
+    | 'agentsManager'
+    | 'actionsManagerModal'
+    | 'appearanceSettings'
     | null;
   actionsManagerScope: 'writer' | 'task';
   editingAgentId: string | null;
@@ -51,17 +55,29 @@ interface UIStore {
   language: 'en' | 'tr';
 
   taskMode: boolean;
+  pageMode: boolean;
+  pagePanelOpen: boolean;
   activeTaskId: string | null;
   taskListOpen: boolean;
   subtasksOpen: boolean;
 
   splitEditorWidth: number;
 
+  /** Panels swapped state (AI panel on left, center panel on right) */
+  panelsSwapped: boolean;
+
+  /** Active UI theme */
+  theme: Theme;
+
   /** File viewer panel state */
   fileViewerOpen: boolean;
   fileViewerFile: FileViewerItem | null;
   fileViewerPreviousSidebarOpen: boolean;
   fileViewerPreviousSidebarWidth: number;
+
+  aiSidebarOpen: boolean;
+  contextWindowOpen: boolean;
+  contextWindowCollapsed: boolean;
 
   toasts: Toast[];
   showToast: (message: string, type?: Toast['type']) => void;
@@ -87,13 +103,20 @@ interface UIStore {
   setExpandedPaths: (paths: string[]) => void;
   setSelectedTreePath: (path: string | null) => void;
   setTaskMode: (v: boolean) => void;
+  setPageMode: (v: boolean) => void;
+  setPagePanelOpen: (v: boolean) => void;
   setActiveTaskId: (id: string | null) => void;
   setTaskListOpen: (v: boolean) => void;
   setSubtasksOpen: (v: boolean) => void;
   setSplitEditorWidth: (w: number) => void;
+  setPanelsSwapped: (v: boolean) => void;
+  setTheme: (theme: Theme) => void;
   openFileViewer: (file: FileViewerItem) => void;
   closeFileViewer: () => void;
   setFileViewerFile: (file: FileViewerItem | null) => void;
+  setAiSidebarOpen: (v: boolean) => void;
+  setContextWindowOpen: (v: boolean) => void;
+  setContextWindowCollapsed: (v: boolean) => void;
   loadUISettings: () => Promise<void>;
 }
 
@@ -133,15 +156,25 @@ export const useUIStore = create<UIStore>((set, get) => ({
   editorFontSize: 12,
   language: 'en',
   taskMode: false,
+  pageMode: false,
+  pagePanelOpen: true,
   activeTaskId: null,
   taskListOpen: true,
   subtasksOpen: true,
   splitEditorWidth: 30,
 
+  panelsSwapped: false,
+
+  theme: DEFAULT_THEME,
+
   fileViewerOpen: false,
   fileViewerFile: null,
   fileViewerPreviousSidebarOpen: true,
   fileViewerPreviousSidebarWidth: 33,
+
+  aiSidebarOpen: true,
+  contextWindowOpen: false,
+  contextWindowCollapsed: true,
 
   setSidebarOpen: (v) => {
     set({ sidebarOpen: v });
@@ -220,8 +253,20 @@ export const useUIStore = create<UIStore>((set, get) => ({
   setSelectedTreePath: (path) => set({ selectedTreePath: path }),
 
   setTaskMode: (v) => {
-    set({ taskMode: v });
+    set({ taskMode: v, pageMode: false });
     db.settings.put({ key: 'taskMode', value: v });
+    db.settings.put({ key: 'pageMode', value: false });
+  },
+
+  setPageMode: (v) => {
+    set({ taskMode: false, pageMode: v });
+    db.settings.put({ key: 'taskMode', value: false });
+    db.settings.put({ key: 'pageMode', value: v });
+  },
+
+  setPagePanelOpen: (v) => {
+    set({ pagePanelOpen: v });
+    db.settings.put({ key: 'pagePanelOpen', value: v });
   },
 
   setActiveTaskId: (id) => {
@@ -240,6 +285,17 @@ export const useUIStore = create<UIStore>((set, get) => ({
     const clamped = Math.min(50, Math.max(20, w));
     set({ splitEditorWidth: clamped });
     db.settings.put({ key: 'splitEditorWidth', value: clamped });
+  },
+
+  setPanelsSwapped: (v: boolean) => {
+    set({ panelsSwapped: v });
+    db.settings.put({ key: 'panelsSwapped', value: v });
+  },
+
+  setTheme: (theme) => {
+    set({ theme });
+    document.documentElement.setAttribute('data-theme', theme);
+    void db.settings.put({ key: 'theme', value: theme });
   },
 
   openFileViewer: (file) => {
@@ -267,6 +323,20 @@ export const useUIStore = create<UIStore>((set, get) => ({
     set({ fileViewerFile: file });
   },
 
+  setAiSidebarOpen: (v) => {
+    set({ aiSidebarOpen: v });
+    db.settings.put({ key: 'aiSidebarOpen', value: v });
+  },
+
+  setContextWindowOpen: (v) => {
+    set({ contextWindowOpen: v });
+  },
+
+  setContextWindowCollapsed: (v) => {
+    set({ contextWindowCollapsed: v });
+    db.settings.put({ key: 'contextWindowCollapsed', value: v });
+  },
+
   loadUISettings: async () => {
     const sidebarOpen = await db.settings.get('sidebarOpen');
     const sidebarWidth = await db.settings.get('sidebarWidth');
@@ -278,13 +348,24 @@ export const useUIStore = create<UIStore>((set, get) => ({
     const editorFontSize = await db.settings.get('editorFontSize');
     const language = await db.settings.get('language');
     const taskMode = await db.settings.get('taskMode');
+    const pageModeSetting = await db.settings.get('pageMode');
+    const pagePanelOpen = await db.settings.get('pagePanelOpen');
     const lastActiveTaskId = await db.settings.get('lastActiveTaskId');
     const taskListOpen = await db.settings.get('taskListOpen');
     const splitEditorWidth = await db.settings.get('splitEditorWidth');
+    const panelsSwapped = await db.settings.get('panelsSwapped');
+    const themeSetting = await db.settings.get('theme');
+    const contextWindowCollapsed = await db.settings.get('contextWindowCollapsed');
 
     const lang = (language?.value === 'tr' ? 'tr' : 'en') as 'en' | 'tr';
     i18n.changeLanguage(lang);
     document.documentElement.lang = lang;
+
+    const theme: Theme = isTheme(themeSetting?.value) ? themeSetting.value : DEFAULT_THEME;
+    document.documentElement.setAttribute('data-theme', theme);
+
+    const pageMode = pageModeSetting ? Boolean(pageModeSetting.value) : false;
+    const taskModeValue = pageMode ? false : (taskMode ? Boolean(taskMode.value) : false);
 
     set({
       sidebarOpen: sidebarOpen ? Boolean(sidebarOpen.value) : true,
@@ -296,10 +377,17 @@ export const useUIStore = create<UIStore>((set, get) => ({
       editorFontFamily: editorFontFamily ? String(editorFontFamily.value) : 'Inter',
       editorFontSize: editorFontSize ? (Number(editorFontSize.value) as 12 | 14 | 16) : 12,
       language: lang,
-      taskMode: taskMode ? Boolean(taskMode.value) : false,
+      taskMode: taskModeValue,
+      pageMode,
+      pagePanelOpen: pagePanelOpen ? Boolean(pagePanelOpen.value) : true,
       activeTaskId: lastActiveTaskId ? String(lastActiveTaskId.value) : null,
       taskListOpen: taskListOpen ? Boolean(taskListOpen.value) : true,
       splitEditorWidth: splitEditorWidth ? Number(splitEditorWidth.value) : 30,
+      panelsSwapped: panelsSwapped ? Boolean(panelsSwapped.value) : false,
+      theme,
+      aiSidebarOpen: true,
+      contextWindowOpen: false,
+      contextWindowCollapsed: contextWindowCollapsed ? Boolean(contextWindowCollapsed.value) : true,
     });
   },
 }));

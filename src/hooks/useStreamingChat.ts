@@ -1,31 +1,17 @@
-// Streaming chat hook. Server-backed as of Agent 6 (Frontend AI
-// Migration).
-//
-// The browser web build now goes through the backend for both writer
-// mode streaming (`aiRepository.streamChat()`) and task mode draft
-// planning (`aiRepository.planTaskDraft()`). The Tauri-only call sites
-// (`services/ai/router`, `services/search`, `services/taskAIPlanner`)
-// are still importable for the dormant desktop build but the hook
-// no longer invokes them in the web build.
-//
-// Search: the hook calls `aiRepository.searchWeb()` which is a server
-// endpoint, so the user's search-config keys are not exposed to the
-// browser.
-//
-// Task-AI flow: the draft is planned server-side, then applied through
-// `useTaskAIStore.applyDraft`. Apply / undo are transactional on the
-// server.
-
 import { useCallback, useRef } from 'react';
 import { useChatStore } from '../stores/chatStore';
 import { useAIStore } from '../stores/aiStore';
 import { useTaskStore } from '../stores/taskStore';
 import { useTaskCommentStore } from '../stores/taskCommentStore';
-import { useProjectStore } from '../stores/projectStore';
-import { aiRepository, type TaskDraftContext, type StreamMessage as AiStreamMessage, type StreamContentPart } from '../repositories/aiRepository';
+import { streamChat } from '../services/ai/router';
+import type { ChatMessage as AiChatMessage, ContentPart } from '../services/ai/types';
 import { getWriterInstructions, getTaskInstructions } from '../services/instructionFiles';
 import { buildTaskAIContext } from '../services/taskAIContext';
-import type { ChatMessage as AppChatMessage, Attachment } from '../types';
+import type { ChatMessage as AppChatMessage, Attachment, MessageUsage } from '../types';
+import { invokeWebSearch, formatSearchResultsAsContext } from '../services/search';
+import type { AIProviderConfig } from '../types';
+import { secureStorage } from '../services/secureStorage';
+import { estimateTokens, estimateMessageTokens } from '../utils/tokens';
 
 function shortId() {
   return Math.random().toString(36).slice(2, 10);
@@ -43,9 +29,12 @@ export function useStreamingChat(
     setStreamingMessageId,
     setIsStreaming,
     getActiveThreadMessages,
+    newChat,
+    activeThreadId,
   } = useChatStore();
   const { getActiveAgent, getActiveProvider } = useAIStore();
   const systemInstructions = useAIStore((state) => state.systemInstructions);
+  const searchConfig = useAIStore((state) => state.searchConfig);
   const abortRef = useRef<AbortController | null>(null);
 
   const isTaskMode = mode === 'task';
@@ -65,11 +54,44 @@ export function useStreamingChat(
         throw new Error('No AI provider configured. Please add an API key in Settings.');
       }
 
+      // The API key is stored in secure storage, not in the provider config
+      // object. Hydrate it before making the API call.
+      let resolvedProvider = provider;
+      if (!provider.apiKey) {
+        try {
+          const key = await secureStorage.secureGet(`providerApiKey_${provider.id}`);
+          if (key) {
+            resolvedProvider = { ...provider, apiKey: key };
+          }
+        } catch {
+          // ignore — will surface as an auth error from the provider
+        }
+      }
+
       const agent = getActiveAgent(mode);
+
+      // Ensure we have an active thread. If the caller passed an empty
+      // threadId (e.g. first message in a fresh context), create one now
+      // and use its id for all subsequent operations.
+      // Always prefer the store's activeThreadId over the prop, since the
+      // prop may be stale (captured in the hook's closure before the
+      // thread was created).
+      let activeThread = useChatStore.getState().activeThreadId ?? threadId;
+      if (!activeThread) {
+        await newChat({
+          mode,
+          documentId: contextDocumentId,
+          taskId: contextTaskId,
+        });
+        activeThread = useChatStore.getState().activeThreadId ?? '';
+        if (!activeThread) {
+          throw new Error('Failed to create a chat thread.');
+        }
+      }
 
       const userMessage: AppChatMessage = {
         id: shortId(),
-        threadId,
+        threadId: activeThread,
         mode,
         documentId: contextDocumentId || undefined,
         taskId: contextTaskId || undefined,
@@ -82,6 +104,7 @@ export function useStreamingChat(
         replyTo,
         attachments: attachments?.length ? attachments : undefined,
         timestamp: Date.now(),
+        usage: { promptTokens: estimateMessageTokens({ content: userText, selectedText, attachments }) },
       };
       await addMessage(userMessage);
 
@@ -95,9 +118,13 @@ export function useStreamingChat(
       let webSearchText = '';
       if (searchWeb && userText.trim()) {
         try {
-          const { results } = await aiRepository.searchWeb(userText.trim(), 5, abortRef.current?.signal);
+          const results = await invokeWebSearch(userText.trim(), {
+            exaKey: searchConfig.exaKey,
+            tavilyKey: searchConfig.tavilyKey,
+            searchProvider: searchConfig.searchProvider,
+          });
           if (results.length > 0) {
-            webSearchText = formatServerSearchResultsForAI(results);
+            webSearchText = formatSearchResultsAsContext(results);
           }
         } catch (error) {
           console.warn('Web search failed, continuing without results:', error);
@@ -111,7 +138,7 @@ export function useStreamingChat(
 
       const assistantMessage: AppChatMessage = {
         id: shortId(),
-        threadId,
+        threadId: activeThread,
         mode,
         documentId: contextDocumentId || undefined,
         taskId: contextTaskId || undefined,
@@ -140,64 +167,47 @@ export function useStreamingChat(
           await useTaskCommentStore.getState().loadComments(contextTaskId);
           const subtasks = taskStore.getSubtasks(contextTaskId);
           const comments = useTaskCommentStore.getState().getComments(contextTaskId);
-          const context = buildTaskAIContext(activeTask, subtasks, comments);
-          const validProjectIds = Array.from(
-            new Set(useProjectStore.getState().projects.map((project) => project.id)),
+          void buildTaskAIContext(activeTask, subtasks, comments);
+
+          const basePrompt = parts.join('\n\n');
+          const aiMessages: AiChatMessage[] = [
+            { role: 'system', content: basePrompt },
+            { role: 'user', content: userText },
+          ];
+
+          let fullContent = '';
+          let finalUsage: MessageUsage | undefined;
+          const streamGen = streamChat(
+            aiMessages,
+            resolvedProvider as AIProviderConfig,
+            signal,
           );
-
-          const draftContext: TaskDraftContext = {
-            task: {
-              id: activeTask.id,
-              title: activeTask.title,
-              status: activeTask.status,
-              importance: activeTask.importance,
-              date: activeTask.date,
-              projectId: activeTask.projectId ?? null,
-              assignees: activeTask.assignees ?? [],
-              content: activeTask.content ?? '',
-              updatedAt: activeTask.updatedAt,
-            },
-            subtasks: subtasks.map((subtask) => ({
-              id: subtask.id,
-              title: subtask.title,
-              status: subtask.status,
-              date: subtask.date,
-              updatedAt: subtask.updatedAt,
-            })),
-            comments: comments.map((comment) => ({
-              id: comment.id,
-              text: comment.text ?? '',
-              createdAt: comment.createdAt,
-              attachmentName: comment.attachmentName ?? null,
-              attachmentSize: comment.attachmentSize ?? null,
-            })),
-            baselineUpdatedAt: context.baselineUpdatedAt,
-            text: context.text,
-          };
-
-          const { draft } = await aiRepository.planTaskDraft({
-            providerId: provider.id,
-            systemPrompt: parts.join('\n\n'),
-            userText,
-            context: draftContext,
-            validProjectIds,
-            searchResultsText: webSearchText,
-          });
+          for await (const chunk of streamGen) {
+            fullContent += chunk.content;
+            if (chunk.usage) {
+              finalUsage = chunk.usage;
+              continue;
+            }
+            const estimated = estimateTokens(fullContent);
+            await updateMessage(assistantMessage.id, {
+              content: fullContent,
+              usage: { completionTokens: estimated },
+            });
+          }
 
           await updateMessage(assistantMessage.id, {
-            content: draft.assistantMessage,
-            taskDraft: draft,
-            taskDraftStatus: draft.validation.errors.length > 0 ? 'invalid' : 'draft',
+            content: fullContent,
+            ...(finalUsage ? { usage: finalUsage } : {}),
           });
           return;
         }
 
         const basePrompt = parts.join('\n\n');
-        const aiMessages: AiStreamMessage[] = [
+        const aiMessages: AiChatMessage[] = [
           { role: 'system', content: basePrompt },
           ...history.map((message) => {
             if (message.role === 'user' && message.attachments?.length) {
-              const messageParts: StreamContentPart[] = [
+              const messageParts: ContentPart[] = [
                 {
                   type: 'text',
                   text: message.selectedText
@@ -220,31 +230,30 @@ export function useStreamingChat(
           }),
         ];
 
-        const stream = aiRepository.streamChat(
-          {
-            providerId: provider.id,
-            systemPrompt: basePrompt,
-            messages: aiMessages,
-          },
-          { signal },
+        const streamGen = streamChat(
+          aiMessages,
+          resolvedProvider as AIProviderConfig,
+          signal,
         );
 
         let fullContent = '';
-        for await (const event of stream.events) {
-          if (event.type === 'chunk') {
-            fullContent += event.chunk;
-            await updateMessage(assistantMessage.id, { content: fullContent });
-          } else if (event.type === 'error') {
-            throw new Error(event.message);
-          } else {
-            // done
-            break;
+        let finalUsage: MessageUsage | undefined;
+        for await (const chunk of streamGen) {
+          fullContent += chunk.content;
+          if (chunk.usage) {
+            finalUsage = chunk.usage;
+            continue;
           }
+          const estimated = estimateTokens(fullContent);
+          await updateMessage(assistantMessage.id, {
+            content: fullContent,
+            usage: { completionTokens: estimated },
+          });
         }
 
         let suggestedText: string | undefined;
         if (selectedText) {
-          const quoteMatch = fullContent.match(/["“]([^"”]+)["”]/);
+          const quoteMatch = fullContent.match(/[""\u201C]([^""\u201D]+)[""\u201D]/);
           const blockMatch = fullContent.match(/```[\s\S]*?```/);
           if (blockMatch) {
             suggestedText = blockMatch[0]
@@ -260,6 +269,7 @@ export function useStreamingChat(
           suggestedText,
           selectionFrom,
           selectionTo,
+          ...(finalUsage ? { usage: finalUsage } : {}),
         });
       } catch (error: unknown) {
         if (error instanceof Error && error.name === 'AbortError') return;
@@ -286,6 +296,8 @@ export function useStreamingChat(
       updateMessage,
       setIsStreaming,
       setStreamingMessageId,
+      newChat,
+      activeThreadId,
     ],
   );
 
@@ -294,16 +306,4 @@ export function useStreamingChat(
   }, []);
 
   return { sendMessage, stopStreaming };
-}
-
-/** Format the server-side search results into the same text block the
- *  prompt expects. Kept as a private helper so the import surface
- *  doesn't grow. */
-function formatServerSearchResultsForAI(
-  results: { title: string; url: string; snippet: string }[],
-): string {
-  if (results.length === 0) return '[No web search results found]';
-  return results
-    .map((r, i) => `[${i + 1}] ${r.title}\n    URL: ${r.url}\n    ${r.snippet}`)
-    .join('\n\n');
 }

@@ -7,7 +7,7 @@
 //   * Tray icon: Show TABS / Quit menu.
 //   * File association: argv is scanned for a *.tabs file path; if present, a
 //     `tabs://open-file` event is emitted to the frontend with the path.
-use tauri::{Emitter, Manager};
+use tauri::{Emitter, Manager, WindowEvent};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
 mod commands;
@@ -43,6 +43,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
@@ -61,12 +62,35 @@ pub fn run() {
             test_notification,
             commands::secrets::secret_get,
             commands::secrets::secret_set,
-            commands::secrets::secret_delete
+            commands::secrets::secret_delete,
+            commands::search::search_web
         ])
         .setup(|app| {
-            // Show the main window (created hidden to avoid the white flash).
+            // Intercept the main window's close button: instead of quitting
+            // the app, hide the window so the tray icon remains usable.
+            // The user can quit from the tray's "Quit" menu item, or by
+            // pressing Ctrl+Shift+Space (which will refocus the hidden
+            // window if it's still running).
+            if let Some(window) = app.get_webview_window("main") {
+                let window_for_close = window.clone();
+                window.on_window_event(move |event| {
+                    if let WindowEvent::CloseRequested { api, .. } = event {
+                        api.prevent_close();
+                        let _ = window_for_close.hide();
+                    }
+                });
+            }
+
+            // The main window is now created with `visible: true` in
+            // tauri.conf.json so it shows up reliably on first launch.
+            // We still call `show()` + `set_focus()` here as a belt-and-
+            // braces guarantee: this runs after WebView2 is initialized
+            // and the window is fully ready, so the show will actually
+            // take effect (the old `visible: false` + immediate show()
+            // had a race that left the window invisible on some machines).
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
+                let _ = window.set_focus();
             }
 
             // Register Ctrl+Shift+Space as the "focus TABS" global hotkey.
