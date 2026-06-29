@@ -191,6 +191,22 @@ export interface QuickPrompt {
   prompt: string;
   scope: 'writer' | 'task';
   createdAt: number;
+  /** Folder/group the action belongs to (undefined = top-level / ungrouped). */
+  groupId?: string;
+  /** Sort order within a group (or top-level). Undefined treated as createdAt. */
+  order?: number;
+  /** Optional icon name (lucide) shown next to the action title. */
+  icon?: string;
+}
+
+/** A folder that groups actions (QuickPrompts) of a given scope. */
+export interface ActionGroup {
+  id: string;
+  name: string;
+  scope: 'writer' | 'task';
+  /** Sort order among groups of the same scope. */
+  order: number;
+  createdAt: number;
 }
 
 export interface StreamChunk {

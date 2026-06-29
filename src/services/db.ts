@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Document, ChatMessage, Agent, AIProviderConfig, AppSettings, QuickPrompt, Task, Project, TaskComment, TaskAIChangeBatch, ChatThreadMeta } from '../types';
+import type { Document, ChatMessage, Agent, AIProviderConfig, AppSettings, QuickPrompt, ActionGroup, Task, Project, TaskComment, TaskAIChangeBatch, ChatThreadMeta } from '../types';
 
 export interface FileHandleRecord {
   key: string;
@@ -13,6 +13,7 @@ class ZenEditorDB extends Dexie {
   providerConfigs!: Table<AIProviderConfig>;
   settings!: Table<AppSettings>;
   quickPrompts!: Table<QuickPrompt>;
+  actionGroups!: Table<ActionGroup>;
   fileHandles!: Table<FileHandleRecord>;
   tasks!: Table<Task>;
   projects!: Table<Project>;
@@ -140,6 +141,21 @@ class ZenEditorDB extends Dexie {
       providerConfigs: 'id, provider, isActive',
       settings: 'key',
       quickPrompts: 'id, createdAt, scope',
+      fileHandles: 'key',
+      tasks: 'id, title, updatedAt, order, projectId, status, parentId',
+      projects: 'id, name',
+      taskComments: 'id, taskId, createdAt',
+      taskAIChangeBatches: 'id, taskId, createdAt, expiresAt',
+      chatThreads: 'id, mode, updatedAt, documentId, taskId',
+    });
+    this.version(10).stores({
+      documents: 'id, title, updatedAt, order',
+      chatMessages: 'id, threadId, mode, agentId, timestamp',
+      agents: 'id, name, isDefault, scope',
+      providerConfigs: 'id, provider, isActive',
+      settings: 'key',
+      quickPrompts: 'id, createdAt, scope, groupId, order',
+      actionGroups: 'id, scope, order',
       fileHandles: 'key',
       tasks: 'id, title, updatedAt, order, projectId, status, parentId',
       projects: 'id, name',

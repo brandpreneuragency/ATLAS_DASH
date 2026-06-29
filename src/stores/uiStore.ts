@@ -26,6 +26,11 @@ export type CRMPage = 'dashboard' | 'leads' | 'contacts' | 'companies' | 'pipeli
 /** Active sub-page within the Forms module (owned by uiStore so the shell can switch panels). */
 export type FormsPage = 'dashboard' | 'list' | 'builder' | 'submissions' | 'templates' | 'settings';
 
+/** Sub-tabs rendered inside the Settings document. Fixed and non-closable. */
+export type SettingsSubTab = 'models' | 'actions' | 'appearance' | 'agents';
+/** Which doc-mode tab is active: a normal document or the special Settings doc. */
+export type DocActiveView = 'document' | 'settings';
+
 interface UIStore {
   sidebarOpen: boolean;
   sidebarWidth: number; // vw 15-40
@@ -75,6 +80,11 @@ interface UIStore {
   /** Active sub-page within the Forms module. */
   activeFormsPage: FormsPage;
 
+  /** Which doc-mode tab is active (normal document vs the special Settings doc). */
+  activeView: DocActiveView;
+  /** Active sub-tab inside the Settings document. */
+  activeSettingsSubTab: SettingsSubTab;
+
   splitEditorWidth: number;
 
   /** Panels swapped state (AI panel on left, center panel on right) */
@@ -123,6 +133,10 @@ interface UIStore {
   setFormsMode: (v: boolean) => void;
   setActiveCRMPage: (p: CRMPage) => void;
   setActiveFormsPage: (p: FormsPage) => void;
+  setActiveView: (v: DocActiveView) => void;
+  setActiveSettingsSubTab: (tab: SettingsSubTab) => void;
+  /** Switch to the Settings document tab, optionally targeting a sub-tab. */
+  openSettings: (subTab?: SettingsSubTab) => void;
   setActiveTaskId: (id: string | null) => void;
   setTaskListOpen: (v: boolean) => void;
   setSubtasksOpen: (v: boolean) => void;
@@ -183,6 +197,8 @@ export const useUIStore = create<UIStore>((set, get) => ({
   formsMode: false,
   activeCRMPage: 'dashboard',
   activeFormsPage: 'dashboard',
+  activeView: 'document',
+  activeSettingsSubTab: 'models',
   splitEditorWidth: 30,
 
   panelsSwapped: false,
@@ -319,6 +335,19 @@ export const useUIStore = create<UIStore>((set, get) => ({
   setActiveFormsPage: (p) => {
     set({ activeFormsPage: p });
     db.settings.put({ key: 'activeFormsPage', value: p });
+  },
+
+  setActiveView: (v) => set({ activeView: v }),
+
+  setActiveSettingsSubTab: (tab) => set({ activeSettingsSubTab: tab }),
+
+  openSettings: (subTab) => {
+    set((s) => ({
+      activeView: 'settings',
+      activeSettingsSubTab: subTab ?? s.activeSettingsSubTab,
+      // Opening Settings never disturbs the task/page/crm/forms modes; it only
+      // matters in doc mode where the Settings tab lives.
+    }));
   },
 
   setActiveTaskId: (id) => {

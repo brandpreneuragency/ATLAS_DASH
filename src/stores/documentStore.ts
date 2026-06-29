@@ -191,6 +191,8 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
 
   setActiveDocument: (id) => {
     set({ activeDocumentId: id });
+    // Selecting a normal document tab exits the special Settings doc view.
+    useUIStore.getState().setActiveView('document');
     void db.settings.put({ key: 'lastActiveDocumentId', value: id }).catch(() => undefined);
   },
 
