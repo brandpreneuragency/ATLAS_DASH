@@ -1,4 +1,4 @@
-import { ClipboardList, FileText, LayoutTemplate, PanelLeft, Sparkles, Users, SquarePen } from 'lucide-react';
+import { ClipboardList, FileText, LayoutTemplate, PanelLeft, Sparkles, Users, SquarePen, Settings as SettingsIcon } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import { useTheme } from '../../hooks/useTheme';
 
@@ -20,6 +20,8 @@ export function LeftNarrowSidebar() {
     setFormsMode,
     setActiveCRMPage,
     setActiveFormsPage,
+    activeView,
+    openSettings,
   } = useUIStore();
   const { isCyberpunk, toggleTheme } = useTheme();
 
@@ -121,6 +123,22 @@ export function LeftNarrowSidebar() {
       </div>
 
       <div className="nav-section" style={{ justifyContent: 'flex-end', paddingBottom: 0, gap: 8 }}>
+        <button
+          id="nav-btn-settings"
+          type="button"
+          onClick={() => {
+            setTaskMode(false);
+            setPageMode(false);
+            setCrmMode(false);
+            setFormsMode(false);
+            openSettings();
+          }}
+          title="Settings"
+          className={`mode-btn${!taskMode && !pageMode && !crmMode && !formsMode && activeView === 'settings' ? ' mode-btn--on' : ''}`}
+        >
+          <SettingsIcon size={15} />
+        </button>
+
         <button
           id="nav-btn-theme"
           type="button"

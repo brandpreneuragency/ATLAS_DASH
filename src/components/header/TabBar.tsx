@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { LayoutTemplate, Plus } from 'lucide-react';
+import { LayoutTemplate, Plus, Settings as SettingsIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useDocumentStore } from '../../stores/documentStore';
 import { useTaskStore } from '../../stores/taskStore';
@@ -9,7 +9,7 @@ import { TaskTab } from './TaskTab';
 
 export function TabBar() {
   const { t } = useTranslation();
-  const { taskMode, pageMode } = useUIStore();
+  const { taskMode, pageMode, activeView, openSettings } = useUIStore();
   const {
     documents,
     activeDocumentId,
@@ -102,18 +102,32 @@ export function TabBar() {
                 />
               );
             })
-          : documents.map((doc) => (
-              <Tab
-                key={doc.id}
-                doc={doc}
-                isActive={doc.id === activeDocumentId}
-                onSelect={() => setActiveDocument(doc.id)}
-                onClose={() => deleteDocument(doc.id)}
-                onRename={(newTitle) => updateDocument(doc.id, { title: newTitle })}
-                charLimit={24}
-                colorIndex={doc.colorIndex ?? 0}
-              />
-            ))}
+          : (
+            <>
+              {/* Special, non-closable Settings tab — always present in doc mode. */}
+              <div
+                id="tab-settings"
+                onClick={() => openSettings()}
+                className={`group relative justify-start min-w-0 pl-3 pr-3 ${activeView === 'settings' ? 'tab-active' : 'tab-passive'}`}
+                title="Settings"
+              >
+                <SettingsIcon size={12} className="mr-1 flex-shrink-0" />
+                <span className="txt-xs med trunc">Settings</span>
+              </div>
+              {documents.map((doc) => (
+                <Tab
+                  key={doc.id}
+                  doc={doc}
+                  isActive={doc.id === activeDocumentId && activeView !== 'settings'}
+                  onSelect={() => setActiveDocument(doc.id)}
+                  onClose={() => deleteDocument(doc.id)}
+                  onRename={(newTitle) => updateDocument(doc.id, { title: newTitle })}
+                  charLimit={24}
+                  colorIndex={doc.colorIndex ?? 0}
+                />
+              ))}
+            </>
+          )}
         {taskMode && (
           <button
             id="tab-plus-button-task"

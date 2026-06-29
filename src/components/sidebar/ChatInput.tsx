@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Reply, Zap, Plus, X, Square, ChevronDown, Brain, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../../stores/uiStore';
+import { useActionsStore } from '../../stores/actionsStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useAIStore } from '../../stores/aiStore';
 import { useStreamingChat } from '../../hooks/useStreamingChat';
@@ -120,7 +121,7 @@ export function ChatInput({ mode, threadId, documentId, taskId, replyToMessage, 
     setActiveModel,
     isModelHidden,
   } = useAIStore();
-  const { setActiveModal, setActionsManagerScope } = useUIStore();
+  const { openSettings } = useUIStore();
   const { sendMessage, stopStreaming } = useStreamingChat(threadId, mode, documentId ?? undefined, taskId ?? undefined);
 
   const activeAgent = getActiveAgent(mode);
@@ -394,8 +395,8 @@ export function ChatInput({ mode, threadId, documentId, taskId, replyToMessage, 
                       <button
                         type="button"
                         onClick={() => {
-                          setActionsManagerScope(mode);
-                          setActiveModal('actionsManager');
+                          useActionsStore.getState().setScope(mode);
+                          openSettings('actions');
                           setActionsDropdownOpen(false);
                         }}
                         className="drop-item drop-item--brand"
@@ -445,7 +446,7 @@ export function ChatInput({ mode, threadId, documentId, taskId, replyToMessage, 
                   <div style={{ borderTop: '1px solid var(--c-border-1)', marginTop: 4, paddingTop: 4 }}>
                     <button
                       type="button"
-                      onClick={() => { setActiveModal('modelManagement'); setModelDropdownOpen(false); }}
+                      onClick={() => { openSettings('models'); setModelDropdownOpen(false); }}
                       className="drop-item drop-item--brand"
                     >
                       {t('sidebar.manageModels')}
@@ -486,7 +487,7 @@ export function ChatInput({ mode, threadId, documentId, taskId, replyToMessage, 
                   <div style={{ borderTop: '1px solid var(--c-border-1)', marginTop: 4, paddingTop: 4 }}>
                     <button
                       type="button"
-                      onClick={() => { setActiveModal(mode === 'task' ? 'taskProfilesManager' : 'writersManager'); setAgentDropdownOpen(false); }}
+                      onClick={() => { openSettings('agents'); setAgentDropdownOpen(false); }}
                       className="drop-item drop-item--brand"
                     >
                       {mode === 'task' ? '+ Manage Task Profiles' : t('sidebar.manageWriters')}

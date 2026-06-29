@@ -291,7 +291,9 @@ export const useUIStore = create<UIStore>((set, get) => ({
   setSelectedTreePath: (path) => set({ selectedTreePath: path }),
 
   setTaskMode: (v) => {
-    set({ taskMode: v, pageMode: false, crmMode: false, formsMode: false });
+    // Entering/leaving a non-doc mode always returns to the document view
+    // (the Settings doc only lives in pure doc mode).
+    set({ taskMode: v, pageMode: false, crmMode: false, formsMode: false, activeView: 'document' });
     db.settings.put({ key: 'taskMode', value: v });
     db.settings.put({ key: 'pageMode', value: false });
     db.settings.put({ key: 'crmMode', value: false });
@@ -299,7 +301,13 @@ export const useUIStore = create<UIStore>((set, get) => ({
   },
 
   setPageMode: (v) => {
-    set({ taskMode: false, pageMode: v, crmMode: false, formsMode: false });
+    set({
+      taskMode: false,
+      pageMode: v,
+      crmMode: false,
+      formsMode: false,
+      activeView: 'document',
+    });
     db.settings.put({ key: 'taskMode', value: false });
     db.settings.put({ key: 'pageMode', value: v });
     db.settings.put({ key: 'crmMode', value: false });
@@ -312,7 +320,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
   },
 
   setCrmMode: (v) => {
-    set({ crmMode: v, taskMode: false, pageMode: false, formsMode: false });
+    set({ crmMode: v, taskMode: false, pageMode: false, formsMode: false, activeView: 'document' });
     db.settings.put({ key: 'crmMode', value: v });
     db.settings.put({ key: 'taskMode', value: false });
     db.settings.put({ key: 'pageMode', value: false });
@@ -320,7 +328,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
   },
 
   setFormsMode: (v) => {
-    set({ formsMode: v, taskMode: false, pageMode: false, crmMode: false });
+    set({ formsMode: v, taskMode: false, pageMode: false, crmMode: false, activeView: 'document' });
     db.settings.put({ key: 'formsMode', value: v });
     db.settings.put({ key: 'taskMode', value: false });
     db.settings.put({ key: 'pageMode', value: false });

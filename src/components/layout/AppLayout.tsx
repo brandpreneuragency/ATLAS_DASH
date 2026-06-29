@@ -6,7 +6,6 @@ import { LeftNarrowSidebar } from './LeftNarrowSidebar';
 import { RightNarrowSidebar } from './RightNarrowSidebar';
 import { FileViewerPanel } from '../fileViewer/FileViewerPanel';
 import { RightPanelSubheader } from '../sidebar/RightPanelSubheader';
-import { SettingsPanel } from '../settings/SettingsPanel';
 import type { ReactNode } from 'react';
 
 interface AppLayoutProps {
@@ -19,7 +18,7 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, subtasksBar }: AppLayoutProps) {
-  const { sidebarWidth, fileExplorerOpen, fileExplorerWidth, settingsPanelOpen, taskMode, pageMode, taskListOpen, fileViewerOpen, editorFontSize, panelsSwapped, aiSidebarOpen, crmMode, formsMode } = useUIStore();
+  const { sidebarWidth, fileExplorerOpen, fileExplorerWidth, taskMode, pageMode, taskListOpen, fileViewerOpen, editorFontSize, panelsSwapped, aiSidebarOpen, crmMode, formsMode, activeView } = useUIStore();
 
   useEffect(() => {
     if (editorFontSize === 14) {
@@ -33,12 +32,16 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
 
   // CRM/Forms modules always render the full 3-panel layout.
   const crmOrForms = crmMode || formsMode;
+  // The Settings doc owns the whole center area (its own left+center layout),
+  // so hide the outer file explorer / task list / CRM list / AI sidebar — like
+  // page mode, but only in doc mode (not task/page/crm/forms).
+  const settingsActive = !pageMode && !crmOrForms && !taskMode && activeView === 'settings';
 
-  const showFileExplorer = !pageMode && !settingsPanelOpen && !crmOrForms && (fileExplorerOpen && !taskMode);
-  const showTaskList = !pageMode && !settingsPanelOpen && !crmOrForms && taskMode && taskListOpen;
-  const showCrmFormsList = !pageMode && !settingsPanelOpen && crmOrForms;
-  const showLeftResizableHandle = !pageMode && !settingsPanelOpen && (crmOrForms || (fileExplorerOpen && !taskMode) || (taskMode && taskListOpen));
-  const showSidebarPanel = !pageMode && (aiSidebarOpen || fileViewerOpen || crmOrForms);
+  const showFileExplorer = !pageMode && !settingsActive && !crmOrForms && (fileExplorerOpen && !taskMode);
+  const showTaskList = !pageMode && !settingsActive && !crmOrForms && taskMode && taskListOpen;
+  const showCrmFormsList = !pageMode && !settingsActive && crmOrForms;
+  const showLeftResizableHandle = !pageMode && !settingsActive && (crmOrForms || (fileExplorerOpen && !taskMode) || (taskMode && taskListOpen));
+  const showSidebarPanel = !pageMode && !settingsActive && (aiSidebarOpen || fileViewerOpen || crmOrForms);
   const mainRowSwapped = panelsSwapped && showSidebarPanel;
   const rightPanelWidth = `clamp(320px, ${sidebarWidth}vw, calc(100vw - var(--sidebar-width) - 6px))`;
   const detailPanelWidth = `calc(6px + ${rightPanelWidth})`;
@@ -48,16 +51,6 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
       <div className="sidebar-panel">
         <LeftNarrowSidebar />
       </div>
-
-      {!pageMode && settingsPanelOpen && (
-        <div
-          id="settings-panel-column"
-          className="task-list-panel relative shrink-0 overflow-h flex-col h-full min-w-0"
-          style={{ width: `clamp(260px, ${fileExplorerWidth}vw, 420px)` }}
-        >
-          <SettingsPanel />
-        </div>
-      )}
 
       {showFileExplorer && (
         <div

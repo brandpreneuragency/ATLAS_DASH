@@ -9,19 +9,13 @@ import { TaskDetailPanel } from './components/taskManager/TaskDetailPanel';
 import { AISidebar } from './components/sidebar/AISidebar';
 import { FileExplorerPanel } from './components/fileExplorer/FileExplorerPanel';
 import { TaskListPanel } from './components/taskManager/TaskListPanel';
-import { SettingsModal } from './components/modals/SettingsModal';
 import { AgentEditor } from './components/modals/AgentEditor';
-import { ModelManagementModal } from './components/modals/ModelManagementModal';
 import { QuickPrompts } from './components/modals/QuickPrompts';
-import { WritersManagerModal } from './components/modals/WritersManagerModal';
-import { TaskProfilesManagerModal } from './components/modals/TaskProfilesManagerModal';
-import { ActionsManagerModal } from './components/modals/ActionsManagerModal';
-import { AgentsManagerModal } from './components/modals/AgentsManagerModal';
-import { FontSettingsModal } from './components/modals/FontSettingsModal';
 import { TrashModal } from './components/modals/TrashModal';
 import { ModelSwitcher } from './components/ui/ModelSwitcher';
 import { ToastContainer } from './components/ui/Toast';
 import { PageTemplatePage } from './components/pageTemplate';
+import { SettingsDocument } from './components/settings/SettingsDocument';
 import { CRMWorkspace } from './components/layout/CRMWorkspace';
 import { FormsWorkspace } from './components/layout/FormsWorkspace';
 import { CRMListPanel } from './components/crm/CRMListPanel';
@@ -36,6 +30,7 @@ import { useTaskStore } from './stores/taskStore';
 import { useProjectStore } from './stores/projectStore';
 import { useCrmStore } from './stores/crmStore';
 import { useFormsStore } from './stores/formsStore';
+import { useThemeStore } from './stores/themeStore';
 import { runStartupUpdateCheck } from './services/updater';
 
 export default function App() {
@@ -52,9 +47,11 @@ export default function App() {
     formsMode,
     activeCRMPage,
     activeFormsPage,
+    activeView,
   } = useUIStore();
   const { loadAISettings } = useAIStore();
   const { loadFileSystemSettings } = useFileSystemStore();
+  const { loadThemeTokens } = useThemeStore();
   const { loadTasks, isLoaded: tasksLoaded, activeTaskId: storeActiveTaskId, setActiveTask, tasks } = useTaskStore();
   const { loadProjects, isLoaded: projectsLoaded } = useProjectStore();
 
@@ -79,6 +76,7 @@ export default function App() {
       loadProjects(),
       useCrmStore.getState().loadCrm(),
       useFormsStore.getState().loadForms(),
+      loadThemeTokens(),
     ]);
     // Check for app updates in the background (no-op in the browser).
     void runStartupUpdateCheck();
@@ -89,6 +87,7 @@ export default function App() {
     loadFileSystemSettings,
     loadTasks,
     loadProjects,
+    loadThemeTokens,
   ]);
 
   // Listen for "open with TABS" / argv file events from the Tauri shell.
@@ -157,6 +156,9 @@ export default function App() {
 
   const effectiveTaskId = activeTaskId ?? storeActiveTaskId;
 
+  // The Settings doc only lives in doc mode (not task/page/crm/forms).
+  const settingsActive = !taskMode && !pageMode && !crmMode && !formsMode && activeView === 'settings';
+
   // Panel 2 (editor) — CRM/Forms take precedence over doc/task/page.
   const activeWorkspace = crmMode
     ? <CRMWorkspace />
@@ -166,13 +168,18 @@ export default function App() {
     ? <PageTemplatePage />
     : taskMode
     ? <TaskDetailPanel />
+    : settingsActive
+    ? <SettingsDocument />
     : <EditorWorkspace onEditorReady={handleEditorReady} />;
 
   // Panel 1 (leftPanel) — CRM/Forms list panels vs the file explorer.
+  // Settings doc owns its own internal left panel, so hide the outer one.
   const leftPanel = crmMode
     ? <CRMListPanel />
     : formsMode
     ? <FormsListPanel />
+    : settingsActive
+    ? null
     : <FileExplorerPanel />;
 
   // Panel 3 (sidebar) — CRM AI sidebar for CRM/Forms; existing AISidebar for doc/task.
@@ -193,6 +200,8 @@ export default function App() {
   const sidebar = crmMode || formsMode
     ? <CRMAISidebar crmContext={crmContext} />
     : pageMode
+    ? null
+    : settingsActive
     ? null
     : (
       <AISidebar
@@ -223,15 +232,8 @@ export default function App() {
             taskListPanel={<TaskListPanel />}
             modals={
               <>
-                <SettingsModal />
                 <AgentEditor />
                 <QuickPrompts onSelectPrompt={handleQuickPromptSelect} />
-                <ModelManagementModal />
-                <WritersManagerModal />
-                <TaskProfilesManagerModal />
-                <ActionsManagerModal />
-                <AgentsManagerModal />
-                <FontSettingsModal />
                 {trashOpen && <TrashModal onClose={() => setTrashOpen(false)} />}
                 <ModelSwitcher />
               </>

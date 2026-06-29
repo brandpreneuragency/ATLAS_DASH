@@ -17,7 +17,7 @@ export function SidebarHeader() {
   const actionsRef = useRef<HTMLDivElement>(null);
 
   const { agents, activeAgentId, setActiveAgent, getActiveAgent, providerConfigs, activeProviderId, setActiveProvider } = useAIStore();
-  const { setActiveModal } = useUIStore();
+  const { openSettings } = useUIStore();
   const activeAgent = getActiveAgent();
   const activeConfig = providerConfigs.find((c) => c.id === activeProviderId);
   const modelLabel = activeConfig
@@ -75,7 +75,7 @@ export function SidebarHeader() {
               <div className="border-t border-border mt-1 pt-1">
                 <button
                   type="button"
-                  onClick={() => { setActiveModal('modelManagement'); setModelDropdownOpen(false); }}
+                  onClick={() => { openSettings('models'); setModelDropdownOpen(false); }}
                   className="w-full text-left px-3 py-2 text-xs text-brand hover:bg-highlight transition-colors"
                 >
                   {t('sidebar.manageModels')}
@@ -120,7 +120,7 @@ export function SidebarHeader() {
               <div className="border-t border-border mt-1 pt-1">
                 <button
                   type="button"
-                  onClick={() => { setActiveModal('writersManager'); setAgentDropdownOpen(false); }}
+                  onClick={() => { openSettings('agents'); setAgentDropdownOpen(false); }}
                   className="w-full text-left px-3 py-2 text-xs text-brand hover:bg-highlight transition-colors"
                 >
                   {t('sidebar.manageWriters')}
@@ -167,7 +167,7 @@ export function SidebarHeader() {
               <div className="border-t border-border mt-1 pt-1">
                 <button
                   type="button"
-                  onClick={() => { setActiveModal('actionsManager'); setActionsDropdownOpen(false); }}
+                  onClick={() => { openSettings('actions'); setActionsDropdownOpen(false); }}
                   className="w-full text-left px-3 py-2 text-xs text-brand hover:bg-highlight transition-colors"
                 >
                   {t('sidebar.manageActions')}

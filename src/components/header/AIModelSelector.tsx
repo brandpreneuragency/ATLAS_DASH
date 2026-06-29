@@ -7,7 +7,7 @@ export function AIModelSelector() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const { providerConfigs, activeProviderId, setActiveProvider, setActiveModel, isModelHidden } = useAIStore();
-  const { setActiveModal } = useUIStore();
+  const { openSettings } = useUIStore();
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -78,7 +78,7 @@ export function AIModelSelector() {
           <div className="header-dropdown-separator">
             <button
               type="button"
-              onClick={() => { setActiveModal('modelManagement'); setOpen(false); }}
+              onClick={() => { openSettings('models'); setOpen(false); }}
               className="drop-item drop-item--brand"
             >
               <Settings size={14} />

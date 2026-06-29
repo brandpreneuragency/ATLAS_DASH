@@ -4,14 +4,14 @@ import { useUIStore } from '../../stores/uiStore';
 
 export function ModelsPanel() {
   const { providerConfigs, activeProviderId, setActiveProvider, setActiveModel, isModelHidden } = useAIStore();
-  const { setActiveModal } = useUIStore();
+  const { openSettings } = useUIStore();
 
   return (
     <div className="flex-1 flex flex-col overflow-h">
       <div className="shrink-0 bg-panel row" style={{ justifyContent: 'space-between', padding: '8px 12px', height: 36, borderRadius: 10 }}>
         <h3 className="semibold" style={{ fontSize: 'var(--fs-xs)', color: 'var(--c-text-1)' }}>Models</h3>
         <button
-          onClick={() => setActiveModal('modelManagement')}
+          onClick={() => openSettings('models')}
           className="row gap-1" style={{ fontSize: 'var(--fs-xs)', color: 'var(--c-accent-center-panel)', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer' }}
         >
           <Settings2 size={13} /> Manage
@@ -27,7 +27,7 @@ export function ModelsPanel() {
             <p className="med" style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-text-1)', marginBottom: 4 }}>No models configured</p>
             <p className="subtle" style={{ fontSize: 'var(--fs-xs)' }}>Add a custom provider to start chatting.</p>
             <button
-              onClick={() => setActiveModal('modelManagement')}
+              onClick={() => openSettings('models')}
               style={{ marginTop: 12, fontSize: 'var(--fs-xs)', color: 'var(--c-accent-center-panel)', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer' }}
             >
               Open Model Management →
