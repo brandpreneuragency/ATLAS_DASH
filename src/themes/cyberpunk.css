@@ -418,7 +418,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-size: 10px;
+  font-size: var(--fs-xs);
 }
 :root[data-theme="cyberpunk"] #task-quick-create .task-quick-create-dropup-btn:hover {
   color: #0ff;

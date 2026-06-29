@@ -82,8 +82,6 @@ export function TaskListPanel() {
 
   return (
     <div id="task-list-panel" className="panel flex-col h-full overflow-hidden" style={{ marginLeft: '0px', marginRight: '0px' }}>
-      <TaskListHeader activeTab={activeTab} onTabChange={setActiveTab} />
-
       <div id="task-list-main-wrapper" className="panel-body" style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column', borderRadius: '0px', backgroundColor: 'var(--c-background-2)', border: 'none' }}>
         {activeTab === 'list' && (
           <div
@@ -165,6 +163,8 @@ export function TaskListPanel() {
             />
           </div>
         )}
+
+        <TaskListHeader activeTab={activeTab} onTabChange={setActiveTab} />
 
         <div id="task-quick-create-footer" className="panel-footer">
           <QuickCreateInput

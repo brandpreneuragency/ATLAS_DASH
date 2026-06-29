@@ -23,7 +23,7 @@
 
 .ctx-ring-label {
   position: absolute;
-  font-size: 7px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -103,7 +103,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--c-accent-center-panel) 14%, transparent);
   color: var(--c-accent-center-panel);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -168,7 +168,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--c-accent-center-panel) 14%, transparent);
   color: var(--c-accent-center-panel);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 

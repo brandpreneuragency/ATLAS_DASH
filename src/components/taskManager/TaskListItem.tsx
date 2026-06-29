@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { Task } from '../../types';
 import { useProjectStore } from '../../stores/projectStore';
-import { useTaskStore } from '../../stores/taskStore';
 import { useLongPress } from '../../hooks/useLongPress';
 import { Folder, Calendar } from 'lucide-react';
 import { TaskContextMenu } from './TaskContextMenu';
@@ -56,13 +55,14 @@ export function TaskListItem({ task, isActive, onClick }: TaskListItemProps) {
         width: '100%',
         textAlign: 'left',
         // height is owned by src/index.css (auto, fits content)
-        border: 'none',
+        border: isActive ? '1px solid var(--c-background-2)' : 'none',
         borderRadius: 8,
-        background: isActive ? 'rgba(146, 109, 199, 0)' : 'rgba(0, 0, 0, 0)',
+        boxShadow: isActive ? '0px 0px 10px 0px rgba(0, 0, 0, 0.05)' : 'none',
+        background: isActive ? 'var(--c-background-1)' : 'rgba(0, 0, 0, 0)',
         cursor: 'pointer',
         marginLeft: '0px',
         marginRight: '0px',
-        padding: '12px 6px',
+        padding: '12px 12px',
         gap: 8,
       }}
     >

@@ -38,3 +38,30 @@ pub fn secret_delete(account: String) -> Result<(), String> {
         Err(e) => Err(e.to_string()),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{secret_delete, secret_get, secret_set};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn secret_commands_round_trip_across_entries() {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock should be after Unix epoch")
+            .as_nanos();
+        let account = format!("tabs-keyring-test-{}-{nonce}", std::process::id());
+        let value = "credential-round-trip".to_string();
+
+        secret_set(account.clone(), value.clone()).expect("secret should be written");
+        assert_eq!(
+            secret_get(account.clone()).expect("secret should be readable"),
+            Some(value),
+        );
+        secret_delete(account.clone()).expect("secret should be deleted");
+        assert_eq!(
+            secret_get(account).expect("deleted secret lookup should succeed"),
+            None,
+        );
+    }
+}

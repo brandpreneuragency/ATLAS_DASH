@@ -100,6 +100,7 @@ export function Tab({ doc, isActive, onSelect, onClose, onRename, charLimit }: T
       onClick={onSelect}
       onDoubleClick={handleDoubleClick}
       onMouseDown={(e) => {
+        e.stopPropagation();
         if (e.button === 1) {
           e.preventDefault();
           if (hasEdits) { setConfirmClose(true); } else { onClose(); }

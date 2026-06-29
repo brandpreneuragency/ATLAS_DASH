@@ -18,6 +18,7 @@ export function TaskTab({ task, isActive, onSelect, onClose, charLimit }: TaskTa
       id={`tab-task-${isActive ? 'active' : 'passive'}-${idPart}`}
       onClick={onSelect}
       onMouseDown={(e) => {
+        e.stopPropagation();
         if (e.button === 1) {
           e.preventDefault();
           onClose();

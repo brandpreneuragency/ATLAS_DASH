@@ -210,6 +210,8 @@ export interface FileViewerItem {
   mimeType?: string;
   size?: string;
   source: 'task-comment' | 'filesystem' | 'chat-attachment';
+  /** Stable identity within the source, used when viewer actions need exact-item matching. */
+  sourceId?: string;
 }
 
 export interface SearchResult {

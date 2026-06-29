@@ -117,7 +117,9 @@ export function TabBar() {
         {taskMode && (
           <button
             id="tab-plus-button-task"
+            type="button"
             title={t('tabs.newTab') ?? 'New tab'}
+            onMouseDown={(event) => event.stopPropagation()}
             onClick={() => createEmptyTab()}
           >
             <Plus size={12} />
@@ -126,7 +128,9 @@ export function TabBar() {
         {!taskMode && (
           <button
             id="tab-plus-button"
+            type="button"
             title={t('tabs.newDocument') ?? 'New document'}
+            onMouseDown={(event) => event.stopPropagation()}
             onClick={() => createDocument()}
           >
             <Plus size={12} />

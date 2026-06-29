@@ -71,7 +71,7 @@
   background: transparent;
   font-family: var(--c-font-1);
   font-size: var(--fs-base);
-  line-height: 28px;
+  line-height: var(--line-normal);
   padding: 0;
   color: var(--c-text-1);
 }
@@ -82,7 +82,7 @@
   max-height: 192px;
   overflow-y: auto;
   resize: none;
-  line-height: 20px;
+  line-height: var(--line-normal);
   padding-top: 12px;
   padding-bottom: 12px;
 }
@@ -236,7 +236,7 @@
   background: transparent;
   font-family: var(--c-font-1);
   font-size: var(--fs-base);
-  line-height: 28px;
+  line-height: var(--line-normal);
   padding: 0;
   color: var(--c-text-1);
 }
@@ -247,7 +247,7 @@
   max-height: 192px;
   overflow-y: auto;
   resize: none;
-  line-height: 20px;
+  line-height: var(--line-normal);
   padding-top: 12px;
   padding-bottom: 12px;
 }

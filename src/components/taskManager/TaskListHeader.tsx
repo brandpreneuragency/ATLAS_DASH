@@ -20,8 +20,8 @@ export function TaskListHeader({ activeTab, onTabChange }: TaskListHeaderProps) 
       className="panel-header"
       style={{
         display: 'flex',
-        height: '32px',
-        background: 'var(--c-background-3)',
+        height: '24px',
+        background: 'var(--c-background-2)',
         borderTop: 'none',
         borderLeft: 'none',
         borderRight: 'none',

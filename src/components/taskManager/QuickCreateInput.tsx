@@ -177,8 +177,7 @@ export function QuickCreateInput({
   }, [showDatePicker]);
 
   const handleDatePick = (dateStr: string) => {
-    if (!dateStr) return;
-    handleSetDate(dateStr);
+    handleSetDate(dateStr || null);
     setShowDatePicker(false);
     inputRef.current?.focus();
   };
@@ -193,7 +192,12 @@ export function QuickCreateInput({
   function ProjectDropdown() {
     if (!showProjectPicker) return null;
     return (
-      <div id="tqc-project-dropdown" className="drop" style={{ left: 0, bottom: '100%', minWidth: 120, marginBottom: 2 }}>
+      <div
+        id="tqc-project-dropdown"
+        className="drop"
+        onMouseDown={(event) => event.stopPropagation()}
+        style={{ left: 0, bottom: '100%', minWidth: 120, marginBottom: 2 }}
+      >
         <button type="button" className="drop-item" onClick={() => handleProjectPick('')} style={{ fontSize: 'var(--fs-sm)' }}>
           No project
         </button>
@@ -215,7 +219,12 @@ export function QuickCreateInput({
   function DateDropdown() {
     if (!showDatePicker) return null;
     return (
-      <div id="tqc-date-dropdown" className="drop" style={{ left: 0, bottom: '100%', minWidth: 140, marginBottom: 2 }}>
+      <div
+        id="tqc-date-dropdown"
+        className="drop"
+        onMouseDown={(event) => event.stopPropagation()}
+        style={{ left: 0, bottom: '100%', minWidth: 140, marginBottom: 2 }}
+      >
         <button type="button" className="drop-item" onClick={() => handleDatePick('')} style={{ fontSize: 'var(--fs-sm)' }}>
           No date
         </button>

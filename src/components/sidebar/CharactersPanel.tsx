@@ -430,17 +430,6 @@ export function CharactersPanel({ scope, scopes, title: _title }: CharactersPane
     setExpandedId(null);
   }, []);
 
-  const startEdit = useCallback((agent: Agent) => {
-    setForm({
-      name: agent.name,
-      avatarUrl: agent.avatarUrl,
-      systemPrompt: agent.systemPrompt,
-    });
-    setEditingId(agent.id);
-    setAdding(false);
-    setExpandedId(agent.id);
-  }, []);
-
   const handleSave = useCallback(async () => {
     if (!form.name.trim()) return;
     if (adding) {
@@ -534,7 +523,6 @@ export function CharactersPanel({ scope, scopes, title: _title }: CharactersPane
                       showScopeBadge={showScopeBadge}
                       onToggleExpand={() => toggleExpand(agent.id)}
                       onSelect={() => setActiveAgent(agent.id, agent.scope)}
-                      onStartEdit={() => startEdit(agent)}
                       onDelete={() => setConfirmDeleteId(agent.id)}
                     />
                   )}

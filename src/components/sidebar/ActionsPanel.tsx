@@ -437,14 +437,6 @@ export function ActionsPanel({ scope }: ActionsPanelProps) {
     setExpandedId(null);
   };
 
-  const startEdit = (prompt: QuickPrompt) => {
-    setEditingId(prompt.id);
-    setNewTitle(prompt.title);
-    setNewPrompt(prompt.prompt);
-    setAdding(false);
-    setExpandedId(prompt.id);
-  };
-
   const resetForm = () => {
     setAdding(false);
     setEditingId(null);
@@ -510,7 +502,6 @@ export function ActionsPanel({ scope }: ActionsPanelProps) {
                       expanded={isExpanded}
                       onToggleExpand={() => toggleExpand(item.id)}
                       onRun={() => handleRun(item.prompt)}
-                      onStartEdit={() => startEdit(item)}
                       onDelete={() => setConfirmDeleteId(item.id)}
                     />
                   )}

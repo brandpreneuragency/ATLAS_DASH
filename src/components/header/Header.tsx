@@ -13,6 +13,7 @@ export function Header() {
           <button
             type="button"
             title={aiSidebarOpen ? 'Hide AI Sidebar' : 'Show AI Sidebar'}
+            onMouseDown={(event) => event.stopPropagation()}
             onClick={() => setAiSidebarOpen(!aiSidebarOpen)}
             aria-pressed={aiSidebarOpen}
             className={`ai-toggle-btn${aiSidebarOpen ? ' ai-toggle-btn--on' : ''}`}

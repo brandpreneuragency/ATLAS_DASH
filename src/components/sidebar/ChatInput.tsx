@@ -5,7 +5,6 @@ import { useUIStore } from '../../stores/uiStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useAIStore } from '../../stores/aiStore';
 import { useStreamingChat } from '../../hooks/useStreamingChat';
-import { useTaskStore } from '../../stores/taskStore';
 import { db } from '../../services/db';
 import { useThemedPlaceholder } from '../../utils/placeholders';
 import {
@@ -83,7 +82,6 @@ const TASK_BUILT_INS: PromptOption[] = [
 
 export function ChatInput({ mode, threadId, documentId, taskId, replyToMessage, onClearReply }: ChatInputProps) {
   const { t } = useTranslation();
-  const activeTabColorIndex = useTaskStore((s) => s.getActiveTabColorIndex());
   const accentColor = 'var(--c-accent-2)';
   const [value, setValue] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);

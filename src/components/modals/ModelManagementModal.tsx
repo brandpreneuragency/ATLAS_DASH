@@ -7,6 +7,7 @@ import { secureStorage } from '../../services/secureStorage';
 import type { AIProviderConfig, ModelItem, ProviderImportPhase } from '../../types';
 import { ProviderAccordionItem } from './modelProvider/ProviderAccordionItem';
 import { ConnectProviderDrawer } from './modelProvider/ConnectProviderDrawer';
+import { ModalFooter } from './modelProvider/ModalFooter';
 
 function providerApiKeyName(providerId: string): string {
   return `providerApiKey_${providerId}`;
@@ -20,6 +21,41 @@ function providerWithoutStatus(provider: AIProviderConfig): Omit<AIProviderConfi
   const next = { ...provider };
   delete (next as Partial<AIProviderConfig>).status;
   return next;
+}
+
+function hasDraftKey(draftKeys: Record<string, string>, providerId: string): boolean {
+  return Object.prototype.hasOwnProperty.call(draftKeys, providerId);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+interface PersistDraftOptions {
+  includeKeys?: boolean;
+}
+
+async function verifySavedProviderKey(
+  providerId: string,
+  providerName: string,
+  expectedKey: string,
+): Promise<void> {
+  const account = providerApiKeyName(providerId);
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const storedKey = await secureStorage.secureGet(account);
+    if ((storedKey ?? '') === expectedKey) {
+      return;
+    }
+
+    if (attempt < 3) {
+      await delay(120 * (attempt + 1));
+    }
+  }
+
+  throw new Error(`Could not verify the saved API key for ${providerName}.`);
 }
 
 interface ModelManagementContentProps {
@@ -36,8 +72,6 @@ export function ModelManagementContent({ isInline = false, onClose }: ModelManag
     searchConfig,
     saveSearchConfig,
     saveProviderConfig,
-    saveProviderApiKey,
-    deleteProviderApiKey,
     setHiddenModels,
   } = useAIStore();
 
@@ -76,6 +110,8 @@ export function ModelManagementContent({ isInline = false, onClose }: ModelManag
 
   const [connectDrawerOpen, setConnectDrawerOpen] = useState(false);
   const [draftsReady, setDraftsReady] = useState(false);
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualSaved, setManualSaved] = useState(false);
 
   // Async load of API key drafts from secure storage
   useEffect(() => {
@@ -173,20 +209,39 @@ export function ModelManagementContent({ isInline = false, onClose }: ModelManag
   const searchChanged =
     searchDraft.exaKey !== searchConfig.exaKey || searchDraft.tavilyKey !== searchConfig.tavilyKey;
   const keysChanged = JSON.stringify(draftKeys) !== JSON.stringify(initialDraftKeys);
-  const hasChanges = providersChanged || baseUrlsChanged || hiddenChanged || searchChanged || keysChanged;
+  const hasNonCredentialChanges = providersChanged || baseUrlsChanged || hiddenChanged || searchChanged;
+  const hasChanges = hasNonCredentialChanges || keysChanged;
 
-  const persistDrafts = useCallback(async () => {
+  const persistDrafts = useCallback(async ({ includeKeys = false }: PersistDraftOptions = {}) => {
     for (const provider of draftProviders) {
-      const key = draftKeys[provider.id] ?? '';
       const baseUrl = (draftBaseUrls[provider.id] ?? provider.baseUrl).trim();
 
-      if (key.trim()) {
-        await saveProviderApiKey(provider.id, key.trim());
-      } else {
-        await deleteProviderApiKey(provider.id);
+      // An absent entry means this provider was added after the modal's
+      // initial key hydration. It must not be interpreted as an explicit
+      // request to delete the credential that addProvider/connectProvider
+      // already saved to the OS keychain.
+      if (includeKeys && hasDraftKey(draftKeys, provider.id)) {
+        const key = draftKeys[provider.id].trim();
+        const initialKey = (initialDraftKeys[provider.id] ?? '').trim();
+        if (key !== initialKey) {
+          if (key) {
+            await secureStorage.secureSet(providerApiKeyName(provider.id), key);
+          } else {
+            await secureStorage.secureDelete(providerApiKeyName(provider.id));
+          }
+
+          // Windows Credential Manager can briefly lag behind the write. Retry
+          // the read-back before treating the save as failed.
+          await verifySavedProviderKey(provider.id, provider.name, key);
+        }
       }
 
-      await saveProviderConfig({ ...provider, baseUrl });
+      // Connection status is owned by the store. A queued draft save must not
+      // overwrite a newer successful connect with a stale status value.
+      await saveProviderConfig(
+        { ...providerWithoutStatus(provider), baseUrl },
+        { refreshStatus: includeKeys },
+      );
     }
 
     setHiddenModels(draftHiddenModels);
@@ -195,7 +250,9 @@ export function ModelManagementContent({ isInline = false, onClose }: ModelManag
       exaKey: searchDraft.exaKey.trim(),
       tavilyKey: searchDraft.tavilyKey.trim(),
     });
-    await useAIStore.getState().refreshAllProviderStatuses();
+    if (includeKeys) {
+      await useAIStore.getState().refreshAllProviderStatuses();
+    }
 
     const state = useAIStore.getState();
     const active = state.getActiveProvider();
@@ -210,43 +267,43 @@ export function ModelManagementContent({ isInline = false, onClose }: ModelManag
   }, [
     draftProviders,
     draftKeys,
+    initialDraftKeys,
     draftBaseUrls,
     draftHiddenModels,
     searchDraft,
     searchConfig,
-    saveProviderApiKey,
-    deleteProviderApiKey,
     saveProviderConfig,
     setHiddenModels,
     saveSearchConfig,
   ]);
 
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
-  const handleSave = useCallback(() => {
+  const closingRef = useRef(false);
+  const handleSave = useCallback(({ includeKeys = false }: PersistDraftOptions = {}) => {
     const save = async () => {
-      try {
-        await persistDrafts();
+      await persistDrafts({ includeKeys });
+      if (includeKeys) {
         setInitialDraftKeys({ ...draftKeys });
-        setInitialDraftBaseUrls({ ...draftBaseUrls });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to save model settings.';
-        useUIStore.getState().showToast(message, 'error');
       }
+      setInitialDraftBaseUrls({ ...draftBaseUrls });
     };
     saveQueueRef.current = saveQueueRef.current.then(save, save);
     return saveQueueRef.current;
   }, [persistDrafts, draftKeys, draftBaseUrls]);
 
   useEffect(() => {
-    if (!isOpen || !draftsReady || !hasChanges) return;
+    if (!isOpen || !draftsReady || !hasNonCredentialChanges) return;
     const timer = setTimeout(() => {
-      void handleSave();
+      void handleSave({ includeKeys: false }).catch((err) => {
+        const message = err instanceof Error ? err.message : 'Failed to save model settings.';
+        useUIStore.getState().showToast(message, 'error');
+      });
     }, 250);
     return () => clearTimeout(timer);
   }, [
     isOpen,
     draftsReady,
-    hasChanges,
+    hasNonCredentialChanges,
     draftProviders,
     draftBaseUrls,
     draftHiddenModels,
@@ -257,19 +314,47 @@ export function ModelManagementContent({ isInline = false, onClose }: ModelManag
 
   // Close handler — auto-save runs on changes so closing is always safe
   const handleClose = useCallback(async () => {
-    if (draftsReady && hasChanges) await handleSave();
+    closingRef.current = true;
+    try {
+      if (draftsReady && hasNonCredentialChanges) {
+        await handleSave({ includeKeys: false });
+      }
+      await saveQueueRef.current;
+    } catch (err) {
+      closingRef.current = false;
+      const message = err instanceof Error ? err.message : 'Failed to save model settings.';
+      useUIStore.getState().showToast(message, 'error');
+      return;
+    }
     if (onClose) onClose();
     else setActiveModal(null);
-  }, [draftsReady, hasChanges, handleSave, onClose, setActiveModal]);
+  }, [draftsReady, hasNonCredentialChanges, handleSave, onClose, setActiveModal]);
+
+  const handleManualSave = useCallback(async () => {
+    setManualSaving(true);
+    setManualSaved(false);
+    try {
+      await handleSave({ includeKeys: true });
+      setManualSaved(true);
+      useUIStore.getState().showToast('Model settings saved.', 'info');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save model settings.';
+      useUIStore.getState().showToast(message, 'error');
+    } finally {
+      setManualSaving(false);
+    }
+  }, [handleSave]);
 
   const latestPersistRef = useRef(persistDrafts);
   const shouldPersistOnUnmountRef = useRef(false);
   useEffect(() => {
     latestPersistRef.current = persistDrafts;
-    shouldPersistOnUnmountRef.current = draftsReady && hasChanges;
-  }, [persistDrafts, draftsReady, hasChanges]);
+    shouldPersistOnUnmountRef.current = draftsReady && hasNonCredentialChanges;
+  }, [persistDrafts, draftsReady, hasNonCredentialChanges]);
   useEffect(() => () => {
-    if (shouldPersistOnUnmountRef.current) void latestPersistRef.current();
+    if (!closingRef.current && shouldPersistOnUnmountRef.current) {
+      void latestPersistRef.current({ includeKeys: false });
+    }
   }, []);
 
   useEffect(() => {
@@ -342,7 +427,6 @@ export function ModelManagementContent({ isInline = false, onClose }: ModelManag
       )
     );
     setConnectionState((prev) => ({ ...prev, [providerId]: { phase: 'idle' } }));
-    useAIStore.getState().setProviderStatus(providerId, 'not_connected');
   };
 
   const handleDraftBaseUrlChange = (providerId: string, baseUrl: string) => {
@@ -353,13 +437,29 @@ export function ModelManagementContent({ isInline = false, onClose }: ModelManag
       )
     );
     setConnectionState((prev) => ({ ...prev, [providerId]: { phase: 'idle' } }));
-    useAIStore.getState().setProviderStatus(providerId, 'not_connected');
   };
 
   const handleConnect = async (providerId: string) => {
     const baseUrl = draftBaseUrls[providerId] ?? '';
     const apiKey = draftKeys[providerId] ?? '';
     setConnectionState((prev) => ({ ...prev, [providerId]: { phase: 'connecting' } }));
+
+    // Finish any save queued while the user was editing before the explicit
+    // connect writes the authoritative key and connected status.
+    try {
+      if (draftsReady && hasNonCredentialChanges) {
+        await handleSave({ includeKeys: false });
+      }
+      await saveQueueRef.current;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save model settings.';
+      setConnectionState((prev) => ({
+        ...prev,
+        [providerId]: { phase: 'error', message },
+      }));
+      useUIStore.getState().showToast(message, 'error');
+      return;
+    }
 
     const result = await useAIStore.getState().connectProvider(providerId, baseUrl, apiKey);
     if (!result.ok) {
@@ -444,12 +544,7 @@ export function ModelManagementContent({ isInline = false, onClose }: ModelManag
           {draftProviders.map((provider) => (
             <ProviderAccordionItem
               key={provider.id}
-              provider={{
-                ...provider,
-                status:
-                  providerConfigs.find((candidate) => candidate.id === provider.id)?.status
-                  ?? provider.status,
-              }}
+              provider={provider}
               expanded={expandedIds.has(provider.id)}
               hiddenModels={draftHiddenModels}
               draftKey={draftKeys[provider.id] ?? ''}
@@ -501,11 +596,17 @@ export function ModelManagementContent({ isInline = false, onClose }: ModelManag
     </>
   );
 
-  const handleProviderConnected = (providerId: string) => {
+  const handleProviderConnected = (providerId: string, apiKey: string) => {
     // Sync local drafts with the freshly-persisted store state
     const updated = useAIStore.getState().providerConfigs.find((p) => p.id === providerId);
     if (updated) {
-      setDraftProviders((prev) => [...prev, updated]);
+      const persistedKey = apiKey.trim();
+      setDraftProviders((prev) => [
+        ...prev.filter((provider) => provider.id !== providerId),
+        updated,
+      ]);
+      setDraftKeys((prev) => ({ ...prev, [providerId]: persistedKey }));
+      setInitialDraftKeys((prev) => ({ ...prev, [providerId]: persistedKey }));
       setDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
       setInitialDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
       setExpandedIds(new Set([providerId]));
@@ -704,6 +805,14 @@ export function ModelManagementContent({ isInline = false, onClose }: ModelManag
             </div>
           </div>
         </div>
+
+        <ModalFooter
+          hasChanges={hasChanges}
+          ready={draftsReady}
+          saving={manualSaving}
+          saved={manualSaved}
+          onSave={() => { void handleManualSave(); }}
+        />
 
         <ConnectProviderDrawer
           open={connectDrawerOpen}

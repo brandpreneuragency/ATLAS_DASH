@@ -31,6 +31,7 @@ function getCommentAttachmentFile(comment: TaskComment): FileViewerItem | null {
     mimeType,
     size: formatAttachmentSize(comment.attachmentSizeBytes),
     source: 'task-comment',
+    sourceId: comment.id,
   };
 }
 
@@ -300,6 +301,11 @@ function CommentBubble({
             onOpenMenu(comment, { x: e.clientX, y: e.clientY });
           }}
           className="comment-bubble select-none c-ptr"
+          style={{
+            border: '1px solid var(--c-background-2)',
+            borderRadius: 8,
+            boxShadow: 'rgba(0, 0, 0, 0.05) 0px 0px 15px 0px',
+          }}
         >
           {comment.text && (
             <p className="txt-xs" style={{whiteSpace:'pre-wrap',color:'var(--c-text-1)'}}>{comment.text}</p>
@@ -324,6 +330,28 @@ export function TaskCommentThread({ comments, onReplyComment }: TaskCommentThrea
   } | null>(null);
   const { deleteComment } = useTaskCommentStore();
   const openFileViewer = useUIStore((s) => s.openFileViewer);
+  const closeFileViewer = useUIStore((s) => s.closeFileViewer);
+  const fileViewerOpen = useUIStore((s) => s.fileViewerOpen);
+  const fileViewerFile = useUIStore((s) => s.fileViewerFile);
+
+  const handleOpenFileViewer = useCallback(
+    (file: FileViewerItem) => {
+      const isSameCommentAttachment =
+        fileViewerOpen &&
+        file.source === 'task-comment' &&
+        file.sourceId !== undefined &&
+        fileViewerFile?.source === file.source &&
+        fileViewerFile.sourceId === file.sourceId;
+
+      if (isSameCommentAttachment) {
+        closeFileViewer();
+        return;
+      }
+
+      openFileViewer(file);
+    },
+    [closeFileViewer, fileViewerFile, fileViewerOpen, openFileViewer]
+  );
 
   const handleOpenMenu = useCallback(
     (comment: TaskComment, pos: { x: number; y: number }) => {
@@ -350,7 +378,7 @@ export function TaskCommentThread({ comments, onReplyComment }: TaskCommentThrea
           <CommentBubble
             key={comment.id}
             comment={comment}
-            onOpenFileViewer={openFileViewer}
+            onOpenFileViewer={handleOpenFileViewer}
             onOpenMenu={handleOpenMenu}
           />
         ))}

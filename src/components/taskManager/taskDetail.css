@@ -4,28 +4,12 @@
  * Import this file from the owning component.
  * ========================================================= */
 
-#task-detail-panel > .tdp-subtasks-toggle-row {
-  height: fit-content;
-  padding-top: 0;
-  padding-bottom: 0;
-  padding-left: 18px;
-  padding-right: 24px;
-}
-
 #task-detail-panel > .tdp-meta-bar {
   flex: 0 0 auto;
   background-color: transparent;
   border-bottom: none;
   padding: 0;
   margin: 0;
-}
-
-#task-detail-panel .subtasks-toggle-btn {
-  flex: 1 1 auto;
-  width: 100%;
-  height: 0;
-  min-height: 16px;
-  background-color: transparent;
 }
 
 /*TASK METADATA BAR*/
@@ -35,6 +19,9 @@
 
 
 #tdc-divider{display:none}
+.tdp-subtasks-bar {
+  color: rgba(17, 17, 17, 0);
+}
 .subtask-status-btn {
   width: 6px;
   height: 6px;
@@ -171,7 +158,7 @@
   padding: 12px 12px;
   height: fit-content;
   min-height: 44px;
-  line-height: 20px;
+  line-height: var(--line-normal);
   /* Native resize handle is replaced by a custom top-right handle. */
   resize: none;
   max-height: 50vw;
@@ -271,7 +258,7 @@
 .comment-bubble p.txt-xs {
   margin: 0;
   width: 100%;
-  line-height: 20px;
+  line-height: var(--line-normal);
   padding: 6px 12px;
   vertical-align: middle;
 }
@@ -551,7 +538,7 @@
 :root .comment-bubble p.txt-xs {
   margin: 0;
   width: 100%;
-  line-height: 20px;
+  line-height: var(--line-normal);
   padding: 6px 12px;
   vertical-align: middle;
 }

@@ -3,7 +3,6 @@ import { ChevronDown, User, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAIStore } from '../../stores/aiStore';
 import { useUIStore } from '../../stores/uiStore';
-import { PROVIDER_MODELS } from '../../services/ai/router';
 import { db } from '../../services/db';
 import type { QuickPrompt } from '../../types';
 
@@ -70,7 +69,7 @@ export function SidebarHeader() {
                   }`}
                 >
                   <span className="font-medium">{config.selectedModel}</span>
-                  <span className="text-text-secondary">{PROVIDER_MODELS[config.provider]?.label ?? config.provider}</span>
+                  <span className="text-text-secondary">{config.name || config.provider}</span>
                 </button>
               ))}
               <div className="border-t border-border mt-1 pt-1">

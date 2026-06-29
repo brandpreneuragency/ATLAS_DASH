@@ -130,7 +130,10 @@ interface AIStore {
   saveProviderApiKey: (id: string, key: string) => Promise<void>;
   deleteProviderApiKey: (id: string) => Promise<void>;
   setProviderStatus: (id: string, status: ProviderStatus) => void;
-  saveProviderConfig: (config: Partial<AIProviderConfig> & { id: string }) => Promise<void>;
+  saveProviderConfig: (
+    config: Partial<AIProviderConfig> & { id: string },
+    options?: { refreshStatus?: boolean },
+  ) => Promise<void>;
   connectProvider: (id: string, baseUrl: string, apiKey: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   importProviderModels: (id: string, baseUrl: string, apiKey: string) => Promise<{ ok: true } | { ok: false; error: string; code: string }>;
   getEnabledModels: (providerId: string) => ModelItem[];
@@ -570,10 +573,11 @@ export const useAIStore = create<AIStore>((set, get) => ({
     }));
   },
 
-  saveProviderConfig: async (updates) => {
+  saveProviderConfig: async (updates, options) => {
     const { id } = updates;
     const current = get().providerConfigs.find((p) => p.id === id);
     if (!current) return;
+    const refreshStatus = options?.refreshStatus ?? true;
 
     const normalized: AIProviderConfig = { ...current, ...updates };
     try {
@@ -583,7 +587,9 @@ export const useAIStore = create<AIStore>((set, get) => ({
           p.id === id ? normalized : p
         ),
       }));
-      await get().refreshProviderStatus(id);
+      if (refreshStatus) {
+        await get().refreshProviderStatus(id);
+      }
     } catch (err) {
       showError(err, 'Failed to save provider config.');
     }
@@ -628,6 +634,10 @@ export const useAIStore = create<AIStore>((set, get) => ({
       };
 
       await secureStorage.secureSet(providerApiKeyName(id), trimmedKey);
+      const savedKey = await secureStorage.secureGet(providerApiKeyName(id));
+      if (savedKey !== trimmedKey) {
+        throw new Error(`Could not verify the saved API key for ${current.name}.`);
+      }
       await db.providerConfigs.put(connected);
       await secureStorage.secureSet('activeProviderId', id);
       set((state) => ({

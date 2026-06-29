@@ -50,7 +50,6 @@ export function TaskDetailPanel() {
   const editingSubtaskInputRef = useRef<HTMLInputElement>(null);
   const { subtasksOpen, setSubtasksOpen } = useUIStore();
   const { projects } = useProjectStore();
-  const activeTabColorIndex = useTaskStore((s) => s.getActiveTabColorIndex());
   const accentColor = 'var(--c-accent-2)';
   const activeProject = task ? projects.find((p) => p.id === task.projectId) ?? null : null;
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -155,11 +154,10 @@ export function TaskDetailPanel() {
 
   return (
     <div id="task-detail-panel" className="panel flex-col h-full" style={{ background: 'rgba(233, 233, 233, 0)' }}>
-      {/* Task meta bar (date + project) — collapsible */}
+      {/* Task meta bar (date + project + details toggle) */}
       <div className="tdp-meta-bar">
-        {subtasksOpen && (
-          <div className="tdp-meta-bar-content" style={{ padding: '0 14px' }}>
-            <div className="row-xs items-center" style={{ gap: 24, height: 'fit-content', verticalAlign: 'middle', marginBottom: 0, padding: '0 12px', borderRadius: 8, backgroundColor: 'transparent' }}>
+        <div className="tdp-meta-bar-content" style={{ padding: '0 14px' }}>
+          <div className="row-xs items-center" style={{ gap: 24, height: 'fit-content', verticalAlign: 'middle', marginBottom: 0, padding: '12px 12px', borderRadius: 8, backgroundColor: 'transparent' }}>
               <div ref={dateRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', height: '19px', minHeight: '0px' }}>
                 <button
                   type="button"
@@ -203,7 +201,7 @@ export function TaskDetailPanel() {
                   title={task.projectId ? 'Change project' : 'Set project'}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6,
-                    height: 'fit-content', minHeight: '0px', padding: '0 10px',
+                    height: 'fit-content', minHeight: '0px', padding: '12px 12px',
                     background: 'transparent', border: 'none', cursor: 'pointer',
                     color: task.projectId ? accentColor : 'var(--c-text-2)',
                     flexShrink: 0, borderRadius: 8, width: 'fit-content',
@@ -240,9 +238,32 @@ export function TaskDetailPanel() {
                   </div>
                 )}
               </div>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 'fit-content' }}>
+                <button
+                  type="button"
+                  onClick={() => setSubtasksOpen(!subtasksOpen)}
+                  title={subtasksOpen ? 'Collapse details' : 'Expand details'}
+                  aria-label={subtasksOpen ? 'Collapse details' : 'Expand details'}
+                  aria-expanded={subtasksOpen}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    height: 'fit-content', minHeight: '0px', padding: 0,
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    color: 'var(--c-text-2)',
+                    flexShrink: 0, borderRadius: 8, width: 'fit-content',
+                  }}
+                >
+                  <ChevronDown
+                    size={14}
+                    style={{
+                      transform: subtasksOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s',
+                    }}
+                  />
+                </button>
+              </div>
             </div>
           </div>
-        )}
       </div>
 
       {subtasksOpen && (
@@ -253,7 +274,7 @@ export function TaskDetailPanel() {
           }}
         >
           <div style={{ padding: 0, backgroundColor: 'rgba(0, 0, 0, 0)', borderRadius: '0' }}>
-            <div className="col" style={{ gap: '10px', padding: '6px 14px', backgroundColor: 'transparent', borderRadius: 8, height: 'fit-content', border: 'none' }}>
+            <div className="col" style={{ gap: '10px', padding: '18px 22px', backgroundColor: 'transparent', borderRadius: 8, height: 'fit-content', border: '1px solid var(--c-background-2)', boxShadow: 'var(--shadow-subtask-card)' }}>
               {subtasks.map((sub) => (
                 <div key={sub.id} className="row-xs items-center" style={{ gap: 8, height: 16, verticalAlign: 'middle', marginLeft: 0, marginRight: 0 }}>
                   <button
@@ -341,26 +362,6 @@ export function TaskDetailPanel() {
           </div>
         </div>
       )}
-
-      {/* Subtasks toggle row — always visible */}
-      <div className="tdp-subtasks-toggle-row row-xs items-center" style={{ justifyContent: 'center', flexShrink: 0, height: 'fit-content' }}>
-        <button
-          type="button"
-          className="subtasks-toggle-btn"
-          onClick={() => setSubtasksOpen(!subtasksOpen)}
-          title={subtasksOpen ? 'Collapse details' : 'Expand details'}
-          aria-label={subtasksOpen ? 'Collapse details' : 'Expand details'}
-          aria-expanded={subtasksOpen}
-        >
-          <ChevronDown
-            size={14}
-            style={{
-              transform: subtasksOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-              transition: 'transform 0.2s',
-            }}
-          />
-        </button>
-      </div>
 
       {/* Task Chat Area - flex-1, fills remaining space */}
       <div id="tdc-thread" ref={threadRef} className="panel-body ai-scroll flex-1 overflow-y-a" style={{ padding: 0 }}>

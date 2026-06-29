@@ -54,19 +54,23 @@ export function useStreamingChat(
         throw new Error('No AI provider configured. Please add an API key in Settings.');
       }
 
-      // The API key is stored in secure storage, not in the provider config
-      // object. Hydrate it before making the API call.
-      let resolvedProvider = provider;
-      if (!provider.apiKey) {
-        try {
-          const key = await secureStorage.secureGet(`providerApiKey_${provider.id}`);
-          if (key) {
-            resolvedProvider = { ...provider, apiKey: key };
-          }
-        } catch {
-          // ignore — will surface as an auth error from the provider
-        }
+      // Provider configs never contain the persisted secret. Hydrate it from
+      // secure storage and fail before sending an unauthenticated request.
+      let storedKey: string | null;
+      try {
+        storedKey = await secureStorage.secureGet(`providerApiKey_${provider.id}`);
+      } catch (error) {
+        const detail = error instanceof Error ? ` ${error.message}` : '';
+        throw new Error(`Could not read the saved API key for ${provider.name}.${detail}`);
       }
+
+      const apiKey = (provider.apiKey || storedKey || '').trim();
+      if (!apiKey) {
+        throw new Error(
+          `No saved API key was found for ${provider.name}. Open Model Management and connect the provider again.`,
+        );
+      }
+      const resolvedProvider = { ...provider, apiKey };
 
       const agent = getActiveAgent(mode);
 

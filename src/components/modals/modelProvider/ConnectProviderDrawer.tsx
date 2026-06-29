@@ -7,7 +7,7 @@ import { useUIStore } from '../../../stores/uiStore';
 interface ConnectProviderDrawerProps {
   open: boolean;
   onClose: () => void;
-  onConnected?: (providerId: string) => void;
+  onConnected?: (providerId: string, apiKey: string) => void;
 }
 
 export function ConnectProviderDrawer({ open, onClose, onConnected }: ConnectProviderDrawerProps) {
@@ -80,7 +80,7 @@ export function ConnectProviderDrawer({ open, onClose, onConnected }: ConnectPro
         useUIStore.getState().showToast(t('models.imported'), 'info');
       }
 
-      onConnected?.(created.id);
+      onConnected?.(created.id, apiKey);
       onClose();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to connect provider.';

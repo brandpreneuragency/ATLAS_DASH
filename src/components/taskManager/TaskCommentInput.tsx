@@ -37,7 +37,6 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
   const [progress, setProgress] = useState(0);
   const { addComment } = useTaskCommentStore();
   const { activeTaskId, updateTask } = useTaskStore();
-  const activeTabColorIndex = useTaskStore((s) => s.getActiveTabColorIndex());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const userHeightRef = useRef<number>(0);

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { Editor } from '@tiptap/react';
 import { AppLayout } from './components/layout/AppLayout';
+import { AppTitlebar } from './components/header/AppTitlebar';
 import { Header } from './components/header/Header';
 import { SubtasksToggleBar } from './components/header/SubtasksToggleBar';
 import { EditorWorkspace } from './components/editor/EditorWorkspace';
@@ -137,9 +138,11 @@ export default function App() {
           `min-height: 0; min-width: 0; overflow: hidden` so the
           workspace can shrink and internal panels can scroll. */}
       <div id="app-content" className="app-shell">
+        <AppTitlebar>
+          <Header />
+        </AppTitlebar>
         <div className="app-shell-main">
           <AppLayout
-            header={pageMode ? null : <Header />}
             subtasksBar={<SubtasksToggleBar />}
             editor={activeWorkspace}
             sidebar={

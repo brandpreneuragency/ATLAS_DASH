@@ -10,7 +10,6 @@ import { SettingsPanel } from '../settings/SettingsPanel';
 import type { ReactNode } from 'react';
 
 interface AppLayoutProps {
-  header: ReactNode;
   editor: ReactNode;
   sidebar: ReactNode;
   leftPanel: ReactNode;
@@ -19,7 +18,7 @@ interface AppLayoutProps {
   subtasksBar?: ReactNode;
 }
 
-export function AppLayout({ header, editor, sidebar, leftPanel, taskListPanel, modals, subtasksBar }: AppLayoutProps) {
+export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, subtasksBar }: AppLayoutProps) {
   const { sidebarWidth, fileExplorerOpen, fileExplorerWidth, settingsPanelOpen, taskMode, pageMode, taskListOpen, fileViewerOpen, editorFontSize, panelsSwapped, aiSidebarOpen } = useUIStore();
 
   useEffect(() => {
@@ -36,6 +35,7 @@ export function AppLayout({ header, editor, sidebar, leftPanel, taskListPanel, m
   const showTaskList = !pageMode && !settingsPanelOpen && taskMode && taskListOpen;
   const showLeftResizableHandle = !pageMode && !settingsPanelOpen && ((fileExplorerOpen && !taskMode) || (taskMode && taskListOpen));
   const showSidebarPanel = !pageMode && (aiSidebarOpen || fileViewerOpen);
+  const mainRowSwapped = panelsSwapped && showSidebarPanel;
   const rightPanelWidth = `clamp(320px, ${sidebarWidth}vw, calc(100vw - var(--sidebar-width) - 6px))`;
   const detailPanelWidth = `calc(6px + ${rightPanelWidth})`;
 
@@ -77,16 +77,13 @@ export function AppLayout({ header, editor, sidebar, leftPanel, taskListPanel, m
       {showLeftResizableHandle && <LeftResizableHandle />}
 
       <div id="main-columns" className="main-panel flex flex-col flex-1 overflow-h min-w-0">
-        {/* Header spanning center + right panels */}
-        {header}
-
         {/* Center + Right panels. `#main-row` is a 2-col grid
          *  (centre | .detail-panel wrapper) defined in layout.css. */}
         <div
           id="main-row"
-          className={`flex flex-1 h-full overflow-h min-w-0${panelsSwapped ? ' main-row--swapped' : ''}`}
+          className={`flex flex-1 h-full overflow-h min-w-0${mainRowSwapped ? ' main-row--swapped' : ''}`}
         >
-          {panelsSwapped ? (
+          {mainRowSwapped ? (
             <>
               {/* Swapped: AI sidebar on the left, centre on the right.
                   .detail-panel wraps (panel, handle) so the handle

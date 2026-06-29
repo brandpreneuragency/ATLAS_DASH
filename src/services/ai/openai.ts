@@ -27,9 +27,13 @@ export async function* streamOpenAI(
   signal?: AbortSignal
 ): AsyncGenerator<StreamChunk, void, unknown> {
   const baseUrl = (config.baseUrl || 'https://api.openai.com/v1').replace(/\/+$/, '');
+  const apiKey = config.apiKey?.trim();
+  if (!apiKey) {
+    throw new Error(`No saved API key was found for ${config.name}.`);
+  }
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${config.apiKey}`,
+    Authorization: `Bearer ${apiKey}`,
   };
   if (config.provider === 'openrouter') {
     headers['HTTP-Referer'] = 'https://tabs-editor.app';
