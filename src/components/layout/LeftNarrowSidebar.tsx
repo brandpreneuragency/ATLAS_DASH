@@ -1,4 +1,4 @@
-import { ClipboardList, FileText, LayoutTemplate, PanelLeft, Sparkles } from 'lucide-react';
+import { ClipboardList, FileText, LayoutTemplate, PanelLeft, Sparkles, Users, SquarePen } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import { useTheme } from '../../hooks/useTheme';
 
@@ -14,6 +14,12 @@ export function LeftNarrowSidebar() {
     setFileExplorerOpen,
     taskListOpen,
     setTaskListOpen,
+    crmMode,
+    formsMode,
+    setCrmMode,
+    setFormsMode,
+    setActiveCRMPage,
+    setActiveFormsPage,
   } = useUIStore();
   const { isCyberpunk, toggleTheme } = useTheme();
 
@@ -55,7 +61,7 @@ export function LeftNarrowSidebar() {
             if (!fileExplorerOpen) setFileExplorerOpen(true);
           }}
           title="Documents"
-          className={`mode-btn${!taskMode && !pageMode ? ' mode-btn--on' : ''}`}
+          className={`mode-btn${!taskMode && !pageMode && !crmMode && !formsMode ? ' mode-btn--on' : ''}`}
         >
           <FileText size={15} />
         </button>
@@ -85,6 +91,32 @@ export function LeftNarrowSidebar() {
           className={`mode-btn${pageMode ? ' mode-btn--on' : ''}`}
         >
           <LayoutTemplate size={15} />
+        </button>
+
+        <button
+          id="nav-btn-crm"
+          type="button"
+          onClick={() => {
+            setActiveCRMPage('dashboard');
+            setCrmMode(true);
+          }}
+          title="CRM"
+          className={`mode-btn${crmMode ? ' mode-btn--on' : ''}`}
+        >
+          <Users size={15} />
+        </button>
+
+        <button
+          id="nav-btn-forms"
+          type="button"
+          onClick={() => {
+            setActiveFormsPage('dashboard');
+            setFormsMode(true);
+          }}
+          title="Forms"
+          className={`mode-btn${formsMode ? ' mode-btn--on' : ''}`}
+        >
+          <SquarePen size={15} />
         </button>
       </div>
 

@@ -15,7 +15,7 @@
 
 /* ---- Left panel — file tree ---------------------------- */
 #file-tree-panel {
-  background: var(--c-background-3);
+  background-color: var(--c-background-1);
   padding: 0;
   display: flex;
   flex-direction: column;

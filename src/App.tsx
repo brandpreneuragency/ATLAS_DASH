@@ -22,23 +22,50 @@ import { TrashModal } from './components/modals/TrashModal';
 import { ModelSwitcher } from './components/ui/ModelSwitcher';
 import { ToastContainer } from './components/ui/Toast';
 import { PageTemplatePage } from './components/pageTemplate';
+import { CRMWorkspace } from './components/layout/CRMWorkspace';
+import { FormsWorkspace } from './components/layout/FormsWorkspace';
+import { CRMListPanel } from './components/crm/CRMListPanel';
+import { FormsListPanel } from './components/forms/FormsListPanel';
+import { CRMAISidebar } from './components/sidebar/CRMAISidebar';
 import { useDocumentStore } from './stores/documentStore';
 import { useUIStore } from './stores/uiStore';
+import type { CRMPage, FormsPage } from './stores/uiStore';
 import { useAIStore } from './stores/aiStore';
 import { useFileSystemStore } from './stores/fileSystemStore';
 import { useTaskStore } from './stores/taskStore';
 import { useProjectStore } from './stores/projectStore';
+import { useCrmStore } from './stores/crmStore';
+import { useFormsStore } from './stores/formsStore';
 import { runStartupUpdateCheck } from './services/updater';
 
 export default function App() {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
   const { loadDocuments, activeDocumentId, isLoaded: docsLoaded, setActiveDocument } = useDocumentStore();
-  const { loadUISettings, taskMode, pageMode, activeTaskId, setTaskMode } = useUIStore();
+  const {
+    loadUISettings,
+    taskMode,
+    pageMode,
+    activeTaskId,
+    setTaskMode,
+    crmMode,
+    formsMode,
+    activeCRMPage,
+    activeFormsPage,
+  } = useUIStore();
   const { loadAISettings } = useAIStore();
   const { loadFileSystemSettings } = useFileSystemStore();
   const { loadTasks, isLoaded: tasksLoaded, activeTaskId: storeActiveTaskId, setActiveTask, tasks } = useTaskStore();
   const { loadProjects, isLoaded: projectsLoaded } = useProjectStore();
+
+  // CRM/Forms active selections drive the Panel 3 CRM AI sidebar context.
+  const activeLeadId = useCrmStore((s) => s.activeLeadId);
+  const activeContactId = useCrmStore((s) => s.activeContactId);
+  const activeCompanyId = useCrmStore((s) => s.activeCompanyId);
+  const activePipelineView = useCrmStore((s) => s.activePipelineView);
+  const activeFormId = useFormsStore((s) => s.activeFormId);
+  const activeSubmissionId = useFormsStore((s) => s.activeSubmissionId);
+  const activeFormStatus = useFormsStore((s) => s.forms.find((f) => f.id === s.activeFormId)?.status ?? null);
 
   const isLoaded = docsLoaded && tasksLoaded && projectsLoaded;
 
@@ -50,6 +77,8 @@ export default function App() {
       loadFileSystemSettings(),
       loadTasks(),
       loadProjects(),
+      useCrmStore.getState().loadCrm(),
+      useFormsStore.getState().loadForms(),
     ]);
     // Check for app updates in the background (no-op in the browser).
     void runStartupUpdateCheck();
@@ -127,7 +156,51 @@ export default function App() {
   }
 
   const effectiveTaskId = activeTaskId ?? storeActiveTaskId;
-  const activeWorkspace = pageMode ? <PageTemplatePage /> : taskMode ? <TaskDetailPanel /> : <EditorWorkspace onEditorReady={handleEditorReady} />;
+
+  // Panel 2 (editor) — CRM/Forms take precedence over doc/task/page.
+  const activeWorkspace = crmMode
+    ? <CRMWorkspace />
+    : formsMode
+    ? <FormsWorkspace />
+    : pageMode
+    ? <PageTemplatePage />
+    : taskMode
+    ? <TaskDetailPanel />
+    : <EditorWorkspace onEditorReady={handleEditorReady} />;
+
+  // Panel 1 (leftPanel) — CRM/Forms list panels vs the file explorer.
+  const leftPanel = crmMode
+    ? <CRMListPanel />
+    : formsMode
+    ? <FormsListPanel />
+    : <FileExplorerPanel />;
+
+  // Panel 3 (sidebar) — CRM AI sidebar for CRM/Forms; existing AISidebar for doc/task.
+  // CRM AI sidebar context — only pass the selection relevant to the active page
+  // so the sidebar shows the right assistant (lead vs contact vs pipeline vs form vs submission).
+  const crmContext = {
+    module: (crmMode ? 'crm' : 'forms') as 'crm' | 'forms',
+    page: (crmMode ? activeCRMPage : activeFormsPage) as CRMPage | FormsPage,
+    leadId: crmMode && activeCRMPage === 'leads' ? activeLeadId : null,
+    contactId: crmMode && activeCRMPage === 'contacts' ? activeContactId : null,
+    companyId: crmMode && activeCRMPage === 'companies' ? activeCompanyId : null,
+    pipelineView: crmMode && activeCRMPage === 'pipeline' ? (activePipelineView as string) : null,
+    formId: formsMode && (activeFormsPage === 'builder' || activeFormsPage === 'list') ? activeFormId : null,
+    submissionId: formsMode && activeFormsPage === 'submissions' ? activeSubmissionId : null,
+    embedState: formsMode && (activeFormsPage === 'builder' || activeFormsPage === 'list') ? activeFormStatus : null,
+  };
+
+  const sidebar = crmMode || formsMode
+    ? <CRMAISidebar crmContext={crmContext} />
+    : pageMode
+    ? null
+    : (
+      <AISidebar
+        documentId={taskMode ? '' : activeDocumentId}
+        taskId={taskMode ? effectiveTaskId ?? '' : ''}
+        editor={editor}
+      />
+    );
 
   return (
     <>
@@ -145,16 +218,8 @@ export default function App() {
           <AppLayout
             subtasksBar={<SubtasksToggleBar />}
             editor={activeWorkspace}
-            sidebar={
-              pageMode ? null : (
-                <AISidebar
-                  documentId={taskMode ? '' : activeDocumentId}
-                  taskId={taskMode ? effectiveTaskId ?? '' : ''}
-                  editor={editor}
-                />
-              )
-            }
-            leftPanel={<FileExplorerPanel />}
+            sidebar={sidebar}
+            leftPanel={leftPanel}
             taskListPanel={<TaskListPanel />}
             modals={
               <>

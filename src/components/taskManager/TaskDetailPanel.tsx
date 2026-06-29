@@ -157,8 +157,8 @@ export function TaskDetailPanel() {
       {/* Task meta bar (date + project + details toggle) */}
       <div className="tdp-meta-bar">
         <div className="tdp-meta-bar-content" style={{ padding: '0 14px' }}>
-          <div className="row-xs items-center" style={{ gap: 24, height: 'fit-content', verticalAlign: 'middle', marginBottom: 0, padding: '12px 12px', borderRadius: 8, backgroundColor: 'transparent' }}>
-              <div ref={dateRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', height: '19px', minHeight: '0px' }}>
+          <div className="row-xs items-center" style={{ gap: 6, height: 'fit-content', verticalAlign: 'middle', marginBottom: 0, padding: '0 0 6px', borderRadius: 8, backgroundColor: 'transparent' }}>
+              <div ref={dateRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', height: 'fit-content', minHeight: '0px', padding: '6px 12px', border: '1px solid var(--c-background-2)', boxShadow: '0px 0px 12px 0px rgba(0, 0, 0, 0.05)' }}>
                 <button
                   type="button"
                   onClick={() => setShowDatePicker(!showDatePicker)}
@@ -173,7 +173,7 @@ export function TaskDetailPanel() {
                   onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0)'; }}
                 >
-                  <Calendar size={13} />
+                  <Calendar size={12} />
                   <span style={{ fontSize: 'var(--fs-xs)', color: 'currentColor', whiteSpace: 'nowrap' }}>
                     {task.date ? task.date : 'No due date'}
                   </span>
@@ -201,10 +201,11 @@ export function TaskDetailPanel() {
                   title={task.projectId ? 'Change project' : 'Set project'}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6,
-                    height: 'fit-content', minHeight: '0px', padding: '12px 12px',
-                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    height: 'fit-content', minHeight: '0px', padding: '6px 12px',
+                    background: 'transparent', border: '1px solid var(--c-background-2)', cursor: 'pointer',
                     color: task.projectId ? accentColor : 'var(--c-text-2)',
                     flexShrink: 0, borderRadius: 8, width: 'fit-content',
+                    boxShadow: '0px 0px 12px 0px rgba(0, 0, 0, 0.05)',
                   }}
                   onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
@@ -247,17 +248,21 @@ export function TaskDetailPanel() {
                   aria-expanded={subtasksOpen}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    height: 'fit-content', minHeight: '0px', padding: 0,
-                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    height: 'fit-content', minHeight: '0px', padding: '6px 0',
+                    background: 'transparent', border: '1px solid var(--c-background-2)', cursor: 'pointer',
                     color: 'var(--c-text-2)',
                     flexShrink: 0, borderRadius: 8, width: 'fit-content',
+                    boxShadow: '0px 0px 12px 0px rgba(0, 0, 0, 0.05)',
                   }}
                 >
                   <ChevronDown
-                    size={14}
+                    size={12}
                     style={{
                       transform: subtasksOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                       transition: 'transform 0.2s',
+                      height: 12,
+                      width: 12,
+                      padding: 0,
                     }}
                   />
                 </button>

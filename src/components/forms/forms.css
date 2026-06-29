@@ -1,0 +1,994 @@
+/* =========================================================
+ * Forms module scoped styles.
+ * Imported by Forms page/list/detail/component files.
+ * Token-driven (reuses --c-*, --fs-*, --radius-*, --shadow-*).
+ * All classes are prefixed `forms-*` to avoid global clashes.
+ * Mirrors TaskListPanel/TaskDetailPanel spacing + rhythm.
+ * ========================================================= */
+
+/* ---------- Panel 2 page shell ---------- */
+.forms-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 24px;
+  height: 100%;
+  min-height: 0;
+}
+
+.forms-page--scroll {
+  overflow-y: auto;
+}
+
+.forms-page-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.forms-page-title {
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--c-text-1);
+  margin: 0;
+}
+
+.forms-page-subtitle {
+  font-size: var(--fs-sm);
+  color: var(--c-text-2);
+  margin: 0;
+}
+
+/* ---------- KPI cards ---------- */
+.forms-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.forms-kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  background: var(--c-background-1);
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.forms-kpi-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.forms-kpi-card-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.forms-kpi-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--c-background-2);
+  color: var(--c-accent-center-panel);
+  flex-shrink: 0;
+}
+
+.forms-kpi-card-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--c-text-1);
+  line-height: 1.1;
+}
+
+.forms-kpi-card-delta {
+  font-size: var(--fs-xs);
+  color: var(--c-text-2);
+}
+
+.forms-kpi-card-delta--up { color: var(--c-success); }
+.forms-kpi-card-delta--down { color: var(--c-danger); }
+
+/* ---------- Tab bar (shared) ---------- */
+.forms-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 0;
+  border-bottom: 1px solid var(--c-border-1);
+  flex-shrink: 0;
+}
+
+.forms-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--c-text-2);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+  border-radius: 0;
+}
+
+.forms-tab:hover {
+  color: var(--c-text-1);
+  background: var(--c-background-2);
+}
+
+.forms-tab--active,
+.forms-tab--active:hover {
+  color: var(--c-accent-center-panel);
+  border-bottom-color: var(--c-accent-center-panel);
+  background: transparent;
+}
+
+/* ---------- Empty state (shared) ---------- */
+.forms-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 48px 24px;
+  color: var(--c-text-2);
+}
+
+.forms-empty-state-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--c-background-2);
+  color: var(--c-text-3);
+}
+
+.forms-empty-state-title {
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--c-text-1);
+  margin: 0;
+}
+
+.forms-empty-state-subtitle {
+  font-size: var(--fs-sm);
+  color: var(--c-text-2);
+  margin: 0;
+  max-width: 320px;
+}
+
+/* ---------- Status + spam badges ---------- */
+.forms-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: capitalize;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.forms-status-badge--draft {
+  background: var(--c-background-2);
+  color: var(--c-text-3);
+  border-color: var(--c-border-1);
+}
+.forms-status-badge--published {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--c-success);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+.forms-status-badge--archived {
+  background: var(--c-background-2);
+  color: var(--c-text-2);
+  border-color: var(--c-border-1);
+  opacity: 0.7;
+}
+
+.forms-spam-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.forms-spam-badge--low {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--c-success);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+.forms-spam-badge--mid {
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--c-warning);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.forms-spam-badge--high {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--c-danger);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* ---------- Section / card ---------- */
+.forms-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--c-background-1);
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.forms-section-title {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--c-text-1);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.forms-section-hint {
+  font-size: var(--fs-xs);
+  color: var(--c-text-2);
+  margin: 0;
+}
+
+/* ---------- Detail field rows ---------- */
+.forms-field-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.32fr) 1fr;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--c-border-1);
+  align-items: baseline;
+}
+.forms-field-row:last-child {
+  border-bottom: none;
+}
+
+.forms-field-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.forms-field-value {
+  font-size: var(--fs-sm);
+  color: var(--c-text-1);
+  word-break: break-word;
+}
+
+.forms-field-value--mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-xs);
+}
+
+.forms-field-value--muted { color: var(--c-text-2); }
+
+/* ---------- Actions row ---------- */
+.forms-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.forms-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--c-border-1);
+  outline: none;
+  background: var(--c-background-1);
+  color: var(--c-text-1);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+  white-space: nowrap;
+}
+.forms-action-btn:hover {
+  border-color: var(--c-accent-center-panel);
+  color: var(--c-accent-center-panel);
+}
+.forms-action-btn--primary {
+  background: var(--c-accent-center-panel);
+  color: #fff;
+  border-color: var(--c-accent-center-panel);
+}
+.forms-action-btn--primary:hover {
+  filter: brightness(1.05);
+  color: #fff;
+}
+.forms-action-btn--danger:hover {
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+}
+.forms-action-btn--ghost {
+  border-color: transparent;
+  background: transparent;
+}
+.forms-action-btn--ghost:hover {
+  background: var(--c-background-2);
+  color: var(--c-text-1);
+  border-color: transparent;
+}
+.forms-action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.forms-action-btn:disabled:hover {
+  border-color: var(--c-border-1);
+  color: var(--c-text-1);
+  background: var(--c-background-1);
+  filter: none;
+}
+
+/* ---------- Table ---------- */
+.forms-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.forms-table thead th {
+  text-align: left;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--c-border-1);
+  background: var(--c-background-1);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.forms-table tbody td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--c-border-1);
+  color: var(--c-text-1);
+  vertical-align: top;
+}
+.forms-table tbody tr {
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+.forms-table tbody tr:hover {
+  background: var(--c-background-2);
+}
+.forms-table tbody tr--active {
+  background: var(--c-background-2);
+}
+.forms-table-wrap {
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-md);
+  overflow: auto;
+  background: var(--c-background-1);
+  flex-shrink: 0;
+}
+
+/* ---------- Form cards (dashboard) ---------- */
+.forms-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.forms-form-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: var(--c-background-1);
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.forms-form-card:hover {
+  border-color: var(--c-accent-center-panel);
+  box-shadow: var(--shadow-sm);
+}
+.forms-form-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.forms-form-card-name {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--c-text-1);
+  word-break: break-word;
+}
+.forms-form-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: var(--fs-xs);
+  color: var(--c-text-2);
+}
+.forms-form-card-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* ---------- Panel 1 list items (compact, task-item rhythm) ---------- */
+.forms-list-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-md);
+  background: var(--c-background-1);
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+.forms-list-search:focus-within {
+  border-color: var(--c-accent-center-panel);
+}
+.forms-list-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--fs-sm);
+  color: var(--c-text-1);
+  height: 100%;
+}
+.forms-list-search input::placeholder { color: var(--c-text-2); }
+
+.forms-list-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.forms-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-full);
+  background: var(--c-background-1);
+  color: var(--c-text-2);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+  white-space: nowrap;
+}
+.forms-filter-chip:hover {
+  color: var(--c-text-1);
+  border-color: var(--c-border-2);
+}
+.forms-filter-chip--active {
+  background: var(--c-accent-center-panel);
+  color: #fff;
+  border-color: var(--c-accent-center-panel);
+}
+
+.forms-list-section-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 10px 0 4px;
+}
+
+.forms-list-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-bottom: 1px solid var(--c-border-1);
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+  font-family: inherit;
+  color: inherit;
+  height: fit-content;
+  min-height: 0;
+  min-width: 0;
+}
+.forms-list-item:hover {
+  background: var(--c-background-2);
+}
+.forms-list-item--active,
+.forms-list-item--active:hover {
+  background: var(--c-background-2);
+  border-color: var(--c-border-2);
+}
+.forms-list-item-title {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--c-text-1);
+  line-height: 1.3;
+  word-break: break-word;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.forms-list-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--c-text-2);
+}
+.forms-list-item-meta .trunc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.forms-list-empty-inline {
+  padding: 24px 12px;
+  text-align: center;
+  font-size: var(--fs-xs);
+  color: var(--c-text-2);
+}
+
+/* ---------- Inputs (settings) ---------- */
+.forms-input,
+.forms-select,
+.forms-textarea {
+  width: 100%;
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-md);
+  background: var(--c-background-1);
+  color: var(--c-text-1);
+  font-size: var(--fs-sm);
+  padding: 7px 10px;
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+.forms-input:focus,
+.forms-select:focus,
+.forms-textarea:focus {
+  border-color: var(--c-accent-center-panel);
+}
+.forms-input:disabled,
+.forms-select:disabled,
+.forms-textarea:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: var(--c-background-2);
+}
+.forms-textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+.forms-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.forms-field-group-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.forms-field-group-hint {
+  font-size: var(--fs-xs);
+  color: var(--c-text-2);
+}
+.forms-settings-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.4fr) 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .forms-settings-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Toggle ---------- */
+.forms-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  color: var(--c-text-1);
+}
+.forms-toggle-track {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--c-background-3);
+  border: 1px solid var(--c-border-1);
+  transition: background-color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+.forms-toggle-track--on {
+  background: var(--c-accent-center-panel);
+  border-color: var(--c-accent-center-panel);
+}
+.forms-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s;
+  box-shadow: var(--shadow-sm);
+}
+.forms-toggle-track--on .forms-toggle-thumb {
+  transform: translateX(14px);
+}
+.forms-toggle--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Snippet preview ---------- */
+.forms-snippet-preview {
+  position: relative;
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-md);
+  background: var(--c-background-1);
+  overflow: hidden;
+}
+.forms-snippet-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px 6px 12px;
+  border-bottom: 1px solid var(--c-border-1);
+  background: var(--c-background-2);
+}
+.forms-snippet-preview-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.forms-snippet-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--c-border-1);
+  border-radius: 6px;
+  background: var(--c-background-1);
+  color: var(--c-text-2);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.forms-snippet-copy:hover {
+  color: var(--c-accent-center-panel);
+  border-color: var(--c-accent-center-panel);
+}
+.forms-snippet-copy--done {
+  color: var(--c-success);
+  border-color: var(--c-success);
+}
+.forms-snippet-code {
+  margin: 0;
+  padding: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--c-text-1);
+  background: var(--c-background-1);
+  overflow-x: auto;
+  white-space: pre;
+}
+.forms-embed-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+/* ---------- Linked CRM chips ---------- */
+.forms-link-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.forms-link-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-full);
+  background: var(--c-background-1);
+  color: var(--c-text-1);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.forms-link-chip:hover {
+  border-color: var(--c-accent-center-panel);
+  color: var(--c-accent-center-panel);
+}
+.forms-link-chip--muted {
+  color: var(--c-text-2);
+  cursor: default;
+}
+.forms-link-chip--muted:hover {
+  border-color: var(--c-border-1);
+  color: var(--c-text-2);
+}
+
+/* ---------- Templates grid ---------- */
+.forms-template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  flex-shrink: 0;
+}
+.forms-template-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  background: var(--c-background-1);
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-md);
+}
+.forms-template-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.forms-template-card-name {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--c-text-1);
+  word-break: break-word;
+}
+.forms-template-card-desc {
+  font-size: var(--fs-xs);
+  color: var(--c-text-2);
+  min-height: 16px;
+}
+.forms-template-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+/* ---------- Modal-ish inline preview ---------- */
+.forms-preview-modal {
+  position: fixed;
+  inset: 0;
+  background: var(--c-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  padding: 24px;
+}
+.forms-preview-modal-card {
+  width: min(560px, 100%);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-background-1);
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2xl);
+  overflow: hidden;
+}
+.forms-preview-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--c-border-1);
+}
+.forms-preview-modal-body {
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* ---------- Domains editor ---------- */
+.forms-domains-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border: 1px dashed var(--c-border-1);
+  border-radius: var(--radius-md);
+  background: var(--c-background-1);
+  min-height: 40px;
+  align-items: center;
+}
+.forms-domain-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 6px 0 9px;
+  border-radius: var(--radius-full);
+  background: var(--c-background-2);
+  color: var(--c-text-1);
+  font-size: var(--fs-xs);
+}
+.forms-domain-chip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--c-text-2);
+  cursor: pointer;
+  border-radius: 50%;
+}
+.forms-domain-chip button:hover {
+  color: var(--c-danger);
+  background: var(--c-background-1);
+}
+.forms-domains-add {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  min-width: 140px;
+}
+.forms-domains-add input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--fs-sm);
+  color: var(--c-text-1);
+}
+
+/* ---------- Webhook rows ---------- */
+.forms-webhook-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--c-border-1);
+}
+.forms-webhook-row:last-child { border-bottom: none; }
+@media (max-width: 720px) {
+  .forms-webhook-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+/* ---------- Helpers ---------- */
+.forms-muted { color: var(--c-text-2); }
+.forms-stack { display: flex; flex-direction: column; gap: 10px; }
+.forms-row { display: flex; align-items: center; gap: 8px; }
+.forms-row--wrap { flex-wrap: wrap; }
+.forms-spread { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.forms-grow { flex: 1; min-width: 0; }
+.forms-divider { height: 1px; background: var(--c-border-1); margin: 4px 0; }
+
+/* =========================================================
+ * Appended: responsive behavior (ARCHITECTURE_NOTES §11 +
+ * wireframe "Responsive Behavior"). Container queries scale
+ * Panel 2 content with the center-panel width — the real
+ * trigger for Forms surfaces, since the shell collapses Panel
+ * 1/3 via the existing toggles. Viewport media queries add
+ * graceful degradation for very narrow viewports. No existing
+ * rules rewritten; only new @container / @media blocks appended.
+ * ========================================================= */
+
+/* ---- Panel 2 content scales with center-panel width ---- */
+@container main-panel (max-width: 720px) {
+  .forms-page { padding: 16px 18px; gap: 12px; }
+  .forms-settings-row { grid-template-columns: 1fr; }
+  .forms-webhook-row { grid-template-columns: 1fr; gap: 6px; }
+  .forms-template-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+}
+
+@container main-panel (max-width: 520px) {
+  .forms-page { padding: 12px 12px; gap: 10px; }
+  .forms-kpi-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+  .forms-form-grid { grid-template-columns: 1fr; }
+  .forms-template-grid { grid-template-columns: 1fr; }
+  /* Tables already live in .forms-table-wrap (overflow:auto) —
+     hold the table at a legible width so the wrap scrolls x. */
+  .forms-table { min-width: 520px; }
+  .forms-field-row { grid-template-columns: 1fr; gap: 4px; }
+  .forms-preview-modal { padding: 12px; }
+  .forms-preview-modal-card { width: 100%; max-height: 90vh; }
+  .forms-snippet-preview-head { flex-wrap: wrap; gap: 6px; }
+}
+
+/* ---- Very narrow viewport graceful degradation ---- */
+@media (max-width: 768px) {
+  .forms-page { padding: 16px 18px; gap: 12px; }
+  .forms-settings-row { grid-template-columns: 1fr; }
+  .forms-webhook-row { grid-template-columns: 1fr; gap: 6px; }
+}
+@media (max-width: 480px) {
+  .forms-page { padding: 10px 12px; gap: 10px; }
+  .forms-kpi-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+  .forms-form-grid { grid-template-columns: 1fr; }
+  .forms-template-grid { grid-template-columns: 1fr; }
+  .forms-table { min-width: 480px; }
+  .forms-field-row { grid-template-columns: 1fr; gap: 4px; }
+  .forms-preview-modal { padding: 8px; }
+  .forms-preview-modal-card { width: 100%; max-height: 92vh; }
+  .forms-snippet-preview-head { flex-wrap: wrap; gap: 6px; }
+}

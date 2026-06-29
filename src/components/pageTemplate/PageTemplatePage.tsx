@@ -8,6 +8,7 @@ import { SettingsContent } from '../modals/SettingsModal';
 import { ActionsPanel } from '../sidebar/ActionsPanel';
 import { CharactersPanel } from '../sidebar/CharactersPanel';
 import { AISidebar } from '../sidebar/AISidebar';
+import { RightPanelSubheader } from '../sidebar/RightPanelSubheader';
 import { useTaskStore } from '../../stores/taskStore';
 
 type SettingsSection = 'models' | 'actions' | 'appearance' | 'agents';
@@ -79,13 +80,8 @@ export function PageTemplatePage() {
         right={rightConfig}
         onPanelResize={handleResize}
         slots={{
-          leftHeader: (
-            <div className="reusable-page-template__preview-bar">
-              <span>Settings Panel</span>
-            </div>
-          ),
           leftMain: (
-            <div className="flex-col flex-1" style={{ padding: 8, gap: 8, overflow: 'auto', display: 'flex', borderTop: '1px solid var(--c-border-2)' }}>
+            <div className="flex-col flex-1" style={{ padding: 8, gap: 8, overflow: 'auto', display: 'flex' }}>
               {/* Models */}
               <button
                 type="button"
@@ -231,17 +227,21 @@ export function PageTemplatePage() {
               {renderCenterContent()}
             </div>
           ),
-          rightHeader: (
-            <div className="reusable-page-template__preview-bar">
-              <span>AI Chat Assistant</span>
-            </div>
-          ),
           rightMain: (
-            <AISidebar
-              documentId=""
-              taskId={effectiveTaskId}
-              editor={null}
-            />
+            <div
+              id="ai-sidebar-panel"
+              className="relative flex-col h-full w-full min-w-0 overflow-h"
+              style={{ paddingLeft: '0px', paddingRight: '0px' }}
+            >
+              <RightPanelSubheader />
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <AISidebar
+                  documentId=""
+                  taskId={effectiveTaskId}
+                  editor={null}
+                />
+              </div>
+            </div>
           ),
         }}
       />

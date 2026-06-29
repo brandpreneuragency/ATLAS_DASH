@@ -83,7 +83,7 @@
   --composer-min-height: 72px;
   --toolbar-height: 40px;
   --subtasks-bar-height: 40px;
-  --task-list-header-height: 24px;
+  --task-list-header-height: 32px;
 
   /* ---------- Modal / overlay sizes ---------- */
   --modal-max-width: 560px;

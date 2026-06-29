@@ -61,6 +61,17 @@ export function SubtasksToggleBar() {
     <div
       className="subtasks-toggle-bar"
     >
+      <button
+        type="button"
+        className={`subtasks-complete-btn${isCompleted ? ' subtasks-complete-btn--completed' : ''}`}
+        onClick={toggleComplete}
+        disabled={!activeTask}
+        title={isCompleted ? 'Mark as Incomplete' : 'Mark as Completed'}
+        aria-label={isCompleted ? 'Mark as Incomplete' : 'Mark as Completed'}
+      >
+        {isCompleted ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+      </button>
+
       {isEditingTitle ? (
         <input
           ref={inputRef}
@@ -93,17 +104,6 @@ export function SubtasksToggleBar() {
           {activeTask?.title || 'Untitled task'}
         </button>
       )}
-
-      <button
-        type="button"
-        className={`subtasks-complete-btn${isCompleted ? ' subtasks-complete-btn--completed' : ''}`}
-        onClick={toggleComplete}
-        disabled={!activeTask}
-        title={isCompleted ? 'Mark as Incomplete' : 'Mark as Completed'}
-        aria-label={isCompleted ? 'Mark as Incomplete' : 'Mark as Completed'}
-      >
-        {isCompleted ? <CheckCircle2 size={16} /> : <Circle size={16} />}
-      </button>
     </div>
   );
 }

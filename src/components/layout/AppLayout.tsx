@@ -19,7 +19,7 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, subtasksBar }: AppLayoutProps) {
-  const { sidebarWidth, fileExplorerOpen, fileExplorerWidth, settingsPanelOpen, taskMode, pageMode, taskListOpen, fileViewerOpen, editorFontSize, panelsSwapped, aiSidebarOpen } = useUIStore();
+  const { sidebarWidth, fileExplorerOpen, fileExplorerWidth, settingsPanelOpen, taskMode, pageMode, taskListOpen, fileViewerOpen, editorFontSize, panelsSwapped, aiSidebarOpen, crmMode, formsMode } = useUIStore();
 
   useEffect(() => {
     if (editorFontSize === 14) {
@@ -31,10 +31,14 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
     }
   }, [editorFontSize]);
 
-  const showFileExplorer = !pageMode && !settingsPanelOpen && (fileExplorerOpen && !taskMode);
-  const showTaskList = !pageMode && !settingsPanelOpen && taskMode && taskListOpen;
-  const showLeftResizableHandle = !pageMode && !settingsPanelOpen && ((fileExplorerOpen && !taskMode) || (taskMode && taskListOpen));
-  const showSidebarPanel = !pageMode && (aiSidebarOpen || fileViewerOpen);
+  // CRM/Forms modules always render the full 3-panel layout.
+  const crmOrForms = crmMode || formsMode;
+
+  const showFileExplorer = !pageMode && !settingsPanelOpen && !crmOrForms && (fileExplorerOpen && !taskMode);
+  const showTaskList = !pageMode && !settingsPanelOpen && !crmOrForms && taskMode && taskListOpen;
+  const showCrmFormsList = !pageMode && !settingsPanelOpen && crmOrForms;
+  const showLeftResizableHandle = !pageMode && !settingsPanelOpen && (crmOrForms || (fileExplorerOpen && !taskMode) || (taskMode && taskListOpen));
+  const showSidebarPanel = !pageMode && (aiSidebarOpen || fileViewerOpen || crmOrForms);
   const mainRowSwapped = panelsSwapped && showSidebarPanel;
   const rightPanelWidth = `clamp(320px, ${sidebarWidth}vw, calc(100vw - var(--sidebar-width) - 6px))`;
   const detailPanelWidth = `calc(6px + ${rightPanelWidth})`;
@@ -59,7 +63,7 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
         <div
           id="file-tree-panel"
           className="task-list-panel relative shrink-0 overflow-h flex-col h-full min-w-0"
-          style={{ width: `clamp(260px, ${fileExplorerWidth}vw, 420px)` }}
+          style={{ width: `clamp(260px, ${fileExplorerWidth}vw, 420px)`, paddingLeft: 10, paddingRight: 10 }}
         >
           {leftPanel}
         </div>
@@ -71,6 +75,15 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
           style={{ width: `clamp(260px, ${fileExplorerWidth}vw, 420px)`, paddingTop: '0px', paddingBottom: '0px', backgroundColor: 'var(--c-background-1)' }}
         >
           {taskListPanel}
+        </div>
+      )}
+      {showCrmFormsList && (
+        <div
+          id="crm-forms-list-column"
+          className="task-list-panel relative shrink-0 overflow-h flex-col h-full"
+          style={{ width: `clamp(260px, ${fileExplorerWidth}vw, 420px)`, paddingTop: '0px', paddingBottom: '0px', backgroundColor: 'var(--c-background-1)' }}
+        >
+          {leftPanel}
         </div>
       )}
 
@@ -96,7 +109,7 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
                     style={{ paddingLeft: '0px', paddingRight: '0px', width: rightPanelWidth }}
                   >
                     {/* Subheader always stays visible */}
-                    {aiSidebarOpen && !fileViewerOpen && <RightPanelSubheader />}
+                    {(aiSidebarOpen || crmOrForms) && !fileViewerOpen && <RightPanelSubheader />}
                     {/* Content body */}
                     <div className="flex-1 min-h-0 overflow-hidden">
                       {fileViewerOpen ? <FileViewerPanel /> : sidebar}
@@ -132,7 +145,7 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
                     style={{ paddingLeft: '0px', paddingRight: '0px', width: rightPanelWidth }}
                   >
                     {/* Subheader always stays visible */}
-                    {aiSidebarOpen && !fileViewerOpen && <RightPanelSubheader />}
+                    {(aiSidebarOpen || crmOrForms) && !fileViewerOpen && <RightPanelSubheader />}
                     {/* Content body */}
                     <div className="flex-1 min-h-0 overflow-hidden">
                       {fileViewerOpen ? <FileViewerPanel /> : sidebar}

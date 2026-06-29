@@ -12,7 +12,7 @@ export function FileTreeTabs() {
       id="filetree-root-row"
       style={{
         display: 'flex',
-        height: 'var(--control-height-sm)',
+        height: '56px',
         alignItems: 'center',
         marginBottom: '0px',
         marginLeft: '0px',

@@ -1,0 +1,991 @@
+/* =========================================================
+ * Form Builder scoped styles.
+ * Imported once by FormBuilder.tsx.
+ * Token-driven (reuses --c-*, --fs-*, --radius-*, --shadow-*).
+ * All classes are prefixed `forms-builder-*` to avoid clashes.
+ * Mirrors TaskDetailPanel spacing/radius + forms.css rhythm.
+ * The BUILDER UI uses app tokens. The published/preview form
+ * output uses isolated `--tabs-form-*` CSS variables (see
+ * .forms-builder-preview-surface) so embedded forms are
+ * style-isolated from the host page.
+ * ========================================================= */
+
+/* ---------- Builder shell ---------- */
+.forms-builder {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  background: var(--c-background-1);
+}
+
+/* ---------- Top toolbar ---------- */
+.forms-builder-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--c-border-1);
+  background: var(--c-background-1);
+  flex-shrink: 0;
+}
+
+.forms-builder-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.forms-builder-title-input {
+  min-width: 0;
+  max-width: 320px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--c-text-1);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.forms-builder-title-input:hover {
+  background: var(--c-background-2);
+}
+.forms-builder-title-input:focus {
+  border-color: var(--c-accent-center-panel);
+  background: var(--c-background-1);
+}
+
+.forms-builder-toolbar-spacer { flex: 1 1 auto; }
+
+.forms-builder-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ---------- Inner tab bar ---------- */
+.forms-builder-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0;
+  border-bottom: 1px solid var(--c-border-1);
+  padding: 0 12px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.forms-builder-tabs::-webkit-scrollbar { display: none; }
+
+.forms-builder-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--c-text-2);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+  white-space: nowrap;
+}
+.forms-builder-tab:hover {
+  color: var(--c-text-1);
+  background: var(--c-background-2);
+}
+.forms-builder-tab--active,
+.forms-builder-tab--active:hover {
+  color: var(--c-accent-center-panel);
+  border-bottom-color: var(--c-accent-center-panel);
+  background: transparent;
+}
+
+/* ---------- Tab body ---------- */
+.forms-builder-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Build tab: 3-column ---------- */
+.forms-builder-build {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) 280px;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.forms-builder-build--inspector-closed {
+  grid-template-columns: 180px minmax(0, 1fr);
+}
+
+.forms-builder-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.forms-builder-palette {
+  border-right: 1px solid var(--c-border-1);
+  background: var(--c-background-2);
+}
+
+.forms-builder-canvas-col {
+  background: var(--c-background-1);
+}
+
+.forms-builder-inspector {
+  border-left: 1px solid var(--c-border-1);
+  background: var(--c-background-2);
+}
+
+/* Section header inside a builder column */
+.forms-builder-col-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--c-border-1);
+  flex-shrink: 0;
+}
+.forms-builder-col-head-title {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.forms-builder-col-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+/* ---------- Field palette ---------- */
+.forms-builder-palette-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.forms-builder-palette-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--c-text-2);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+.forms-builder-palette-btn:hover {
+  background: var(--c-background-3);
+  color: var(--c-text-1);
+  border-color: var(--c-border-1);
+}
+.forms-builder-palette-btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-text-3);
+  flex-shrink: 0;
+}
+.forms-builder-palette-btn:hover .forms-builder-palette-btn-icon {
+  color: var(--c-accent-center-panel);
+}
+.forms-builder-palette-hint {
+  font-size: var(--fs-xs);
+  color: var(--c-text-2);
+  padding: 6px 4px 0;
+  line-height: 1.4;
+}
+
+/* ---------- Canvas ---------- */
+.forms-builder-canvas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.forms-builder-step-sep {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 2px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.forms-builder-step-sep::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--c-border-1);
+}
+
+.forms-builder-field-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-md);
+  background: var(--c-background-1);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+}
+.forms-builder-field-card:hover {
+  border-color: var(--c-border-2);
+  background: var(--c-background-2);
+}
+.forms-builder-field-card--active,
+.forms-builder-field-card--active:hover {
+  border-color: var(--c-accent-center-panel);
+  box-shadow: var(--shadow-sm);
+  background: var(--c-background-1);
+}
+.forms-builder-field-card--disabled {
+  opacity: 0.65;
+}
+
+.forms-builder-field-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--c-background-2);
+  color: var(--c-text-3);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.forms-builder-field-card--active .forms-builder-field-card-icon {
+  background: rgba(35, 114, 68, 0.1);
+  color: var(--c-accent-center-panel);
+}
+
+.forms-builder-field-card-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.forms-builder-field-card-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--c-text-1);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  word-break: break-word;
+}
+.forms-builder-field-card-required {
+  color: var(--c-danger);
+  font-weight: 700;
+}
+.forms-builder-field-card-meta {
+  font-size: var(--fs-xs);
+  color: var(--c-text-2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.forms-builder-field-card-name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-xs);
+  color: var(--c-text-3);
+}
+.forms-builder-field-card-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.forms-builder-field-card-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--c-text-2);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+.forms-builder-field-card-btn:hover {
+  background: var(--c-background-3);
+  color: var(--c-text-1);
+}
+.forms-builder-field-card-btn--danger:hover {
+  color: var(--c-danger);
+}
+
+.forms-builder-canvas-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--c-text-2);
+  border: 1px dashed var(--c-border-1);
+  border-radius: var(--radius-md);
+  background: var(--c-background-2);
+}
+
+/* ---------- Inspector ---------- */
+.forms-builder-inspector-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid var(--c-border-1);
+}
+.forms-builder-inspector-section:last-child { border-bottom: none; }
+.forms-builder-inspector-section-title {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.forms-builder-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.forms-builder-option-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+.forms-builder-option-row input {
+  min-width: 0;
+}
+
+.forms-builder-inline-hint {
+  font-size: var(--fs-xs);
+  color: var(--c-text-2);
+  line-height: 1.4;
+  padding: 6px 8px;
+  border-left: 2px solid var(--c-warning);
+  background: rgba(245, 158, 11, 0.08);
+  border-radius: 0 6px 6px 0;
+}
+
+/* ---------- Style tab ---------- */
+.forms-builder-style {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.forms-builder-style-controls {
+  border-right: 1px solid var(--c-border-1);
+  background: var(--c-background-2);
+  overflow-y: auto;
+}
+.forms-builder-style-preview {
+  background: var(--c-background-1);
+  overflow-y: auto;
+}
+
+.forms-builder-control-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+.forms-builder-color-input {
+  width: 100%;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-md);
+  background: var(--c-background-1);
+  cursor: pointer;
+}
+.forms-builder-color-input::-webkit-color-swatch-wrapper { padding: 0; }
+.forms-builder-color-input::-webkit-color-swatch { border: none; border-radius: 4px; }
+
+/* ---------- Responsive preview toggle ---------- */
+.forms-builder-preview-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--c-border-1);
+  background: var(--c-background-2);
+  flex-shrink: 0;
+}
+.forms-builder-preview-toggle {
+  display: inline-flex;
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--c-background-1);
+}
+.forms-builder-preview-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--c-text-2);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+.forms-builder-preview-toggle-btn:hover {
+  color: var(--c-text-1);
+  background: var(--c-background-2);
+}
+.forms-builder-preview-toggle-btn--active {
+  background: var(--c-accent-center-panel);
+  color: #fff;
+}
+
+.forms-builder-preview-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: var(--c-background-3);
+}
+
+/* ---------- Form preview surface (ISOLATED) ----------
+ * The .forms-builder-preview-surface scopes isolated CSS variables
+ * (--tabs-form-*) used by the rendered form. The builder UI outside
+ * this surface uses app tokens (--c-*). The surface sets defaults
+ * that LeadFormStyleConfig overrides inline, so embedded forms never
+ * inherit host app styles. */
+.forms-builder-preview-surface {
+  --tabs-form-primary: #4f46e5;
+  --tabs-form-bg: #ffffff;
+  --tabs-form-text: #111827;
+  --tabs-form-label: #374151;
+  --tabs-form-border: #d1d5db;
+  --tabs-form-radius: 8px;
+  --tabs-form-font: 'Inter', system-ui, sans-serif;
+  --tabs-form-font-size: 14px;
+  --tabs-form-padding: 20px;
+  background: var(--tabs-form-bg);
+  color: var(--tabs-form-text);
+  font-family: var(--tabs-form-font);
+  font-size: var(--tabs-form-font-size);
+  border-radius: calc(var(--tabs-form-radius) + 4px);
+  box-shadow: var(--shadow-2xl);
+  transition: width 0.18s ease;
+  overflow: hidden;
+}
+.forms-builder-preview-surface--desktop { width: 100%; max-width: 640px; }
+.forms-builder-preview-surface--tablet { width: 768px; max-width: 100%; }
+.forms-builder-preview-surface--mobile { width: 375px; max-width: 100%; }
+
+/* Rendered form (preview / published output) — all scoped to surface */
+.forms-builder-form {
+  padding: var(--tabs-form-padding);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.forms-builder-form-title {
+  font-size: calc(var(--tabs-form-font-size) + 4px);
+  font-weight: 700;
+  color: var(--tabs-form-text);
+  margin: 0 0 4px;
+}
+.forms-builder-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.forms-builder-form-label {
+  font-size: var(--tabs-form-font-size);
+  font-weight: 600;
+  color: var(--tabs-form-label);
+}
+.forms-builder-form-label-req { color: var(--c-danger); margin-left: 2px; }
+.forms-builder-form-input,
+.forms-builder-form-textarea,
+.forms-builder-form-select {
+  width: 100%;
+  border: 1px solid var(--tabs-form-border);
+  border-radius: var(--tabs-form-radius);
+  padding: 8px 10px;
+  font-size: var(--tabs-form-font-size);
+  color: var(--tabs-form-text);
+  background: var(--tabs-form-bg);
+  outline: none;
+  font-family: inherit;
+}
+.forms-builder-form-input:focus,
+.forms-builder-form-textarea:focus,
+.forms-builder-form-select:focus {
+  border-color: var(--tabs-form-primary);
+}
+.forms-builder-form-textarea { min-height: 80px; resize: vertical; }
+.forms-builder-form-help {
+  font-size: calc(var(--tabs-form-font-size) - 2px);
+  color: var(--tabs-form-label);
+  opacity: 0.8;
+}
+.forms-builder-form-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.forms-builder-form-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--tabs-form-font-size);
+  color: var(--tabs-form-text);
+}
+.forms-builder-form-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: var(--tabs-form-font-size);
+  color: var(--tabs-form-text);
+}
+.forms-builder-form-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 18px;
+  border: none;
+  border-radius: var(--tabs-form-radius);
+  background: var(--tabs-form-primary);
+  color: #fff;
+  font-size: var(--tabs-form-font-size);
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+}
+.forms-builder-form-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.forms-builder-form-file-disabled {
+  font-size: calc(var(--tabs-form-font-size) - 1px);
+  color: var(--tabs-form-label);
+  padding: 8px 10px;
+  border: 1px dashed var(--tabs-form-border);
+  border-radius: var(--tabs-form-radius);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+/* ---------- Logic tab ---------- */
+.forms-builder-logic {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.forms-builder-logic-rule {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-md);
+  background: var(--c-background-1);
+}
+@media (max-width: 760px) {
+  .forms-builder-logic-rule {
+    grid-template-columns: 1fr;
+  }
+}
+.forms-builder-logic-rule select,
+.forms-builder-logic-rule input {
+  min-width: 0;
+}
+.forms-builder-utm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 6px;
+}
+.forms-builder-utm-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-md);
+  background: var(--c-background-1);
+  font-size: var(--fs-sm);
+  color: var(--c-text-1);
+  cursor: pointer;
+}
+.forms-builder-utm-item:hover { background: var(--c-background-2); }
+.forms-builder-utm-item-name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--fs-xs);
+  color: var(--c-text-3);
+}
+
+.forms-builder-step-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--c-border-1);
+}
+.forms-builder-step-row:last-child { border-bottom: none; }
+.forms-builder-step-order {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-3);
+  width: 22px;
+  text-align: center;
+}
+
+/* ---------- Embed tab ---------- */
+.forms-builder-embed {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.forms-builder-embed-preview {
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--c-background-1);
+  display: flex;
+  flex-direction: column;
+  min-height: 360px;
+}
+.forms-builder-embed-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--c-border-1);
+  background: var(--c-background-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.forms-builder-embed-preview-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  border: none;
+  background: #fff;
+  width: 100%;
+}
+
+/* ---------- Submissions tab (read-only) ---------- */
+.forms-builder-submissions {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Responsive (inspector drawer + palette collapse) ---------- */
+@media (max-width: 980px) {
+  .forms-builder-build {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+  .forms-builder-palette-btn span { display: none; }
+  .forms-builder-palette-hint { display: none; }
+  .forms-builder-palette-btn {
+    justify-content: center;
+    padding: 0;
+  }
+  .forms-builder-inspector {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 300px;
+    max-width: 90vw;
+    z-index: 90;
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    box-shadow: var(--shadow-2xl);
+  }
+  .forms-builder-inspector--open {
+    transform: translateX(0);
+  }
+  .forms-builder-inspector-scrim {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 89;
+  }
+}
+@media (max-width: 760px) {
+  .forms-builder-style {
+    grid-template-columns: 1fr;
+  }
+  .forms-builder-style-controls {
+    border-right: none;
+    border-bottom: 1px solid var(--c-border-1);
+    max-height: 40%;
+  }
+}
+
+/* =========================================================
+ * Appended: shell / BuildTab / FieldInspector / SubmissionsTab / SettingsTab
+ * additions. Reuses tokens and existing forms-builder-* / forms-*
+ * classes where possible. Only new classes added here.
+ * ========================================================= */
+
+/* ---------- Inspector: empty state + checkbox rows ---------- */
+.forms-builder-inspector-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 40px 16px;
+  color: var(--c-text-2);
+}
+.forms-builder-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  color: var(--c-text-1);
+  cursor: pointer;
+}
+.forms-builder-checkbox-row input {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: var(--c-accent-center-panel);
+  flex-shrink: 0;
+}
+
+/* Inspector scrim: hidden on desktop, revealed on mobile only. */
+.forms-builder-inspector-scrim { display: none; }
+
+/* ---------- Submissions tab ---------- */
+.forms-builder-submissions-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--c-border-1);
+  background: var(--c-background-2);
+  flex-shrink: 0;
+}
+.forms-builder-submissions .forms-table-wrap {
+  border: none;
+  border-radius: 0;
+  flex: 1 1 auto;
+}
+.forms-builder-submission-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.forms-builder-submission-summary-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  min-width: 0;
+}
+.forms-builder-submission-summary-label {
+  color: var(--c-text-3);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.forms-builder-submission-summary-value {
+  color: var(--c-text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.forms-builder-submission-time {
+  font-size: var(--fs-xs);
+  color: var(--c-text-2);
+  white-space: nowrap;
+}
+.forms-builder-submission-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: capitalize;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.forms-builder-submission-status--new {
+  background: var(--c-background-2);
+  color: var(--c-text-2);
+  border-color: var(--c-border-1);
+}
+.forms-builder-submission-status--converted {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--c-success);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+.forms-builder-submission-status--spam {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--c-danger);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* ---------- Settings tab ---------- */
+.forms-builder-settings {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.forms-builder-settings-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+}
+.forms-builder-disabled-panel {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px dashed var(--c-border-1);
+  border-radius: var(--radius-md);
+  background: var(--c-background-2);
+  color: var(--c-warning);
+}
+.forms-builder-disabled-panel > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.forms-builder-status-control {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------- Preview overlay (full-screen) ---------- */
+.forms-builder-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: var(--c-overlay);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Mobile: reveal scrim + ensure overlay sits above ---------- */
+@media (max-width: 980px) {
+  .forms-builder-inspector-scrim { display: block; }
+}
+@media (max-width: 760px) {
+  .forms-builder-settings-scroll {
+    padding: 14px 14px;
+  }
+}
+
+/* =========================================================
+ * Appended: narrow-width graceful degradation.
+ * The build tab already collapses at 980px (palette→icons,
+ * inspector→slide-over drawer) and the style tab stacks at
+ * 760px. These additions only tighten padding/gaps at very
+ * narrow panel or viewport widths so the canvas stays usable.
+ * No existing rules rewritten; only new blocks appended.
+ * ========================================================= */
+
+@container main-panel (max-width: 520px) {
+  .forms-builder-canvas { padding: 10px; }
+  .forms-builder-toolbar { gap: 6px; padding: 0 8px; }
+  .forms-builder-title-input { max-width: 100%; }
+  .forms-builder-settings-scroll { padding: 12px; }
+  .forms-builder-logic { padding: 12px; }
+  .forms-builder-embed { padding: 12px; }
+}
+
+@media (max-width: 480px) {
+  .forms-builder-canvas { padding: 10px; }
+  .forms-builder-toolbar { gap: 6px; padding: 0 8px; }
+  .forms-builder-title-input { max-width: 100%; }
+  .forms-builder-settings-scroll { padding: 12px; }
+  .forms-builder-logic { padding: 12px; }
+  .forms-builder-embed { padding: 12px; }
+}

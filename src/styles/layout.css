@@ -422,6 +422,7 @@ body {
   flex: 0 0 auto;
   min-height: 0;
   height: var(--task-list-header-height);
+  background-color: var(--c-background-1);
   padding-inline: 0;
   /* Agent 8: header itself becomes a container context for
    * the inner tab buttons and the optional filter label. */

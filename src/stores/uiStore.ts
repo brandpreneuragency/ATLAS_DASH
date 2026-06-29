@@ -21,6 +21,11 @@ interface SelectionState {
 
 export type SidebarTab = 'chat' | 'actions' | 'characters' | 'models';
 
+/** Active sub-page within the CRM module (owned by uiStore so the shell can switch panels). */
+export type CRMPage = 'dashboard' | 'leads' | 'contacts' | 'companies' | 'pipeline' | 'activities' | 'settings';
+/** Active sub-page within the Forms module (owned by uiStore so the shell can switch panels). */
+export type FormsPage = 'dashboard' | 'list' | 'builder' | 'submissions' | 'templates' | 'settings';
+
 interface UIStore {
   sidebarOpen: boolean;
   sidebarWidth: number; // vw 15-40
@@ -60,6 +65,15 @@ interface UIStore {
   activeTaskId: string | null;
   taskListOpen: boolean;
   subtasksOpen: boolean;
+
+  /** CRM module active — mutually exclusive with task/page/forms modes. */
+  crmMode: boolean;
+  /** Forms module active — mutually exclusive with task/page/crm modes. */
+  formsMode: boolean;
+  /** Active sub-page within the CRM module. */
+  activeCRMPage: CRMPage;
+  /** Active sub-page within the Forms module. */
+  activeFormsPage: FormsPage;
 
   splitEditorWidth: number;
 
@@ -105,6 +119,10 @@ interface UIStore {
   setTaskMode: (v: boolean) => void;
   setPageMode: (v: boolean) => void;
   setPagePanelOpen: (v: boolean) => void;
+  setCrmMode: (v: boolean) => void;
+  setFormsMode: (v: boolean) => void;
+  setActiveCRMPage: (p: CRMPage) => void;
+  setActiveFormsPage: (p: FormsPage) => void;
   setActiveTaskId: (id: string | null) => void;
   setTaskListOpen: (v: boolean) => void;
   setSubtasksOpen: (v: boolean) => void;
@@ -161,6 +179,10 @@ export const useUIStore = create<UIStore>((set, get) => ({
   activeTaskId: null,
   taskListOpen: true,
   subtasksOpen: true,
+  crmMode: false,
+  formsMode: false,
+  activeCRMPage: 'dashboard',
+  activeFormsPage: 'dashboard',
   splitEditorWidth: 30,
 
   panelsSwapped: false,
@@ -253,20 +275,50 @@ export const useUIStore = create<UIStore>((set, get) => ({
   setSelectedTreePath: (path) => set({ selectedTreePath: path }),
 
   setTaskMode: (v) => {
-    set({ taskMode: v, pageMode: false });
+    set({ taskMode: v, pageMode: false, crmMode: false, formsMode: false });
     db.settings.put({ key: 'taskMode', value: v });
     db.settings.put({ key: 'pageMode', value: false });
+    db.settings.put({ key: 'crmMode', value: false });
+    db.settings.put({ key: 'formsMode', value: false });
   },
 
   setPageMode: (v) => {
-    set({ taskMode: false, pageMode: v });
+    set({ taskMode: false, pageMode: v, crmMode: false, formsMode: false });
     db.settings.put({ key: 'taskMode', value: false });
     db.settings.put({ key: 'pageMode', value: v });
+    db.settings.put({ key: 'crmMode', value: false });
+    db.settings.put({ key: 'formsMode', value: false });
   },
 
   setPagePanelOpen: (v) => {
     set({ pagePanelOpen: v });
     db.settings.put({ key: 'pagePanelOpen', value: v });
+  },
+
+  setCrmMode: (v) => {
+    set({ crmMode: v, taskMode: false, pageMode: false, formsMode: false });
+    db.settings.put({ key: 'crmMode', value: v });
+    db.settings.put({ key: 'taskMode', value: false });
+    db.settings.put({ key: 'pageMode', value: false });
+    db.settings.put({ key: 'formsMode', value: false });
+  },
+
+  setFormsMode: (v) => {
+    set({ formsMode: v, taskMode: false, pageMode: false, crmMode: false });
+    db.settings.put({ key: 'formsMode', value: v });
+    db.settings.put({ key: 'taskMode', value: false });
+    db.settings.put({ key: 'pageMode', value: false });
+    db.settings.put({ key: 'crmMode', value: false });
+  },
+
+  setActiveCRMPage: (p) => {
+    set({ activeCRMPage: p });
+    db.settings.put({ key: 'activeCRMPage', value: p });
+  },
+
+  setActiveFormsPage: (p) => {
+    set({ activeFormsPage: p });
+    db.settings.put({ key: 'activeFormsPage', value: p });
   },
 
   setActiveTaskId: (id) => {
@@ -356,6 +408,10 @@ export const useUIStore = create<UIStore>((set, get) => ({
     const panelsSwapped = await db.settings.get('panelsSwapped');
     const themeSetting = await db.settings.get('theme');
     const contextWindowCollapsed = await db.settings.get('contextWindowCollapsed');
+    const crmModeSetting = await db.settings.get('crmMode');
+    const formsModeSetting = await db.settings.get('formsMode');
+    const activeCRMPageSetting = await db.settings.get('activeCRMPage');
+    const activeFormsPageSetting = await db.settings.get('activeFormsPage');
 
     const lang = (language?.value === 'tr' ? 'tr' : 'en') as 'en' | 'tr';
     i18n.changeLanguage(lang);
@@ -365,7 +421,24 @@ export const useUIStore = create<UIStore>((set, get) => ({
     document.documentElement.setAttribute('data-theme', theme);
 
     const pageMode = pageModeSetting ? Boolean(pageModeSetting.value) : false;
-    const taskModeValue = pageMode ? false : (taskMode ? Boolean(taskMode.value) : false);
+    const crmModeStored = crmModeSetting ? Boolean(crmModeSetting.value) : false;
+    const formsModeStored = formsModeSetting ? Boolean(formsModeSetting.value) : false;
+    // Keep all four modes mutually exclusive on load. Existing precedence
+    // (pageMode wins over taskMode) is preserved; crm/forms slot in between.
+    const crmMode = !pageMode && crmModeStored;
+    const formsMode = !pageMode && !crmMode && formsModeStored;
+    const taskModeValue = !pageMode && !crmMode && !formsMode && (taskMode ? Boolean(taskMode.value) : false);
+
+    const CRM_PAGES: CRMPage[] = ['dashboard', 'leads', 'contacts', 'companies', 'pipeline', 'activities', 'settings'];
+    const FORMS_PAGES: FormsPage[] = ['dashboard', 'list', 'builder', 'submissions', 'templates', 'settings'];
+    const activeCRMPage: CRMPage =
+      activeCRMPageSetting && CRM_PAGES.includes(activeCRMPageSetting.value as CRMPage)
+        ? (activeCRMPageSetting.value as CRMPage)
+        : 'dashboard';
+    const activeFormsPage: FormsPage =
+      activeFormsPageSetting && FORMS_PAGES.includes(activeFormsPageSetting.value as FormsPage)
+        ? (activeFormsPageSetting.value as FormsPage)
+        : 'dashboard';
 
     set({
       sidebarOpen: sidebarOpen ? Boolean(sidebarOpen.value) : true,
@@ -388,6 +461,10 @@ export const useUIStore = create<UIStore>((set, get) => ({
       aiSidebarOpen: true,
       contextWindowOpen: false,
       contextWindowCollapsed: contextWindowCollapsed ? Boolean(contextWindowCollapsed.value) : true,
+      crmMode,
+      formsMode,
+      activeCRMPage,
+      activeFormsPage,
     });
   },
 }));

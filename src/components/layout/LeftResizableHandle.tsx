@@ -24,7 +24,6 @@ export function LeftResizableHandle() {
         style={{
           width: 1,
           height: '100%',
-          background: 'var(--c-border-2)',
         }}
       />
     </div>

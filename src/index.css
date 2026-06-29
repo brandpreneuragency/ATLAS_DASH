@@ -336,7 +336,6 @@ input.ctrl-xs.editor-topbar-title-input {
   min-height: 0;
   height: fit-content;
   background: var(--c-background-2);
-  border-bottom: 1px solid var(--c-border-1);
   user-select: none;
   overflow: hidden;
 }
@@ -451,9 +450,9 @@ input.ctrl-xs.editor-topbar-title-input {
   height: fit-content;
   flex-shrink: 0;
   padding-top: 12px;
-  padding-bottom: 6px;
-  padding-left: 14px;
-  padding-right: 14px;
+  padding-bottom: 12px;
+  padding-left: 8px;
+  padding-right: 8px;
   background-color: rgba(233, 233, 233, 0);
   border-bottom: none;
   transition: background-color 0.15s;
@@ -488,8 +487,8 @@ input.ctrl-xs.editor-topbar-title-input {
 button.subtasks-title-input {
   height: 32px;
   width: 100%;
-  padding-left: 12px;
-  padding-right: 12px;
+  padding-left: 8px;
+  padding-right: 8px;
   border: none;
   border-radius: 8px;
   background-color: transparent;
@@ -1186,13 +1185,20 @@ input.subtasks-title-input:focus-visible {
   color: var(--c-text-2);
   pointer-events: none;
 }
+.filetree-search-input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
 .filetree-search-input {
   width: 100%;
   min-width: 0;
-  height: 28px;
+  height: fit-content;
   border: 1px solid var(--c-border-1);
   border-radius: 8px;
-  padding: 0 28px;
+  padding: 8px 12px;
   outline: none;
   background: var(--c-background-2);
   color: var(--c-text-1);
@@ -1390,8 +1396,8 @@ ul {
   height: fit-content;
   flex-shrink: 0;
   border-bottom: none;
-  padding-left: 6px;
-  padding-right: 6px;
+  padding-left: 8px;
+  padding-right: 8px;
   padding-top: 12px;
   padding-bottom: 12px;
   margin-top: 0;
@@ -2132,6 +2138,20 @@ button.task-item,
   margin-left: -32px;
   margin-right: -32px;
   min-width: 245px;
+}
+
+/* File explorer search dropdown — matches chat composer drop styling */
+.fep-header .filetree-search {
+  width: 100%;
+  margin: 0 5px;
+  height: auto;
+}
+
+.fep-header .filetree-search .drop {
+  border-radius: 8px;
+  box-shadow: 0px 1px 13.5px 4.3px rgba(0, 0, 0, 0.07);
+  max-height: 280px;
+  overflow-y: auto;
 }
 .drop-item {
   display: flex;
@@ -3561,10 +3581,10 @@ button.task-item,
 }
 :root #chat-input {
   border: none;
-  min-height: 44px;
+  min-height: 39px;
   display: flex;
   flex-wrap: nowrap;
-  height: 44px;
+  height: 39px;
   vertical-align: bottom;
   padding-top: 12px;
   padding-bottom: 12px;

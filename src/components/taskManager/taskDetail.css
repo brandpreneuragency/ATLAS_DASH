@@ -12,6 +12,10 @@
   margin: 0;
 }
 
+.tdp-meta-bar-content {
+  height: fit-content;
+}
+
 /*TASK METADATA BAR*/
 #task-metadata-bar {
   background: transparent;

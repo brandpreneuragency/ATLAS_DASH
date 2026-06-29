@@ -20,8 +20,10 @@ export function TaskListHeader({ activeTab, onTabChange }: TaskListHeaderProps) 
       className="panel-header"
       style={{
         display: 'flex',
-        height: '24px',
-        background: 'var(--c-background-2)',
+        height: '32px',
+        marginTop: '12px',
+        marginBottom: '6px',
+        backgroundColor: 'var(--c-background-1)',
         borderTop: 'none',
         borderLeft: 'none',
         borderRight: 'none',
@@ -53,10 +55,10 @@ export function TaskListHeader({ activeTab, onTabChange }: TaskListHeaderProps) 
               cursor: 'pointer',
               fontSize: 'var(--fs-xs)',
               border: 'none',
-              background: isActive ? 'var(--c-background-2)' : 'transparent',
+              background: 'transparent',
             }}
           >
-            <Icon size={15} />
+            <Icon size={12} />
           </button>
         );
       })}

@@ -8,14 +8,14 @@
 
 /* Task list header with view tabs */
 #task-list-header {
-  background: var(--c-background-3);
+  background-color: var(--c-background-1);
   display: flex;
   align-items: center;
   height: var(--task-list-header-height);
   gap: 0;
   flex-shrink: 0;
   padding: 0 8px;
-  margin: 0;
+  margin: 12px 0 6px;
   overflow: hidden;
   border-top: none;
   border-left: none;
@@ -27,10 +27,13 @@
   color: var(--c-text-2);
   padding: 0;
   background: transparent;
+  min-height: 0;
+  min-width: 0;
+  width: auto;
 }
 #task-list-header .task-list-header-tab--active {
-  color: var(--c-accent-left-panel);
-  background-color: var(--c-background-2);
+  color: var(--c-accent-center-panel);
+  background-color: unset;
   border: none;
   outline: none;
   border-radius: 0;
@@ -97,15 +100,14 @@ background: var(--c-background-4);
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding-top: 12px;
+  padding-top: 0;
   padding-bottom: 0;
   padding-left: 18px;
   padding-right: 12px;
-  padding-top: 12px;
-  padding-bottom: 0;
   width: 100%;
   min-height: 0;
   height: 100%;
+  background-color: var(--c-background-1);
   border-radius: 0px;
   box-shadow: none;
   border: none;
@@ -132,8 +134,9 @@ background: var(--c-background-4);
   border-color: var(--c-accent-center-panel);
 }
 #task-quick-create-footer {
-  background-color: transparent;
+  background-color: var(--c-background-1);
   border: none;
+  padding-top: 12px;
 }
 #task-quick-create .composer-card {
   background: unset;
@@ -425,10 +428,10 @@ background: var(--c-background-4);
 #chat-input {
   border: none;
   outline: none;
-  min-height: 44px;
+  min-height: 39px;
   display: flex;
   flex-wrap: nowrap;
-  height: 44px;
+  height: 39px;
   vertical-align: bottom;
   padding-top: 12px;
   padding-bottom: 12px;
@@ -743,14 +746,14 @@ background: var(--c-background-4);
 
 /*LEFT PANEL - TASK LIST*/
 :root #task-list-header {
-  background: var(--c-background-3);
+  background-color: var(--c-background-1);
   display: flex;
   align-items: center;
   height: 32px;
   gap: 0;
   flex-shrink: 0;
   padding: 0 8px;
-  margin: 0;
+  margin: 12px 0 6px;
   overflow: hidden;
   border-top: none;
   border-left: none;
@@ -762,10 +765,13 @@ background: var(--c-background-4);
   color: var(--c-text-2);
   padding: 0;
   background: transparent;
+  min-height: 0;
+  min-width: 0;
+  width: auto;
 }
 :root #task-list-header .task-list-header-tab--active {
-  color: var(--c-accent-left-panel);
-  background-color: var(--c-background-2);
+  color: var(--c-accent-center-panel);
+  background-color: unset;
   border: none;
   outline: none;
   border-radius: 0;
@@ -848,15 +854,14 @@ background: var(--c-background-4);
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding-top: 12px;
+  padding-top: 0;
   padding-bottom: 0;
   padding-left: 18px;
   padding-right: 12px;
-  padding-top: 12px;
-  padding-bottom: 0;
   width: 100%;
   min-height: 0;
   height: 100%;
+  background-color: var(--c-background-1);
   border-radius: 0px;
   box-shadow: none;
   border: none;
@@ -883,8 +888,9 @@ background: var(--c-background-4);
   border-color: var(--c-accent-center-panel);
 }
 :root #task-quick-create-footer {
-  background-color: transparent;
+  background-color: var(--c-background-1);
   border: none;
+  padding-top: 12px;
 }
 :root #task-quick-create .composer-card {
   background: unset;
