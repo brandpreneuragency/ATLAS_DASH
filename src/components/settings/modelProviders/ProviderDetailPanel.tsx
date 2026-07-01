@@ -25,6 +25,7 @@ interface ProviderDetailPanelProps {
   onToggleModel: (providerId: string, modelId: string, enabled: boolean) => void;
   onAddCustomModel: (providerId: string, slug: string) => void;
   onDeleteProvider: (id: string) => void;
+  onSaveProviderBaseUrl: (id: string, baseUrl: string) => void;
 }
 
 const DEFAULT_TABS: { id: ProviderTabId; labelKey: string }[] = [
@@ -51,6 +52,7 @@ export function ProviderDetailPanel({
   onToggleModel,
   onAddCustomModel,
   onDeleteProvider,
+  onSaveProviderBaseUrl,
 }: ProviderDetailPanelProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<ProviderTabId>('connection');
@@ -123,10 +125,10 @@ export function ProviderDetailPanel({
           <ProviderDefaultsTab />
         )}
         {activeTab === 'usage' && (
-          <ProviderUsageTab />
+          <ProviderUsageTab provider={provider} />
         )}
         {activeTab === 'advanced' && (
-          <ProviderAdvancedTab provider={provider} onDeleteProvider={onDeleteProvider} />
+          <ProviderAdvancedTab provider={provider} onDeleteProvider={onDeleteProvider} onSaveBaseUrl={onSaveProviderBaseUrl} />
         )}
       </div>
     </div>

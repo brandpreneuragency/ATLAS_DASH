@@ -569,6 +569,9 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
       onDeleteProvider={(id) => {
         void useAIStore.getState().deleteCustomProvider(id);
       }}
+      onSaveProviderBaseUrl={(id, baseUrl) => {
+        void useAIStore.getState().saveProviderConfig({ id, baseUrl });
+      }}
     />
   ) : (
     <div

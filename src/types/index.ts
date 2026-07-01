@@ -157,6 +157,9 @@ export interface ModelItem {
   description?: string;
   capabilities: ModelCapability;
   custom?: boolean;
+  inputPricePerMillion?: number;
+  outputPricePerMillion?: number;
+  currency?: 'USD';
 }
 
 export interface AIProviderConfig {
@@ -333,4 +336,35 @@ export interface TaskAIChangeBatch {
   expiresAt: number;
   undoneAt?: number;
   appliedByMessageId?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Task-specific model defaults
+// ---------------------------------------------------------------------------
+
+export type TaskModelDefaultKey =
+  | 'general_chat'
+  | 'writing'
+  | 'task_management'
+  | 'app_management'
+  | 'coding'
+  | 'deep_reasoning'
+  | 'fast_cheap'
+  | 'long_context'
+  | 'vision'
+  | 'structured_output'
+  | 'tool_use'
+  | 'fallback';
+
+export interface TaskModelDefault {
+  taskKey: TaskModelDefaultKey;
+  providerId: string;
+  modelId: string;
+}
+
+// Pricing metadata (optional, only when available)
+export interface ModelPricing {
+  inputPricePerMillion?: number;
+  outputPricePerMillion?: number;
+  currency?: 'USD';
 }
