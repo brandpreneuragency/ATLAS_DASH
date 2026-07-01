@@ -16,10 +16,12 @@ interface ProviderDetailPanelProps {
   draftBaseUrl: string;
   importState: ProviderImportUiState;
   connectionState: { phase: 'idle' | 'connecting' | 'error'; message?: string };
+  testConnectionState: { phase: 'idle' | 'testing' | 'success' | 'error'; message?: string };
+  syncState: { phase: 'idle' | 'syncing' | 'success' | 'error'; message?: string };
   onDraftKeyChange: (value: string) => void;
   onDraftBaseUrlChange: (value: string) => void;
-  onImport: () => void;
-  onConnect: () => void;
+  onTestConnection: () => void;
+  onSyncModels: () => void;
   onToggleModel: (providerId: string, modelId: string, enabled: boolean) => void;
   onAddCustomModel: (providerId: string, slug: string) => void;
   onDeleteProvider: (id: string) => void;
@@ -40,10 +42,12 @@ export function ProviderDetailPanel({
   draftBaseUrl,
   importState,
   connectionState,
+  testConnectionState,
+  syncState,
   onDraftKeyChange,
   onDraftBaseUrlChange,
-  onImport,
-  onConnect,
+  onTestConnection,
+  onSyncModels,
   onToggleModel,
   onAddCustomModel,
   onDeleteProvider,
@@ -99,10 +103,12 @@ export function ProviderDetailPanel({
             draftBaseUrl={draftBaseUrl}
             importState={importState}
             connectionState={connectionState}
+            testConnectionState={testConnectionState}
+            syncState={syncState}
             onDraftKeyChange={onDraftKeyChange}
             onDraftBaseUrlChange={onDraftBaseUrlChange}
-            onImport={onImport}
-            onConnect={onConnect}
+            onTestConnection={onTestConnection}
+            onSyncModels={onSyncModels}
           />
         )}
         {activeTab === 'models' && (

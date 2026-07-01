@@ -145,8 +145,10 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     for (const p of providerConfigs) out[p.id] = p.baseUrl ?? '';
     return out;
   });
-  const [importState, setImportState] = useState<Record<string, { phase: ProviderImportPhase; message?: string }>>({});
+  const [importState] = useState<Record<string, { phase: ProviderImportPhase; message?: string }>>({});
   const [connectionState, setConnectionState] = useState<Record<string, { phase: 'idle' | 'connecting' | 'error'; message?: string }>>({});
+  const [testConnectionState, setTestConnectionState] = useState<Record<string, { phase: 'idle' | 'testing' | 'success' | 'error'; message?: string }>>({});
+  const [syncState, setSyncState] = useState<Record<string, { phase: 'idle' | 'syncing' | 'success' | 'error'; message?: string }>>({});
 
   const [connectDrawerOpen, setConnectDrawerOpen] = useState(false);
   const [draftsReady, setDraftsReady] = useState(false);
@@ -447,93 +449,94 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     setConnectionState((prev) => ({ ...prev, [providerId]: { phase: 'idle' } }));
   };
 
-  const handleConnect = async (providerId: string) => {
+  const handleTestConnection = async (providerId: string) => {
     const baseUrl = draftBaseUrls[providerId] ?? '';
     const apiKey = draftKeys[providerId] ?? '';
-    setConnectionState((prev) => ({ ...prev, [providerId]: { phase: 'connecting' } }));
+    setTestConnectionState((prev) => ({ ...prev, [providerId]: { phase: 'testing' } }));
 
     try {
-      if (draftsReady && hasNonCredentialChanges) {
-        await handleSave({ includeKeys: false });
+      const result = await useAIStore
+        .getState()
+        .importProviderModels(providerId, baseUrl, apiKey);
+
+      if (result.ok) {
+        setTestConnectionState((prev) => ({ ...prev, [providerId]: { phase: 'success' } }));
+        const updated = useAIStore
+          .getState()
+          .providerConfigs.find((p) => p.id === providerId);
+        if (updated) {
+          setDraftProviders((prev) =>
+            prev.map((p) => (p.id === providerId ? updated : p))
+          );
+        }
+        setTimeout(() => {
+          setTestConnectionState((prev) => {
+            const current = prev[providerId];
+            if (current?.phase === 'success') {
+              return { ...prev, [providerId]: { phase: 'idle' } };
+            }
+            return prev;
+          });
+        }, 2000);
+      } else {
+        setTestConnectionState((prev) => ({
+          ...prev,
+          [providerId]: { phase: 'error', message: result.error },
+        }));
       }
-      await saveQueueRef.current;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save model settings.';
-      setConnectionState((prev) => ({
+      const message = err instanceof Error ? err.message : 'Connection test failed.';
+      setTestConnectionState((prev) => ({
         ...prev,
         [providerId]: { phase: 'error', message },
       }));
-      useUIStore.getState().showToast(message, 'error');
-      return;
     }
-
-    const result = await useAIStore.getState().connectProvider(providerId, baseUrl, apiKey);
-    if (!result.ok) {
-      setConnectionState((prev) => ({
-        ...prev,
-        [providerId]: { phase: 'error', message: result.error },
-      }));
-      useUIStore.getState().showToast(result.error, 'error');
-      return;
-    }
-
-    const connected = useAIStore
-      .getState()
-      .providerConfigs.find((provider) => provider.id === providerId);
-    if (connected) {
-      setDraftProviders((prev) =>
-        prev.map((provider) => (provider.id === providerId ? connected : provider))
-      );
-      setDraftBaseUrls((prev) => ({ ...prev, [providerId]: connected.baseUrl }));
-      setInitialDraftBaseUrls((prev) => ({ ...prev, [providerId]: connected.baseUrl }));
-      setInitialDraftKeys((prev) => ({ ...prev, [providerId]: apiKey.trim() }));
-    }
-    setConnectionState((prev) => ({ ...prev, [providerId]: { phase: 'idle' } }));
-    useUIStore.getState().showToast(t('models.providerConnected'), 'info');
   };
 
-  const handleImport = async (providerId: string) => {
+  const handleSyncModels = async (providerId: string) => {
     const baseUrl = draftBaseUrls[providerId] ?? '';
     const apiKey = draftKeys[providerId] ?? '';
+    setSyncState((prev) => ({ ...prev, [providerId]: { phase: 'syncing' } }));
 
-    setImportState((prev) => ({ ...prev, [providerId]: { phase: 'importing' } }));
-    const result = await useAIStore
-      .getState()
-      .importProviderModels(providerId, baseUrl, apiKey);
-
-    if (result.ok) {
-      setImportState((prev) => ({
-        ...prev,
-        [providerId]: { phase: 'success' },
-      }));
-      const updated = useAIStore
+    try {
+      const result = await useAIStore
         .getState()
-        .providerConfigs.find((p) => p.id === providerId);
-      if (updated) {
-        setDraftProviders((prev) =>
-          prev.map((p) => (p.id === providerId ? updated : p))
-        );
-        setDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
-        setInitialDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
-      }
-      useUIStore.getState().showToast(t('models.imported'), 'info');
-      setTimeout(() => {
-        setImportState((prev) => {
-          const current = prev[providerId];
-          if (current?.phase === 'success') {
-            return { ...prev, [providerId]: { phase: 'idle' } };
-          }
-          return prev;
-        });
-      }, 2000);
-      return;
-    }
+        .importProviderModels(providerId, baseUrl, apiKey);
 
-    setImportState((prev) => ({
-      ...prev,
-      [providerId]: { phase: 'error', message: result.error },
-    }));
-    useUIStore.getState().showToast(result.error, 'error');
+      if (result.ok) {
+        setSyncState((prev) => ({ ...prev, [providerId]: { phase: 'success' } }));
+        const updated = useAIStore
+          .getState()
+          .providerConfigs.find((p) => p.id === providerId);
+        if (updated) {
+          setDraftProviders((prev) =>
+            prev.map((p) => (p.id === providerId ? updated : p))
+          );
+          setDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
+          setInitialDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
+        }
+        setTimeout(() => {
+          setSyncState((prev) => {
+            const current = prev[providerId];
+            if (current?.phase === 'success') {
+              return { ...prev, [providerId]: { phase: 'idle' } };
+            }
+            return prev;
+          });
+        }, 2000);
+      } else {
+        setSyncState((prev) => ({
+          ...prev,
+          [providerId]: { phase: 'error', message: result.error },
+        }));
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Sync failed.';
+      setSyncState((prev) => ({
+        ...prev,
+        [providerId]: { phase: 'error', message },
+      }));
+    }
   };
 
   const handleRefresh = async () => {
@@ -555,10 +558,12 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
       draftBaseUrl={draftBaseUrls[selectedProvider.id] ?? selectedProvider.baseUrl}
       importState={importState[selectedProvider.id] ?? { phase: 'idle' }}
       connectionState={connectionState[selectedProvider.id] ?? { phase: 'idle' }}
+      testConnectionState={testConnectionState[selectedProvider.id] ?? { phase: 'idle' }}
+      syncState={syncState[selectedProvider.id] ?? { phase: 'idle' }}
       onDraftKeyChange={(v) => handleDraftKeyChange(selectedProvider.id, v)}
       onDraftBaseUrlChange={(v) => handleDraftBaseUrlChange(selectedProvider.id, v)}
-      onImport={() => handleImport(selectedProvider.id)}
-      onConnect={() => handleConnect(selectedProvider.id)}
+      onTestConnection={() => handleTestConnection(selectedProvider.id)}
+      onSyncModels={() => handleSyncModels(selectedProvider.id)}
       onToggleModel={toggleModel}
       onAddCustomModel={addCustomModel}
       onDeleteProvider={(id) => {

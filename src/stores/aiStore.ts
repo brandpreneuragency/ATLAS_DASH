@@ -67,18 +67,37 @@ function generateProviderId(): string {
   return `provider-${Date.now()}-${providerIdCounter}`;
 }
 
-function deriveStatus(hasKey: boolean, _isCustom: boolean, hasBaseUrl: boolean): ProviderStatus {
-  if (!hasBaseUrl || !hasKey) return 'not_connected';
-  return 'not_connected';
+function deriveProviderStatus(input: {
+  hasBaseUrl: boolean;
+  hasKey: boolean;
+  modelCount: number;
+  selectedModel?: string;
+  lastError?: string;
+  currentStatus?: ProviderStatus;
+}): ProviderStatus {
+  if (input.lastError) return 'connection_failed';
+  if (!input.hasBaseUrl) return 'needs_setup';
+  if (!input.hasKey) return 'needs_key';
+  if (input.modelCount <= 0) return 'sync_needed';
+  if (!input.selectedModel) return 'sync_needed';
+  return 'connected';
 }
 
 function refreshStatus(
   hasKey: boolean,
   hasBaseUrl: boolean,
+  modelCount: number,
+  selectedModel: string,
   currentStatus?: ProviderStatus,
 ): ProviderStatus {
-  if (!hasBaseUrl || !hasKey) return 'not_connected';
-  return currentStatus === 'connected' ? 'connected' : 'not_connected';
+  if (currentStatus === 'connection_failed') return 'connection_failed';
+  return deriveProviderStatus({
+    hasBaseUrl,
+    hasKey,
+    modelCount,
+    selectedModel,
+    currentStatus,
+  });
 }
 
 async function hasSecureKey(providerId: string): Promise<boolean> {
@@ -220,7 +239,16 @@ export const useAIStore = create<AIStore>((set, get) => ({
           const hasKey = config.apiKey
             ? Boolean(config.apiKey)
             : await hasSecureKey(config.id);
-          config.status = refreshStatus(hasKey, Boolean(config.baseUrl), config.status);
+          const modelCount = (config.models ?? []).filter(
+            (m) => !hiddenModels.includes(`${config.id}:${m.id}`),
+          ).length;
+          config.status = refreshStatus(
+            hasKey,
+            Boolean(config.baseUrl),
+            modelCount,
+            config.selectedModel,
+            config.status,
+          );
         })
       );
 
@@ -390,7 +418,11 @@ export const useAIStore = create<AIStore>((set, get) => ({
       isActive: true,
       baseUrl: trimmedBaseUrl,
       customModels: [],
-      status: deriveStatus(Boolean(trimmedKey), false, Boolean(trimmedBaseUrl)),
+      status: deriveProviderStatus({
+        hasBaseUrl: Boolean(trimmedBaseUrl),
+        hasKey: Boolean(trimmedKey),
+        modelCount: 0,
+      }),
       models: [],
     };
     try {
@@ -514,7 +546,16 @@ export const useAIStore = create<AIStore>((set, get) => ({
     if (!config) return;
 
     const hasKey = await hasSecureKey(id);
-    const nextStatus = refreshStatus(hasKey, Boolean(config.baseUrl), config.status);
+    const modelCount = (config.models ?? []).filter(
+      (m) => !get().isModelHidden(id, m.id),
+    ).length;
+    const nextStatus = refreshStatus(
+      hasKey,
+      Boolean(config.baseUrl),
+      modelCount,
+      config.selectedModel,
+      config.status,
+    );
 
     set((state) => ({
       providerConfigs: state.providerConfigs.map((p) =>
@@ -524,13 +565,22 @@ export const useAIStore = create<AIStore>((set, get) => ({
   },
 
   refreshAllProviderStatuses: async () => {
-    const { providerConfigs } = get();
+    const { providerConfigs, hiddenModels } = get();
     const updates = await Promise.all(
       providerConfigs.map(async (config) => {
         const hasKey = await hasSecureKey(config.id);
+        const modelCount = (config.models ?? []).filter(
+          (m) => !hiddenModels.includes(`${config.id}:${m.id}`),
+        ).length;
         return {
           id: config.id,
-          status: refreshStatus(hasKey, Boolean(config.baseUrl), config.status),
+          status: refreshStatus(
+            hasKey,
+            Boolean(config.baseUrl),
+            modelCount,
+            config.selectedModel,
+            config.status,
+          ),
         };
       })
     );
@@ -732,7 +782,12 @@ export const useAIStore = create<AIStore>((set, get) => ({
         models,
         selectedModel: nextSelected,
         lastImportedAt: Date.now(),
-        status: persisted.status,
+        status: deriveProviderStatus({
+          hasBaseUrl: Boolean(trimmedBaseUrl),
+          hasKey: Boolean(trimmedKey),
+          modelCount: models.length,
+          selectedModel: nextSelected,
+        }),
       };
       await db.providerConfigs.put(nextConfig);
       set((state) => ({
@@ -750,13 +805,13 @@ export const useAIStore = create<AIStore>((set, get) => ({
       return { ok: true };
     } catch (err) {
       if (err instanceof ProviderImportError) {
-        // Persist a "not_connected" status so the UI reflects the failure
+        // Persist a "connection_failed" status so the UI reflects the failure
         // even when the saved baseUrl/key are still present.
         const currentAfter = get().providerConfigs.find((p) => p.id === id);
         if (currentAfter) {
           const failed: AIProviderConfig = {
             ...currentAfter,
-            status: 'not_connected',
+            status: 'connection_failed',
           };
           await db.providerConfigs.put(failed).catch(() => undefined);
           set((state) => ({

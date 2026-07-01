@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Loader2, Download, Link2, Check, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Download, Check, AlertCircle, Play } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AIProviderConfig, ProviderImportUiState } from '../../../types';
 import { ProviderStatusBadge } from '../../modals/modelProvider/ProviderStatusBadge';
@@ -10,10 +10,12 @@ interface ProviderConnectionTabProps {
   draftBaseUrl: string;
   importState: ProviderImportUiState;
   connectionState: { phase: 'idle' | 'connecting' | 'error'; message?: string };
+  testConnectionState: { phase: 'idle' | 'testing' | 'success' | 'error'; message?: string };
+  syncState: { phase: 'idle' | 'syncing' | 'success' | 'error'; message?: string };
   onDraftKeyChange: (value: string) => void;
   onDraftBaseUrlChange: (value: string) => void;
-  onImport: () => void;
-  onConnect: () => void;
+  onTestConnection: () => void;
+  onSyncModels: () => void;
 }
 
 export function ProviderConnectionTab({
@@ -22,24 +24,29 @@ export function ProviderConnectionTab({
   draftBaseUrl,
   importState,
   connectionState,
+  testConnectionState,
+  syncState,
   onDraftKeyChange,
   onDraftBaseUrlChange,
-  onImport,
-  onConnect,
+  onTestConnection,
+  onSyncModels,
 }: ProviderConnectionTabProps) {
   const { t } = useTranslation();
   const [showKey, setShowKey] = useState(false);
 
   const status = provider.status ?? 'not_connected';
-  const modelCount = (provider.models ?? []).length;
-  const canSubmit = Boolean(draftBaseUrl.trim()) && Boolean(draftKey.trim()) && importState.phase !== 'importing';
   const isImporting = importState.phase === 'importing';
   const isConnecting = connectionState.phase === 'connecting';
+  const isTesting = testConnectionState.phase === 'testing';
+  const isSyncing = syncState.phase === 'syncing';
 
   const lastImportedAt = provider.lastImportedAt;
   const lastImportedLabel = lastImportedAt
     ? new Date(lastImportedAt).toLocaleString()
     : null;
+
+  const canTest = Boolean(draftBaseUrl.trim()) && Boolean(draftKey.trim()) && !isTesting && !isSyncing && !isImporting && !isConnecting;
+  const canSync = Boolean(draftBaseUrl.trim()) && Boolean(draftKey.trim()) && !isTesting && !isSyncing && !isImporting && !isConnecting;
 
   return (
     <div className="col gap-3" style={{ padding: '16px 0' }}>
@@ -53,23 +60,17 @@ export function ProviderConnectionTab({
         )}
       </div>
 
-      {status === 'connected' && (
-        <div
-          className="row gap-2"
-          style={{
-            padding: '8px 12px',
-            borderRadius: 8,
-            background: 'rgba(34,197,94,0.05)',
-            justifyContent: 'space-between',
-          }}
-        >
-          <span className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>
-            {modelCount > 0
-              ? t('models.connectedWithCount', { count: modelCount })
-              : t('models.connectedNoModels')}
-          </span>
-        </div>
-      )}
+      {/* Provider name (read-only display) */}
+      <div className="col gap-1">
+        <div className="label-sm">{t('models.providerName')}</div>
+        <input
+          type="text"
+          value={provider.name}
+          readOnly
+          className="ctrl ctrl--mono ctrl--flat w-full"
+          style={{ fontSize: 'var(--fs-xs)', opacity: 0.7, cursor: 'default' }}
+        />
+      </div>
 
       {/* Base URL */}
       <div className="col gap-1">
@@ -109,65 +110,106 @@ export function ProviderConnectionTab({
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="row gap-2" style={{ justifyContent: 'flex-end', marginTop: 4 }}>
-        <button
-          type="button"
-          onClick={onImport}
-          disabled={!canSubmit || isConnecting}
-          className="btn-send"
-          title={t('models.importModels')}
-          aria-label={t('models.importModels')}
-          style={{
-            width: 'auto',
-            minWidth: 'var(--div-h-1)',
-            height: 'var(--div-h-1)',
-            padding: '0 12px',
-            gap: 6,
-            fontSize: 'var(--fs-xs)',
-            fontWeight: 600,
-            opacity: canSubmit && !isConnecting ? 1 : 0.4,
-            cursor: canSubmit && !isConnecting ? 'pointer' : 'not-allowed',
-          }}
-        >
-          {isImporting ? <Loader2 size={14} className="spin" /> : <Download size={14} />}
-          <span>{isImporting ? t('models.importing') : t('models.importModels')}</span>
-        </button>
-        <button
-          type="button"
-          onClick={onConnect}
-          disabled={!canSubmit || modelCount === 0 || isImporting || isConnecting || status === 'connected'}
-          className="btn-brand"
-          title={status === 'connected' ? t('models.connected') : t('models.connectProvider')}
-          aria-label={status === 'connected' ? t('models.connected') : t('models.connectProvider')}
-          style={{
-            width: 'fit-content',
-            height: 'var(--div-h-1)',
-            padding: '0 14px',
-            gap: 6,
-            fontSize: 'var(--fs-xs)',
-            fontWeight: 600,
-            opacity: (canSubmit && modelCount > 0 && !isImporting && !isConnecting && status !== 'connected') ? 1 : 0.4,
-          }}
-        >
-          {isConnecting ? (
-            <Loader2 size={14} className="spin" />
-          ) : status === 'connected' ? (
-            <Check size={14} />
-          ) : (
-            <Link2 size={14} />
-          )}
-          <span>
-            {isConnecting
-              ? t('models.connecting')
-              : status === 'connected'
-                ? t('models.connected')
-                : t('models.connect')}
-          </span>
-        </button>
+      {/* Connection status */}
+      <div
+        className="row gap-2"
+        style={{
+          padding: '8px 12px',
+          borderRadius: 8,
+          background: 'var(--c-background-4)',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <span className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>
+          {t('models.tabConnection')}
+        </span>
+        <span className="med" style={{ fontSize: 'var(--fs-sm)' }}>
+          {status === 'connected'
+            ? t('models.connected')
+            : status === 'needs_key'
+              ? t('models.needsKey')
+              : status === 'connection_failed'
+                ? t('models.connectionFailed')
+                : status === 'sync_needed'
+                  ? t('models.syncNeeded')
+                  : status === 'needs_setup'
+                    ? t('models.needsSetup')
+                    : t('models.notConnected')}
+        </span>
       </div>
 
-      {/* Error display */}
+      {/* Test connection feedback */}
+      {testConnectionState.phase === 'success' && (
+        <div
+          className="row-xs"
+          style={{
+            fontSize: 'var(--fs-sm)',
+            color: '#15803d',
+            gap: 6,
+            padding: '6px 10px',
+            borderRadius: 8,
+            background: 'rgba(34,197,94,0.05)',
+          }}
+        >
+          <Check size={12} />
+          <span>{t('models.testSuccess')}</span>
+        </div>
+      )}
+      {testConnectionState.phase === 'error' && (
+        <div
+          className="row-xs"
+          role="alert"
+          style={{
+            fontSize: 'var(--fs-sm)',
+            color: 'var(--c-danger, #dc2626)',
+            gap: 6,
+            padding: '6px 10px',
+            borderRadius: 8,
+            background: 'rgba(220,38,38,0.05)',
+          }}
+        >
+          <AlertCircle size={12} />
+          <span>{testConnectionState.message}</span>
+        </div>
+      )}
+
+      {/* Sync models feedback */}
+      {syncState.phase === 'success' && (
+        <div
+          className="row-xs"
+          style={{
+            fontSize: 'var(--fs-sm)',
+            color: '#15803d',
+            gap: 6,
+            padding: '6px 10px',
+            borderRadius: 8,
+            background: 'rgba(34,197,94,0.05)',
+          }}
+        >
+          <Check size={12} />
+          <span>{t('models.syncSuccess')}</span>
+        </div>
+      )}
+      {syncState.phase === 'error' && (
+        <div
+          className="row-xs"
+          role="alert"
+          style={{
+            fontSize: 'var(--fs-sm)',
+            color: 'var(--c-danger, #dc2626)',
+            gap: 6,
+            padding: '6px 10px',
+            borderRadius: 8,
+            background: 'rgba(220,38,38,0.05)',
+          }}
+        >
+          <AlertCircle size={12} />
+          <span>{syncState.message}</span>
+        </div>
+      )}
+
+      {/* Import / Connect errors */}
       {(connectionState.phase === 'error' || importState.phase === 'error') && (
         <div
           className="row-xs"
@@ -183,22 +225,52 @@ export function ProviderConnectionTab({
         </div>
       )}
 
-      {/* Sync / test placeholder */}
-      <div
-        className="col"
-        style={{
-          padding: 16,
-          borderRadius: 8,
-          border: '1px dashed var(--c-border-2)',
-          background: 'var(--c-background-1)',
-          alignItems: 'center',
-          textAlign: 'center',
-          gap: 6,
-        }}
-      >
-        <span className="subtle" style={{ fontSize: 'var(--fs-xs)' }}>
-          {t('models.connectionTestPlaceholder')}
-        </span>
+      {/* Actions */}
+      <div className="row gap-2" style={{ justifyContent: 'flex-end', marginTop: 4 }}>
+        <button
+          type="button"
+          onClick={onTestConnection}
+          disabled={!canTest}
+          className="btn-send"
+          title={t('models.testConnection')}
+          aria-label={t('models.testConnection')}
+          style={{
+            width: 'auto',
+            minWidth: 'var(--div-h-1)',
+            height: 'var(--div-h-1)',
+            padding: '0 12px',
+            gap: 6,
+            fontSize: 'var(--fs-xs)',
+            fontWeight: 600,
+            opacity: canTest ? 1 : 0.4,
+            cursor: canTest ? 'pointer' : 'not-allowed',
+          }}
+        >
+          {isTesting ? <Loader2 size={14} className="spin" /> : <Play size={14} />}
+          <span>{isTesting ? t('models.testingConnection') : t('models.testConnection')}</span>
+        </button>
+        <button
+          type="button"
+          onClick={onSyncModels}
+          disabled={!canSync}
+          className="btn-send"
+          title={t('models.syncModels')}
+          aria-label={t('models.syncModels')}
+          style={{
+            width: 'auto',
+            minWidth: 'var(--div-h-1)',
+            height: 'var(--div-h-1)',
+            padding: '0 12px',
+            gap: 6,
+            fontSize: 'var(--fs-xs)',
+            fontWeight: 600,
+            opacity: canSync ? 1 : 0.4,
+            cursor: canSync ? 'pointer' : 'not-allowed',
+          }}
+        >
+          {isSyncing ? <Loader2 size={14} className="spin" /> : <Download size={14} />}
+          <span>{isSyncing ? t('models.syncingModels') : t('models.syncModels')}</span>
+        </button>
       </div>
     </div>
   );

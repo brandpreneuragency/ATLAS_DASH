@@ -17,6 +17,24 @@ const STATUS_STYLES: Record<ProviderStatus, { text: string; bg: string; border: 
     border: 'var(--c-border-1)',
     color: 'var(--c-text-2)',
   },
+  needs_key: {
+    text: 'Needs Key',
+    bg: 'rgba(245,158,11,0.08)',
+    border: 'rgba(245,158,11,0.25)',
+    color: '#b45309',
+  },
+  connection_failed: {
+    text: 'Failed',
+    bg: 'rgba(220,38,38,0.08)',
+    border: 'rgba(220,38,38,0.25)',
+    color: '#b91c1c',
+  },
+  sync_needed: {
+    text: 'Sync Needed',
+    bg: 'rgba(59,130,246,0.08)',
+    border: 'rgba(59,130,246,0.25)',
+    color: '#1d4ed8',
+  },
   needs_setup: {
     text: 'Needs Setup',
     bg: 'rgba(245,158,11,0.08)',

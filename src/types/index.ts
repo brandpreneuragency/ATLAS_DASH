@@ -131,7 +131,13 @@ export interface Agent {
 
 export type AIProviderType = string;
 
-export type ProviderStatus = 'connected' | 'not_connected' | 'needs_setup';
+export type ProviderStatus =
+  | 'connected'
+  | 'not_connected'
+  | 'needs_key'
+  | 'connection_failed'
+  | 'sync_needed'
+  | 'needs_setup';
 
 export interface ModelCapability {
   vision: boolean;
