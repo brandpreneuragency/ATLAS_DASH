@@ -5,13 +5,13 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { X, RefreshCw, Plus, Layers, Database } from 'lucide-react';
+import { X, RefreshCw, Plus, Layers, Database, Image } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../../stores/uiStore';
 import { useAIStore } from '../../stores/aiStore';
 import { secureStorage } from '../../services/secureStorage';
 import type { AIProviderConfig, ModelItem, ProviderImportPhase } from '../../types';
-import { ProviderAccordionItem } from '../modals/modelProvider/ProviderAccordionItem';
+import { ProviderDetailPanel } from './modelProviders/ProviderDetailPanel';
 import { ConnectProviderDrawer } from '../modals/modelProvider/ConnectProviderDrawer';
 import { ModalFooter } from '../modals/modelProvider/ModalFooter';
 
@@ -109,11 +109,6 @@ export function isPlaceholderGroupId(id: string | null | undefined): boolean {
   return id === EMBEDDINGS_GROUP_ID || id === VECTOR_GROUP_ID || id === IMAGE_GROUP_ID;
 }
 
-/** Local helper — search providers are managed in the Tools tab, not here. */
-function isSearchProviderId(id: string | null | undefined): boolean {
-  return id === 'exa' || id === 'tavily';
-}
-
 interface ModelManagementContentProps {
   isInline?: boolean;
   onClose?: () => void;
@@ -127,8 +122,6 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
   const {
     providerConfigs,
     hiddenModels,
-    searchConfig,
-    saveSearchConfig,
     saveProviderConfig,
     setHiddenModels,
   } = useAIStore();
@@ -154,25 +147,11 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
   });
   const [importState, setImportState] = useState<Record<string, { phase: ProviderImportPhase; message?: string }>>({});
   const [connectionState, setConnectionState] = useState<Record<string, { phase: 'idle' | 'connecting' | 'error'; message?: string }>>({});
-  const [expandedIds, setExpandedIds] = useState(() => {
-    const firstConnected = providerConfigs.find((p) => p.status === 'connected');
-    return new Set(firstConnected ? [firstConnected.id] : []);
-  });
-  const [searchDraft] = useState({
-    exaKey: searchConfig.exaKey,
-    tavilyKey: searchConfig.tavilyKey,
-  });
 
   const [connectDrawerOpen, setConnectDrawerOpen] = useState(false);
   const [draftsReady, setDraftsReady] = useState(false);
   const [manualSaving, setManualSaving] = useState(false);
   const [manualSaved, setManualSaved] = useState(false);
-
-  // Expand the provider requested by the left-rail list (master-detail focus).
-  useEffect(() => {
-    if (!focusProviderId || isSearchProviderId(focusProviderId) || isPlaceholderGroupId(focusProviderId)) return;
-    setExpandedIds(new Set([focusProviderId]));
-  }, [focusProviderId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -263,10 +242,8 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     return false;
   })();
   const hiddenChanged = JSON.stringify(draftHiddenModels) !== JSON.stringify(hiddenModels);
-  const searchChanged =
-    searchDraft.exaKey !== searchConfig.exaKey || searchDraft.tavilyKey !== searchConfig.tavilyKey;
   const keysChanged = JSON.stringify(draftKeys) !== JSON.stringify(initialDraftKeys);
-  const hasNonCredentialChanges = providersChanged || baseUrlsChanged || hiddenChanged || searchChanged;
+  const hasNonCredentialChanges = providersChanged || baseUrlsChanged || hiddenChanged;
   const hasChanges = hasNonCredentialChanges || keysChanged;
 
   const persistDrafts = useCallback(async ({ includeKeys = false }: PersistDraftOptions = {}) => {
@@ -294,11 +271,6 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     }
 
     setHiddenModels(draftHiddenModels);
-    await saveSearchConfig({
-      ...searchConfig,
-      exaKey: searchDraft.exaKey.trim(),
-      tavilyKey: searchDraft.tavilyKey.trim(),
-    });
     if (includeKeys) {
       await useAIStore.getState().refreshAllProviderStatuses();
     }
@@ -319,11 +291,8 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     initialDraftKeys,
     draftBaseUrls,
     draftHiddenModels,
-    searchDraft,
-    searchConfig,
     saveProviderConfig,
     setHiddenModels,
-    saveSearchConfig,
   ]);
 
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
@@ -357,7 +326,6 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     draftBaseUrls,
     draftHiddenModels,
     draftKeys,
-    searchDraft,
     handleSave,
   ]);
 
@@ -418,13 +386,6 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
   }, [isOpen, isInline, handleClose]);
 
   if (!isOpen) return null;
-
-  const toggleExpand = (id: string) => {
-    setExpandedIds((prev) => {
-      if (prev.has(id)) return new Set<string>();
-      return new Set([id]);
-    });
-  };
 
   const toggleModel = (providerId: string, modelId: string, enabled: boolean) => {
     const key = modelKey(providerId, modelId);
@@ -580,58 +541,50 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
   };
 
   const focusedProviders =
-    focusProviderId && !isSearchProviderId(focusProviderId) && !isPlaceholderGroupId(focusProviderId)
+    focusProviderId && !isPlaceholderGroupId(focusProviderId)
       ? draftProviders.filter((p) => p.id === focusProviderId)
       : draftProviders;
 
-  const providerAccordionList = (
-    <>
-      {focusedProviders.length > 0 && (
-        <div className="provider-accordion-list">
-          {focusedProviders.map((provider) => (
-            <ProviderAccordionItem
-              key={provider.id}
-              provider={provider}
-              expanded={expandedIds.has(provider.id)}
-              hiddenModels={draftHiddenModels}
-              draftKey={draftKeys[provider.id] ?? ''}
-              draftBaseUrl={draftBaseUrls[provider.id] ?? provider.baseUrl}
-              importState={importState[provider.id] ?? { phase: 'idle' }}
-              connectionState={connectionState[provider.id] ?? { phase: 'idle' }}
-              onToggleExpand={() => toggleExpand(provider.id)}
-              onToggleModel={toggleModel}
-              onAddCustomModel={addCustomModel}
-              onDraftKeyChange={(v) => handleDraftKeyChange(provider.id, v)}
-              onDraftBaseUrlChange={(v) => handleDraftBaseUrlChange(provider.id, v)}
-              onImport={() => handleImport(provider.id)}
-              onConnect={() => handleConnect(provider.id)}
-            />
-          ))}
-        </div>
-      )}
+  const selectedProvider = focusedProviders.length > 0 ? focusedProviders[0] : null;
 
-      {focusedProviders.length === 0 && (
-        <div
-          className="col"
-          style={{
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '48px 16px',
-            textAlign: 'center',
-            border: '1px solid var(--c-border-1)',
-            borderRadius: 14,
-            background: 'var(--c-background-1)',
-          }}
-        >
-          <p className="med" style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-text-1)', marginBottom: 4 }}>
-            {t('models.noCustomProviders')}
-          </p>
-          <p className="subtle" style={{ fontSize: 'var(--fs-xs)', marginBottom: 16 }}>
-            {t('models.noCustomProvidersHint')}
-          </p>
-        </div>
-      )}
-
+  const providerDetailPanel = selectedProvider ? (
+    <ProviderDetailPanel
+      provider={selectedProvider}
+      hiddenModels={draftHiddenModels}
+      draftKey={draftKeys[selectedProvider.id] ?? ''}
+      draftBaseUrl={draftBaseUrls[selectedProvider.id] ?? selectedProvider.baseUrl}
+      importState={importState[selectedProvider.id] ?? { phase: 'idle' }}
+      connectionState={connectionState[selectedProvider.id] ?? { phase: 'idle' }}
+      onDraftKeyChange={(v) => handleDraftKeyChange(selectedProvider.id, v)}
+      onDraftBaseUrlChange={(v) => handleDraftBaseUrlChange(selectedProvider.id, v)}
+      onImport={() => handleImport(selectedProvider.id)}
+      onConnect={() => handleConnect(selectedProvider.id)}
+      onToggleModel={toggleModel}
+      onAddCustomModel={addCustomModel}
+      onDeleteProvider={(id) => {
+        void useAIStore.getState().deleteCustomProvider(id);
+      }}
+    />
+  ) : (
+    <div
+      className="col"
+      style={{
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '48px 16px',
+        textAlign: 'center',
+        border: '1px solid var(--c-border-1)',
+        borderRadius: 14,
+        background: 'var(--c-background-1)',
+        height: '100%',
+      }}
+    >
+      <p className="med" style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-text-1)', marginBottom: 4 }}>
+        {t('models.noCustomProviders')}
+      </p>
+      <p className="subtle" style={{ fontSize: 'var(--fs-xs)', marginBottom: 16 }}>
+        {t('models.noCustomProvidersHint')}
+      </p>
       <button
         type="button"
         onClick={() => setConnectDrawerOpen(true)}
@@ -640,7 +593,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
         <Plus size={16} />
         {t('models.connectProvider')}
       </button>
-    </>
+    </div>
   );
 
   const handleProviderConnected = (providerId: string, apiKey: string) => {
@@ -655,9 +608,9 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
       setInitialDraftKeys((prev) => ({ ...prev, [providerId]: persistedKey }));
       setDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
       setInitialDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
-      setExpandedIds(new Set([providerId]));
     }
   };
+
 
   const placeholderGroupSection =
     focusProviderId === EMBEDDINGS_GROUP_ID
@@ -672,7 +625,13 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
             title: t('settings.groupVector'),
             hint: t('settings.vectorHint'),
           })
-        : null;
+        : focusProviderId === IMAGE_GROUP_ID
+          ? renderComingSoonSection({
+              icon: <Image size={14} style={{ color: 'var(--c-accent-center-panel)' }} />,
+              title: t('settings.groupImageModels'),
+              hint: t('settings.comingSoon'),
+            })
+          : null;
 
   if (isInline) {
     return (
@@ -695,7 +654,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
           </button>
         </div>
         <div className="model-provider-body flex-1 col gap-2" style={{ padding: '0px 12px 16px 12px', overflowY: 'auto' }}>
-          {placeholderGroupSection ?? providerAccordionList}
+          {placeholderGroupSection ?? providerDetailPanel}
         </div>
 
         <ModalFooter
@@ -765,7 +724,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
         </div>
 
         <div className="model-provider-body flex-1 col gap-2" style={{ padding: '16px 20px' }}>
-          {placeholderGroupSection ?? providerAccordionList}
+          {placeholderGroupSection ?? providerDetailPanel}
         </div>
 
         <ModalFooter
