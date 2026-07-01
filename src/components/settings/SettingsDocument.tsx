@@ -3,6 +3,7 @@ import { ModelsSection } from './ModelsSection';
 import { ActionsSection } from './ActionsSection';
 import { AppearanceSection } from './AppearanceSection';
 import { AgentsSection } from './AgentsSection';
+import { ToolsSection } from './ToolsSection';
 import { SettingsAISidebar } from './SettingsAISidebar';
 import './settings.css';
 
@@ -38,6 +39,13 @@ export function SettingsDocument() {
             rightHeader={<SettingsAISidebar.Header tab="agents" />}
             rightMain={<SettingsAISidebar.Body tab="agents" />}
             rightFooter={<SettingsAISidebar.Footer tab="agents" />}
+          />
+        )}
+        {activeSettingsSubTab === 'tools' && (
+          <ToolsSection
+            rightHeader={<SettingsAISidebar.Header tab="tools" />}
+            rightMain={<SettingsAISidebar.Body tab="tools" />}
+            rightFooter={<SettingsAISidebar.Footer tab="tools" />}
           />
         )}
       </div>

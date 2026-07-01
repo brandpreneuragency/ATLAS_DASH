@@ -7,6 +7,7 @@ import {
   Zap,
   FileText,
   Inbox,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import { Calendar, Folder, List } from 'lucide-react';
@@ -55,4 +56,5 @@ export const SETTINGS_HEADER_TABS: ModuleNavItem<SettingsSubTab>[] = [
   { key: 'actions', label: 'Actions', icon: Zap },
   { key: 'appearance', label: 'Appearance', icon: Palette },
   { key: 'agents', label: 'Agents', icon: Users },
+  { key: 'tools', label: 'Tools', icon: Wrench },
 ];

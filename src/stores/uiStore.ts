@@ -31,7 +31,7 @@ export type FormsPage = 'dashboard' | 'list' | 'builder' | 'submissions' | 'temp
 export type TaskPage = 'list' | 'calendar' | 'projects';
 
 /** Sub-tabs rendered inside the Settings document. Fixed and non-closable. */
-export type SettingsSubTab = 'models' | 'actions' | 'appearance' | 'agents';
+export type SettingsSubTab = 'models' | 'actions' | 'appearance' | 'agents' | 'tools';
 /** Which doc-mode tab is active: a normal document or the special Settings doc. */
 export type DocActiveView = 'document' | 'settings';
 
