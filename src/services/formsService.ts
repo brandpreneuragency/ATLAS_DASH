@@ -257,6 +257,111 @@ export async function saveFormAsTemplate(
   return template;
 }
 
+export async function getTemplate(id: string): Promise<FormTemplate | undefined> {
+  return crmFormsDb.formTemplates.get(id);
+}
+
+export type FormTemplateSchema = FormTemplate['schema'];
+
+export async function updateTemplate(
+  id: string,
+  updates: {
+    name?: string;
+    description?: string;
+    schema?: Partial<FormTemplateSchema>;
+  },
+): Promise<FormTemplate | undefined> {
+  const existing = await crmFormsDb.formTemplates.get(id);
+  if (!existing) return undefined;
+  const next: FormTemplate = {
+    ...existing,
+    name: updates.name ?? existing.name,
+    description: updates.description !== undefined ? updates.description : existing.description,
+    schema: updates.schema ? { ...existing.schema, ...updates.schema } : existing.schema,
+    id,
+    updatedAt: nowIso(),
+  };
+  await crmFormsDb.formTemplates.put(next);
+  return next;
+}
+
+export async function updateTemplateFromFormPatch(
+  id: string,
+  updates: Partial<LeadForm>,
+): Promise<FormTemplate | undefined> {
+  const { name, description, fields, steps, logicRules, style, embed, notificationEmail, successMessage } =
+    updates;
+  const schema: Partial<FormTemplateSchema> = {};
+  if (fields !== undefined) schema.fields = fields;
+  if (steps !== undefined) schema.steps = steps;
+  if (logicRules !== undefined) schema.logicRules = logicRules;
+  if (style !== undefined) schema.style = style;
+  if (embed !== undefined) schema.embed = embed;
+  if (notificationEmail !== undefined) schema.notificationEmail = notificationEmail;
+  if (successMessage !== undefined) schema.successMessage = successMessage;
+  return updateTemplate(id, {
+    name,
+    description,
+    schema: Object.keys(schema).length > 0 ? schema : undefined,
+  });
+}
+
+export async function addTemplateField(
+  templateId: string,
+  fieldInput: Omit<LeadFormField, 'id' | 'order'> & Partial<Pick<LeadFormField, 'order'>>,
+): Promise<FormTemplate | undefined> {
+  const template = await crmFormsDb.formTemplates.get(templateId);
+  if (!template) return undefined;
+  const order = fieldInput.order ?? template.schema.fields.length;
+  const newField: LeadFormField = {
+    ...fieldInput,
+    id: nanoid(8),
+    order,
+  };
+  return updateTemplate(templateId, {
+    schema: { fields: [...template.schema.fields, newField] },
+  });
+}
+
+export async function updateTemplateField(
+  templateId: string,
+  fieldId: string,
+  updates: Partial<LeadFormField>,
+): Promise<FormTemplate | undefined> {
+  const template = await crmFormsDb.formTemplates.get(templateId);
+  if (!template) return undefined;
+  const fields = template.schema.fields.map((f) =>
+    f.id === fieldId ? { ...f, ...updates, id: fieldId } : f,
+  );
+  return updateTemplate(templateId, { schema: { fields } });
+}
+
+export async function removeTemplateField(
+  templateId: string,
+  fieldId: string,
+): Promise<FormTemplate | undefined> {
+  const template = await crmFormsDb.formTemplates.get(templateId);
+  if (!template) return undefined;
+  const fields = template.schema.fields.filter((f) => f.id !== fieldId);
+  return updateTemplate(templateId, { schema: { fields } });
+}
+
+export async function reorderTemplateFields(
+  templateId: string,
+  orderedFieldIds: string[],
+): Promise<FormTemplate | undefined> {
+  const template = await crmFormsDb.formTemplates.get(templateId);
+  if (!template) return undefined;
+  const byId = new Map(template.schema.fields.map((f) => [f.id, f]));
+  const fields = orderedFieldIds
+    .map((id, index) => {
+      const f = byId.get(id);
+      return f ? { ...f, order: index } : undefined;
+    })
+    .filter((f): f is LeadFormField => f !== undefined);
+  return updateTemplate(templateId, { schema: { fields } });
+}
+
 export async function deleteTemplate(id: string): Promise<void> {
   await crmFormsDb.formTemplates.delete(id);
 }

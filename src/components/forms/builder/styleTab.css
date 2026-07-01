@@ -1,12 +1,12 @@
 /* =========================================================
- * Form Builder — Style tab scoped styles.
+ * Form Builder â€” Style tab scoped styles.
  * Imported once by StyleTab.tsx.
  *
  * The BUILDER chrome uses app design tokens (--c-*, --fs-*,
  * --radius-*, --shadow-*). The rendered preview form uses
  * isolated --tabs-form-* CSS variables that FormRenderer sets
  * inline from form.style (see embed.css). These classes only
- * style the builder UI around the preview — they NEVER define
+ * style the builder UI around the preview â€” they NEVER define
  * the embedded form's isolated vars.
  *
  * Reuses from builder.css (do not redefine here):
@@ -169,7 +169,6 @@
   background: #ffffff;
   border: 1px solid var(--c-border-1);
   border-radius: 12px;
-  box-shadow: var(--shadow-sm);
   overflow: hidden;
   transition: width 0.18s ease, max-width 0.18s ease;
 }

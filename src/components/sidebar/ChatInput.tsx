@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Reply, Zap, Plus, X, Square, ChevronDown, Brain, User } from 'lucide-react';
+import { Reply, Zap, Plus, X, Square, Brain, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../../stores/uiStore';
 import { useActionsStore } from '../../stores/actionsStore';
@@ -23,6 +23,7 @@ interface ChatInputProps {
   threadId: string;
   documentId: string | null;
   taskId?: string | null;
+  settingsTab?: string | null;
   replyToMessage?: ChatMessage | null;
   onClearReply?: () => void;
 }
@@ -81,7 +82,7 @@ const TASK_BUILT_INS: PromptOption[] = [
   },
 ];
 
-export function ChatInput({ mode, threadId, documentId, taskId, replyToMessage, onClearReply }: ChatInputProps) {
+export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, replyToMessage, onClearReply }: ChatInputProps) {
   const { t } = useTranslation();
   const accentColor = 'var(--c-accent-2)';
   const [value, setValue] = useState('');
@@ -122,7 +123,7 @@ export function ChatInput({ mode, threadId, documentId, taskId, replyToMessage, 
     isModelHidden,
   } = useAIStore();
   const { openSettings } = useUIStore();
-  const { sendMessage, stopStreaming } = useStreamingChat(threadId, mode, documentId ?? undefined, taskId ?? undefined);
+  const { sendMessage, stopStreaming } = useStreamingChat(threadId, mode, documentId ?? undefined, taskId ?? undefined, settingsTab ?? undefined);
 
   const activeAgent = getActiveAgent(mode);
   const scopedAgents = getAgentsByScope(mode);
@@ -368,8 +369,6 @@ export function ChatInput({ mode, threadId, documentId, taskId, replyToMessage, 
                   aria-expanded={actionsDropdownOpen}
                 >
                   <Zap size={14} className="chat-input-dropup-icon" />
-
-                  <ChevronDown size={12} className="chat-input-dropup-chevron" />
                 </ComposerIconButton>
                 {actionsDropdownOpen && (
                   <div className="drop" style={{ left: 0, bottom: '100%', marginBottom: 4, minWidth: 192 }}>
@@ -422,7 +421,6 @@ export function ChatInput({ mode, threadId, documentId, taskId, replyToMessage, 
               >
                 <Brain size={12} className="chat-input-dropup-icon" />
                 <span className="trunc med chat-input-dropup-label">{modelLabel}</span>
-                <ChevronDown size={12} className="chat-input-dropup-chevron" />
               </button>
               {modelDropdownOpen && (
                 <div className="drop" style={{ left: 0, bottom: '100%', marginBottom: 4, minWidth: 180 }}>
@@ -469,7 +467,6 @@ export function ChatInput({ mode, threadId, documentId, taskId, replyToMessage, 
               >
                 <User size={12} className="chat-input-dropup-icon" />
                 <span className="trunc med chat-input-dropup-label">{activeAgent.name}</span>
-                <ChevronDown size={12} className="chat-input-dropup-chevron" />
               </button>
               {agentDropdownOpen && (
                 <div className="drop" style={{ right: 0, bottom: '100%', marginBottom: 4, minWidth: 180 }}>

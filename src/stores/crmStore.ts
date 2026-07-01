@@ -27,11 +27,14 @@ function showError(err: unknown, fallback: string): void {
 }
 
 export type CRMPipelineViewMode = 'kanban' | 'list';
+export type CRMLeadsCenterView = 'lead' | 'pipeline';
+export type CRMLeadScoreBand = 'high' | 'med' | 'low' | 'none';
 
 export interface CRMFilters {
   lead: {
     status?: CRMLeadStatus;
     stage?: CRMDealStage;
+    scoreBand?: CRMLeadScoreBand;
     ownerId?: string;
     search?: string;
     tags?: string[];
@@ -72,6 +75,8 @@ interface CrmStore {
   activeCompanyId: string | null;
   activeDealId: string | null;
   activePipelineView: CRMPipelineViewMode;
+  /** Center panel mode while on the Leads page (lead detail vs pipeline board). */
+  leadsCenterView: CRMLeadsCenterView;
 
   // filters
   filters: CRMFilters;
@@ -88,6 +93,7 @@ interface CrmStore {
   setActiveCompanyId: (id: string | null) => void;
   setActiveDealId: (id: string | null) => void;
   setActivePipelineView: (mode: CRMPipelineViewMode) => void;
+  setLeadsCenterView: (view: CRMLeadsCenterView) => void;
 
   // filters
   setLeadFilters: (filters: Partial<CRMFilters['lead']>) => void;
@@ -170,6 +176,7 @@ export const useCrmStore = create<CrmStore>((set, get) => ({
   activeCompanyId: null,
   activeDealId: null,
   activePipelineView: 'kanban',
+  leadsCenterView: 'lead',
   filters: emptyFilters(),
   activeSavedViewId: null,
   isLoaded: false,
@@ -216,11 +223,20 @@ export const useCrmStore = create<CrmStore>((set, get) => ({
     }
   },
 
-  setActiveLeadId: (id) => set({ activeLeadId: id }),
+  setActiveLeadId: (id) =>
+    set((s) => ({
+      activeLeadId: id,
+      leadsCenterView: id ? 'lead' : s.leadsCenterView,
+    })),
   setActiveContactId: (id) => set({ activeContactId: id }),
   setActiveCompanyId: (id) => set({ activeCompanyId: id }),
   setActiveDealId: (id) => set({ activeDealId: id }),
   setActivePipelineView: (mode) => set({ activePipelineView: mode }),
+  setLeadsCenterView: (view) =>
+    set((s) => ({
+      leadsCenterView: view,
+      activeLeadId: view === 'pipeline' ? null : s.activeLeadId,
+    })),
 
   setLeadFilters: (filters) =>
     set((s) => ({ filters: { ...s.filters, lead: { ...s.filters.lead, ...filters } } })),
@@ -566,8 +582,10 @@ function applyViewToFilters(viewFilters: CRMFilterSet, current: CRMFilters): CRM
       } else if (rule.field === 'tags' && rule.operator === 'contains') {
         next.lead.tags = [String(rule.value)];
       } else if (rule.field === 'score' && rule.operator === 'gte') {
-        // stored for UI hint; no direct filter field beyond search/tags
-        next.lead.search = next.lead.search ?? undefined;
+        const threshold = Number(rule.value);
+        if (threshold >= 80) next.lead.scoreBand = 'high';
+        else if (threshold >= 50) next.lead.scoreBand = 'med';
+        else next.lead.scoreBand = 'low';
       }
     }
   } else if (viewFilters.entity === 'deal') {

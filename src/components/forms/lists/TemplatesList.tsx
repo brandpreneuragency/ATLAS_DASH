@@ -14,7 +14,9 @@ function dateLabel(iso: string): string {
 
 export function TemplatesList() {
   const templates = useFormsStore((s) => s.templates);
+  const activeTemplateId = useFormsStore((s) => s.activeTemplateId);
   const createFormFromTemplate = useFormsStore((s) => s.createFormFromTemplate);
+  const setActiveTemplateId = useFormsStore((s) => s.setActiveTemplateId);
   const setActiveFormsPage = useUIStore((s) => s.setActiveFormsPage);
   const showToast = useUIStore((s) => s.showToast);
 
@@ -23,7 +25,13 @@ export function TemplatesList() {
     [templates],
   );
 
-  const handleUse = async (templateId: string, name: string) => {
+  const handleSelect = (templateId: string) => {
+    setActiveTemplateId(templateId);
+    setActiveFormsPage('builder');
+  };
+
+  const handleUse = async (e: React.MouseEvent, templateId: string, name: string) => {
+    e.stopPropagation();
     const form = await createFormFromTemplate(templateId, `${name}`);
     if (form) {
       setActiveFormsPage('builder');
@@ -33,7 +41,7 @@ export function TemplatesList() {
 
   return (
     <>
-      <div className="forms-list-section-label">Saved templates</div>
+      <div className="forms-list-section-label">Templates</div>
       {sorted.length === 0 ? (
         <div className="forms-list-empty-inline">
           No saved templates yet. Open a form and choose “Save as template”.
@@ -41,8 +49,22 @@ export function TemplatesList() {
       ) : (
         sorted.map((t) => {
           const fieldCount = t.schema.fields.filter((f) => f.type !== 'submit').length;
+          const isActive = t.id === activeTemplateId;
           return (
-            <div key={t.id} className="forms-list-item" style={{ cursor: 'default' }}>
+            <div
+              key={t.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => handleSelect(t.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleSelect(t.id);
+                }
+              }}
+              className={`forms-list-item${isActive ? ' forms-list-item--active' : ''}`}
+              style={{ cursor: 'pointer' }}
+            >
               <span className="forms-list-item-title">
                 <LayoutPanelTop size={12} className="forms-muted" />
                 <span className="trunc forms-grow">{t.name}</span>
@@ -50,7 +72,7 @@ export function TemplatesList() {
                   type="button"
                   className="forms-action-btn forms-action-btn--ghost"
                   style={{ height: 22, padding: '0 8px', fontSize: 'var(--fs-xs)' }}
-                  onClick={() => void handleUse(t.id, t.name)}
+                  onClick={(e) => void handleUse(e, t.id, t.name)}
                   title="Create form from template"
                 >
                   <Plus size={12} /> Use

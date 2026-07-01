@@ -1,0 +1,113 @@
+/* =========================================================
+ * taskProjectsKanban.css — Task mode "Projects" board.
+ * Reuses the CRM kanban layout classes (crm-kanban*) imported
+ * via ../crm/crm.css so the board visually matches the CRM
+ * pipeline page. Only task-specific accents live here.
+ * ========================================================= */
+
+/* Per-column "Add task" footer (Trello-style) */
+.task-kanban-add-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  padding: 6px 10px;
+  margin: 6px 8px 8px;
+  border: 1px dashed var(--c-border-1);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--c-text-3);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+.task-kanban-add-btn:hover {
+  background: var(--c-background-1);
+  color: var(--c-text-1);
+  border-color: var(--c-border-2);
+}
+
+/* Trailing "New project" column placeholder */
+.task-kanban-add-column {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 0 0 200px;
+  width: 200px;
+  min-width: 180px;
+  height: 48px;
+  border: 1px dashed var(--c-border-1);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--c-text-3);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+.task-kanban-add-column:hover {
+  background: var(--c-background-2);
+  color: var(--c-text-1);
+  border-color: var(--c-border-2);
+}
+.task-kanban-add-column--form {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 8px;
+  height: auto;
+  min-height: 48px;
+  padding: 10px;
+  cursor: default;
+}
+.task-kanban-add-column-input {
+  width: 100%;
+  font-size: var(--fs-sm);
+}
+.task-kanban-add-column-actions {
+  display: flex;
+  gap: 6px;
+}
+.task-kanban-add-column-empty-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+.task-kanban-add-column-empty-wrap .task-kanban-add-column {
+  width: min(100%, 280px);
+}
+
+/* Status pill + importance dot row on a card */
+.task-kanban-card-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.task-kanban-status {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--c-border-1);
+  color: var(--c-text-2);
+  background: var(--c-background-2);
+}
+.task-kanban-status--in_progress {
+  color: #3b82f6;
+  border-color: color-mix(in srgb, #3b82f6 40%, var(--c-border-1));
+  background: color-mix(in srgb, #3b82f6 10%, var(--c-background-2));
+}
+.task-kanban-status--completed {
+  color: #22c55e;
+  border-color: color-mix(in srgb, #22c55e 40%, var(--c-border-1));
+  background: color-mix(in srgb, #22c55e 10%, var(--c-background-2));
+}
+.task-kanban-overdue {
+  color: #ef4444;
+  font-weight: 600;
+}

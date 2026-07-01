@@ -1,6 +1,6 @@
 // Shared metadata for the 13 LeadFormField types: label, icon, default props,
 // and a factory that produces the input shape expected by formsStore.addField.
-// Kept here (builder-local) so FieldPalette, FormCanvas, FieldInspector, and
+// Kept here (builder-local) so FieldPalette, FormCanvas, FieldDetailsPanel, and
 // LogicTab all agree on labels/icons/defaults without drifting.
 
 import {

@@ -15,6 +15,11 @@ import * as formsService from '../services/formsService';
 import * as embedService from '../services/embedService';
 import type { EmbedSnippet, EmbedSnippetMode } from '../services/embedService';
 import { useUIStore } from './uiStore';
+import { templateToLeadForm } from '../utils/templateFormAdapter';
+
+function isTemplateId(id: string, templates: FormTemplate[]): boolean {
+  return templates.some((t) => t.id === id);
+}
 
 function showError(err: unknown, fallback: string): void {
   const msg = err instanceof Error ? err.message : fallback;
@@ -34,7 +39,6 @@ export type PreviewMode = 'desktop' | 'tablet' | 'mobile';
 export interface FormsListFilters {
   status?: FormStatus;
   search?: string;
-  hasSubmissions?: boolean;
 }
 
 interface FormsStore {
@@ -46,6 +50,7 @@ interface FormsStore {
 
   // active selection / UI state
   activeFormId: string | null;
+  activeTemplateId: string | null;
   activeSubmissionId: string | null;
   activeBuilderTab: BuilderTab;
   previewMode: PreviewMode;
@@ -58,6 +63,7 @@ interface FormsStore {
 
   // selection / UI
   setActiveFormId: (id: string | null) => void;
+  setActiveTemplateId: (id: string | null) => void;
   setActiveSubmissionId: (id: string | null) => void;
   setActiveBuilderTab: (tab: BuilderTab) => void;
   setPreviewMode: (mode: PreviewMode) => void;
@@ -85,6 +91,8 @@ interface FormsStore {
   createFormFromTemplate: (templateId: string, name: string) => Promise<LeadForm | null | undefined>;
   saveFormAsTemplate: (formId: string, name: string, description?: string) => Promise<FormTemplate | null | undefined>;
   deleteTemplate: (id: string) => Promise<void>;
+  getTemplateById: (id: string | null) => FormTemplate | undefined;
+  getActiveBuilderForm: () => LeadForm | undefined;
 
   // submissions
   setSubmissionStatus: (
@@ -130,6 +138,7 @@ export const useFormsStore = create<FormsStore>((set, get) => ({
   templates: [],
   webhooks: [],
   activeFormId: null,
+  activeTemplateId: null,
   activeSubmissionId: null,
   activeBuilderTab: 'build',
   previewMode: 'desktop',
@@ -159,7 +168,9 @@ export const useFormsStore = create<FormsStore>((set, get) => ({
     }
   },
 
-  setActiveFormId: (id) => set({ activeFormId: id }),
+  setActiveFormId: (id) => set({ activeFormId: id, activeTemplateId: null }),
+  setActiveTemplateId: (id) =>
+    set({ activeTemplateId: id, activeFormId: null, activeBuilderTab: 'build' }),
   setActiveSubmissionId: (id) => set({ activeSubmissionId: id }),
   setActiveBuilderTab: (tab) => set({ activeBuilderTab: tab }),
   setPreviewMode: (mode) => set({ previewMode: mode }),
@@ -169,7 +180,12 @@ export const useFormsStore = create<FormsStore>((set, get) => ({
   createForm: async (name) => {
     try {
       const form = await formsService.createForm(name);
-      set((s) => ({ forms: [form, ...s.forms], activeFormId: form.id, activeBuilderTab: 'build' }));
+      set((s) => ({
+        forms: [form, ...s.forms],
+        activeFormId: form.id,
+        activeTemplateId: null,
+        activeBuilderTab: 'build',
+      }));
       return form;
     } catch (err) {
       showError(err, 'Failed to create form.');
@@ -178,6 +194,47 @@ export const useFormsStore = create<FormsStore>((set, get) => ({
   },
 
   updateForm: async (id, updates) => {
+    if (isTemplateId(id, get().templates)) {
+      const previous = get().templates.find((t) => t.id === id);
+      set((s) => ({
+        templates: s.templates.map((t) => {
+          if (t.id !== id) return t;
+          const schemaPatch = {
+            ...(updates.fields !== undefined ? { fields: updates.fields } : {}),
+            ...(updates.steps !== undefined ? { steps: updates.steps } : {}),
+            ...(updates.logicRules !== undefined ? { logicRules: updates.logicRules } : {}),
+            ...(updates.style !== undefined ? { style: updates.style } : {}),
+            ...(updates.embed !== undefined ? { embed: updates.embed } : {}),
+            ...(updates.notificationEmail !== undefined
+              ? { notificationEmail: updates.notificationEmail }
+              : {}),
+            ...(updates.successMessage !== undefined
+              ? { successMessage: updates.successMessage }
+              : {}),
+          };
+          return {
+            ...t,
+            name: updates.name ?? t.name,
+            description: updates.description !== undefined ? updates.description : t.description,
+            schema:
+              Object.keys(schemaPatch).length > 0 ? { ...t.schema, ...schemaPatch } : t.schema,
+          };
+        }),
+      }));
+      try {
+        const next = await formsService.updateTemplateFromFormPatch(id, updates);
+        if (next) {
+          set((s) => ({ templates: s.templates.map((t) => (t.id === id ? next : t)) }));
+        }
+      } catch (err) {
+        if (previous) {
+          set((s) => ({ templates: s.templates.map((t) => (t.id === id ? previous : t)) }));
+        }
+        showError(err, 'Failed to save template.');
+      }
+      return;
+    }
+
     const previous = get().forms.find((f) => f.id === id);
     set((s) => ({
       forms: s.forms.map((f) => (f.id === id ? { ...f, ...updates, id } : f)),
@@ -268,10 +325,19 @@ export const useFormsStore = create<FormsStore>((set, get) => ({
   },
 
   addField: async (formId, field) => {
+    const editingTemplate = isTemplateId(formId, get().templates);
     try {
-      const next = await formsService.addField(formId, field);
+      const next = editingTemplate
+        ? await formsService.addTemplateField(formId, field)
+        : await formsService.addField(formId, field);
       if (next) {
-        set((s) => ({ forms: s.forms.map((f) => (f.id === formId ? next : f)) }));
+        if (editingTemplate) {
+          set((s) => ({
+            templates: s.templates.map((t) => (t.id === formId ? (next as FormTemplate) : t)),
+          }));
+        } else {
+          set((s) => ({ forms: s.forms.map((f) => (f.id === formId ? (next as LeadForm) : f)) }));
+        }
       }
     } catch (err) {
       showError(err, 'Failed to add field.');
@@ -279,10 +345,19 @@ export const useFormsStore = create<FormsStore>((set, get) => ({
   },
 
   updateField: async (formId, fieldId, updates) => {
+    const editingTemplate = isTemplateId(formId, get().templates);
     try {
-      const next = await formsService.updateField(formId, fieldId, updates);
+      const next = editingTemplate
+        ? await formsService.updateTemplateField(formId, fieldId, updates)
+        : await formsService.updateField(formId, fieldId, updates);
       if (next) {
-        set((s) => ({ forms: s.forms.map((f) => (f.id === formId ? next : f)) }));
+        if (editingTemplate) {
+          set((s) => ({
+            templates: s.templates.map((t) => (t.id === formId ? (next as FormTemplate) : t)),
+          }));
+        } else {
+          set((s) => ({ forms: s.forms.map((f) => (f.id === formId ? (next as LeadForm) : f)) }));
+        }
       }
     } catch (err) {
       showError(err, 'Failed to update field.');
@@ -290,10 +365,19 @@ export const useFormsStore = create<FormsStore>((set, get) => ({
   },
 
   removeField: async (formId, fieldId) => {
+    const editingTemplate = isTemplateId(formId, get().templates);
     try {
-      const next = await formsService.removeField(formId, fieldId);
+      const next = editingTemplate
+        ? await formsService.removeTemplateField(formId, fieldId)
+        : await formsService.removeField(formId, fieldId);
       if (next) {
-        set((s) => ({ forms: s.forms.map((f) => (f.id === formId ? next : f)) }));
+        if (editingTemplate) {
+          set((s) => ({
+            templates: s.templates.map((t) => (t.id === formId ? (next as FormTemplate) : t)),
+          }));
+        } else {
+          set((s) => ({ forms: s.forms.map((f) => (f.id === formId ? (next as LeadForm) : f)) }));
+        }
       }
     } catch (err) {
       showError(err, 'Failed to remove field.');
@@ -301,10 +385,19 @@ export const useFormsStore = create<FormsStore>((set, get) => ({
   },
 
   reorderFields: async (formId, orderedFieldIds) => {
+    const editingTemplate = isTemplateId(formId, get().templates);
     try {
-      const next = await formsService.reorderFields(formId, orderedFieldIds);
+      const next = editingTemplate
+        ? await formsService.reorderTemplateFields(formId, orderedFieldIds)
+        : await formsService.reorderFields(formId, orderedFieldIds);
       if (next) {
-        set((s) => ({ forms: s.forms.map((f) => (f.id === formId ? next : f)) }));
+        if (editingTemplate) {
+          set((s) => ({
+            templates: s.templates.map((t) => (t.id === formId ? (next as FormTemplate) : t)),
+          }));
+        } else {
+          set((s) => ({ forms: s.forms.map((f) => (f.id === formId ? (next as LeadForm) : f)) }));
+        }
       }
     } catch (err) {
       showError(err, 'Failed to reorder fields.');
@@ -315,7 +408,12 @@ export const useFormsStore = create<FormsStore>((set, get) => ({
     try {
       const form = await formsService.createFormFromTemplate(templateId, name);
       if (form) {
-        set((s) => ({ forms: [form, ...s.forms], activeFormId: form.id, activeBuilderTab: 'build' }));
+        set((s) => ({
+          forms: [form, ...s.forms],
+          activeFormId: form.id,
+          activeTemplateId: null,
+          activeBuilderTab: 'build',
+        }));
       }
       return form;
     } catch (err) {
@@ -338,7 +436,10 @@ export const useFormsStore = create<FormsStore>((set, get) => ({
   },
 
   deleteTemplate: async (id) => {
-    set((s) => ({ templates: s.templates.filter((t) => t.id !== id) }));
+    set((s) => ({
+      templates: s.templates.filter((t) => t.id !== id),
+      activeTemplateId: s.activeTemplateId === id ? null : s.activeTemplateId,
+    }));
     try {
       await formsService.deleteTemplate(id);
     } catch (err) {
@@ -442,6 +543,15 @@ export const useFormsStore = create<FormsStore>((set, get) => ({
 
   // ---- selectors ----------------------------------------------------------
   getFormById: (id) => (id ? get().forms.find((f) => f.id === id) : undefined),
+  getTemplateById: (id) => (id ? get().templates.find((t) => t.id === id) : undefined),
+  getActiveBuilderForm: () => {
+    const { activeTemplateId, activeFormId, templates, forms } = get();
+    if (activeTemplateId) {
+      const template = templates.find((t) => t.id === activeTemplateId);
+      return template ? templateToLeadForm(template) : undefined;
+    }
+    return activeFormId ? forms.find((f) => f.id === activeFormId) : undefined;
+  },
   getSubmissionById: (id) => (id ? get().submissions.find((s) => s.id === id) : undefined),
   getSubmissionsForForm: (formId) =>
     get()

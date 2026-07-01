@@ -22,6 +22,7 @@ export function useStreamingChat(
   mode: 'writer' | 'task',
   contextDocumentId?: string,
   contextTaskId?: string,
+  contextSettingsTab?: string,
 ) {
   const {
     addMessage,
@@ -86,6 +87,7 @@ export function useStreamingChat(
           mode,
           documentId: contextDocumentId,
           taskId: contextTaskId,
+          settingsTab: contextSettingsTab,
         });
         activeThread = useChatStore.getState().activeThreadId ?? '';
         if (!activeThread) {
@@ -98,6 +100,7 @@ export function useStreamingChat(
         threadId: activeThread,
         mode,
         documentId: contextDocumentId || undefined,
+        settingsTab: contextSettingsTab || undefined,
         taskId: contextTaskId || undefined,
         agentId: agent.id,
         role: 'user',
@@ -146,6 +149,7 @@ export function useStreamingChat(
         mode,
         documentId: contextDocumentId || undefined,
         taskId: contextTaskId || undefined,
+        settingsTab: contextSettingsTab || undefined,
         agentId: agent.id,
         role: 'assistant',
         content: '',
@@ -292,6 +296,7 @@ export function useStreamingChat(
       mode,
       contextDocumentId,
       contextTaskId,
+      contextSettingsTab,
       getActiveAgent,
       getActiveProvider,
       getActiveThreadMessages,

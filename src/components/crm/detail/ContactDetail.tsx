@@ -187,7 +187,7 @@ export function ContactDetail({ contact }: ContactDetailProps) {
       </div>
 
       {tab === 'notes' && (
-        <div className="crm-page-footer">
+        <div className="tdp-comment-footer panel-footer">
           <CRMNoteInput
             placeholder="Add a note about this contact…"
             onSubmit={async (body) => {

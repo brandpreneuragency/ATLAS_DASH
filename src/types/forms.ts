@@ -154,12 +154,6 @@ export interface LeadFormStyleConfig {
   /** Field border style. Defaults to 'solid' when unset. */
   borderStyle?: 'solid' | 'dashed' | 'dotted' | 'none';
 
-  // --- Shadows ---
-  /** CSS box-shadow applied to inputs (non-focused). Defaults to none when unset. */
-  fieldShadow?: string;
-  /** CSS box-shadow applied to the embed root/card. Defaults to none when unset. */
-  cardShadow?: string;
-
   // --- Buttons ---
   /** Solid button background color. Defaults to primaryColor when unset. */
   buttonBackgroundColor?: string;

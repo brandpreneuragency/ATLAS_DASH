@@ -246,7 +246,7 @@ export function CompanyDetail({ company }: CompanyDetailProps) {
       </div>
 
       {tab === 'overview' && (
-        <div className="crm-page-footer">
+        <div className="tdp-comment-footer panel-footer">
           <CRMNoteInput
             placeholder="Add a note about this company…"
             onSubmit={async (body) => {

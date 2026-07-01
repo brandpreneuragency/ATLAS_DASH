@@ -345,9 +345,6 @@ export function FormRenderer({
     // Borders
     if (s.borderWidth !== undefined) vars['--tabs-form-border-width'] = `${s.borderWidth}px`;
     if (s.borderStyle !== undefined) vars['--tabs-form-border-style'] = s.borderStyle;
-    // Shadows
-    if (s.fieldShadow !== undefined) vars['--tabs-form-field-shadow'] = s.fieldShadow;
-    if (s.cardShadow !== undefined) vars['--tabs-form-card-shadow'] = s.cardShadow;
     // Buttons
     if (s.buttonBackgroundColor !== undefined) vars['--tabs-form-button-bg'] = s.buttonBackgroundColor;
     if (s.buttonHoverBackgroundColor !== undefined) {

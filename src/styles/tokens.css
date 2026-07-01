@@ -45,10 +45,16 @@
   --border-width: 1px;
 
   /* ---------- Icon sizes ---------- */
+  /* Fluid base: scales from 12px → 14px with viewport width */
+  --icon-size: clamp(12px, 1.15vw, 14px);
+  /* Static overrides for when fluid scaling isn't desired */
   --icon-size-xs: 14px;
   --icon-size-sm: 16px;
   --icon-size-md: 20px;
   --icon-size-lg: 24px;
+
+  /* ---------- Icon stroke ---------- */
+  --icon-stroke: 2;
 
   /* ---------- Control sizes ---------- */
   --control-height-xs: 28px;
@@ -100,4 +106,25 @@
   --z-drawer: 40;
   --z-modal: 50;
   --z-toast: 60;
+}
+
+/* =========================================================
+ * Icon Utilities
+ * Automatically sizes all lucide-react SVGs to the fluid
+ * --icon-size token. Non-lucide SVGs can opt in via
+ * the .icon-base class.
+ * ========================================================= */
+
+/* Global: every lucide icon uses the fluid token */
+svg.lucide {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  stroke-width: var(--icon-stroke);
+}
+
+/* Utility class for non-lucide SVGs that should match */
+.icon-base {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  stroke-width: var(--icon-stroke);
 }

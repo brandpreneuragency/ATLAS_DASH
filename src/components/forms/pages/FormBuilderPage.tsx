@@ -9,14 +9,15 @@ import { FileEdit } from 'lucide-react';
 
 export default function FormBuilderPage() {
   const activeFormId = useFormsStore((s) => s.activeFormId);
+  const activeTemplateId = useFormsStore((s) => s.activeTemplateId);
 
-  if (!activeFormId) {
+  if (!activeFormId && !activeTemplateId) {
     return (
       <div className="forms-page forms-page--builder" style={{ padding: 0, gap: 0 }}>
         <FormsEmptyState
           icon={FileEdit}
-          title="No form selected"
-          subtitle="Pick a form in the left panel to open the builder."
+          title="No form or template selected"
+          subtitle="Pick a form or template in the left panel to open the builder."
         />
       </div>
     );

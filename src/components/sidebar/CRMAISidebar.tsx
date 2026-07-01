@@ -12,26 +12,26 @@
 // Owned files (this agent): CRMAISidebar.tsx, CRMAgents.ts, crmAiSidebar.css.
 // Do NOT edit AISidebar.tsx / aiSidebar.css / global CSS / stores / layout.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bot,
-  Building2,
+  Brain,
   Check,
-  Code,
-  Columns3,
-  FormInput,
-  Inbox,
-  LayoutDashboard,
-  Mail,
-  Sparkles,
-  Target,
-  TrendingUp,
+  Plus,
   User,
   X,
   Zap,
-  type LucideIcon,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import {
+  ComposerCard,
+  ComposerIconButton,
+  ComposerRow,
+  ComposerSendButton,
+  ComposerTextarea,
+} from '../ui/Composer';
+import { useAIStore } from '../../stores/aiStore';
 import { useUIStore } from '../../stores/uiStore';
 import {
   CRM_AGENTS,
@@ -40,6 +40,10 @@ import {
   type CRMAgentId,
 } from './CRMAgents';
 import './crmAiSidebar.css';
+
+function maxHeightVw(): number {
+  return Math.round(window.innerWidth * 0.5);
+}
 
 /* ------------------------------------------------------------------ *
  * Public props — the Layout shell passes the current CRM/Forms
@@ -62,28 +66,6 @@ export interface CRMAISidebarContext {
 export interface CRMAISidebarProps {
   crmContext: CRMAISidebarContext;
 }
-
-/* ------------------------------------------------------------------ *
- * Icon maps (typed — no string lookups at render time).
- * ------------------------------------------------------------------ */
-
-const AGENT_ICONS: Record<CRMAgentId, LucideIcon> = {
-  'lead-qualifier': Target,
-  'follow-up-writer': Mail,
-  'pipeline-analyst': TrendingUp,
-  'form-assistant': FormInput,
-};
-
-const CONTEXT_ICONS: Record<CRMAgentContextScope, LucideIcon> = {
-  dashboard: LayoutDashboard,
-  lead: User,
-  contact: User,
-  company: Building2,
-  pipeline: Columns3,
-  form: FormInput,
-  submission: Inbox,
-  embed: Code,
-};
 
 /* ------------------------------------------------------------------ *
  * Context derivation — maps (module, page, selection) to a
@@ -126,7 +108,7 @@ function deriveContextKind(ctx: CRMAISidebarContext): CRMAgentContextScope | nul
     case 'submissions':
       return ctx.submissionId ? 'submission' : null;
     case 'templates':
-      return 'form';
+      return ctx.formId ? 'form' : null;
     case 'settings':
       return null;
     default:
@@ -137,7 +119,6 @@ function deriveContextKind(ctx: CRMAISidebarContext): CRMAgentContextScope | nul
 interface ContextMeta {
   kindLabel: string;
   subLabel: string;
-  icon: LucideIcon;
 }
 
 function truncId(id?: string | null): string {
@@ -153,28 +134,27 @@ function deriveContextMeta(
   switch (kind) {
     case 'dashboard':
       return ctx.module === 'forms'
-        ? { kindLabel: 'Forms Dashboard', subLabel: 'Form stats · submissions', icon: LayoutDashboard }
-        : { kindLabel: 'CRM Dashboard', subLabel: 'Recent leads · pipeline · follow-ups', icon: LayoutDashboard };
+        ? { kindLabel: 'Forms Dashboard', subLabel: 'Form stats · submissions' }
+        : { kindLabel: 'CRM Dashboard', subLabel: 'Recent leads · pipeline · follow-ups' };
     case 'lead':
-      return { kindLabel: 'Lead', subLabel: truncId(ctx.leadId), icon: CONTEXT_ICONS.lead };
+      return { kindLabel: 'Lead', subLabel: truncId(ctx.leadId) };
     case 'contact':
-      return { kindLabel: 'Contact', subLabel: truncId(ctx.contactId), icon: CONTEXT_ICONS.contact };
+      return { kindLabel: 'Contact', subLabel: truncId(ctx.contactId) };
     case 'company':
-      return { kindLabel: 'Company', subLabel: truncId(ctx.companyId), icon: CONTEXT_ICONS.company };
+      return { kindLabel: 'Company', subLabel: truncId(ctx.companyId) };
     case 'pipeline':
-      return { kindLabel: 'Pipeline', subLabel: ctx.pipelineView ?? 'All deals', icon: CONTEXT_ICONS.pipeline };
+      return { kindLabel: 'Pipeline', subLabel: ctx.pipelineView ?? 'All deals' };
     case 'form': {
       const parts: Array<string | null> = [truncId(ctx.formId), ctx.embedState ?? null];
       return {
         kindLabel: 'Form',
         subLabel: parts.filter((s): s is string => Boolean(s)).join(' · '),
-        icon: CONTEXT_ICONS.form,
       };
     }
     case 'submission':
-      return { kindLabel: 'Submission', subLabel: truncId(ctx.submissionId), icon: CONTEXT_ICONS.submission };
+      return { kindLabel: 'Submission', subLabel: truncId(ctx.submissionId) };
     case 'embed':
-      return { kindLabel: 'Embed', subLabel: ctx.embedState ?? 'draft', icon: CONTEXT_ICONS.embed };
+      return { kindLabel: 'Embed', subLabel: ctx.embedState ?? 'draft' };
   }
 }
 
@@ -326,7 +306,17 @@ function buildMockSuggestion(
  * ------------------------------------------------------------------ */
 
 export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
+  const { t } = useTranslation();
+  const accentColor = 'var(--c-accent-2)';
   const showToast = useUIStore((s) => s.showToast);
+  const openSettings = useUIStore((s) => s.openSettings);
+  const {
+    providerConfigs,
+    activeProviderId,
+    setActiveProvider,
+    setActiveModel,
+    isModelHidden,
+  } = useAIStore();
 
   const [activeAgentId, setActiveAgentId] = useState<CRMAgentId>(
     defaultAgentIdForModule(crmContext.module),
@@ -334,6 +324,15 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
   const [inputValue, setInputValue] = useState('');
   const [suggestion, setSuggestion] = useState<CRMSuggestion | null>(null);
   const [confirmApply, setConfirmApply] = useState(false);
+  const [actionsDropdownOpen, setActionsDropdownOpen] = useState(false);
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const modelRef = useRef<HTMLDivElement>(null);
+  const agentRef = useRef<HTMLDivElement>(null);
+  const userHeightRef = useRef<number>(0);
 
   const contextKind = useMemo(() => deriveContextKind(crmContext), [crmContext]);
   const contextMeta = useMemo(
@@ -342,10 +341,6 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
   );
 
   const activeAgentDef = getCRMAgentById(activeAgentId);
-  const relevantAgents = useMemo(
-    () => (contextKind ? CRM_AGENTS.filter((a) => a.contextScope.includes(contextKind)) : CRM_AGENTS),
-    [contextKind],
-  );
 
   const hasContext = contextKind !== null && contextMeta !== null;
 
@@ -370,9 +365,6 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
   }, [contextKind, activeAgentId]);
 
   const contextPhrase = contextMeta ? contextMeta.kindLabel.toLowerCase() : 'this view';
-  // Capitalized so JSX treats it as a component (not a DOM tag). Falls back
-  // to the empty-state icon when nothing is selected.
-  const ContextIcon: LucideIcon = contextMeta?.icon ?? Bot;
 
   const runSuggest = (prompt: string) => {
     const trimmed = prompt.trim();
@@ -382,11 +374,6 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
   };
 
   const handleSuggestClick = () => runSuggest(inputValue);
-
-  const handleQuickPrompt = (prompt: string) => {
-    setInputValue(prompt);
-    runSuggest(prompt);
-  };
 
   const handleActionClick = (action: CRMAction) => {
     setInputValue(action.prompt);
@@ -420,18 +407,56 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
     }
   };
 
+  const handleInput = () => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    const max = maxHeightVw();
+    const base = Math.max(ta.scrollHeight, userHeightRef.current || 0);
+    ta.style.height = `${Math.min(Math.max(base, 32), max)}px`;
+  };
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const startY = e.clientY;
+    const startHeight = ta.offsetHeight;
+    const max = maxHeightVw();
+
+    const onMove = (ev: MouseEvent) => {
+      const next = Math.min(Math.max(startHeight - (ev.clientY - startY), 32), max);
+      userHeightRef.current = next;
+      ta.style.height = `${next}px`;
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) setActionsDropdownOpen(false);
+      if (modelRef.current && !modelRef.current.contains(e.target as Node)) setModelDropdownOpen(false);
+      if (agentRef.current && !agentRef.current.contains(e.target as Node)) setAgentDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
   const canSuggest = inputValue.trim().length > 0 && hasContext;
   const canApply = !!suggestion;
 
-  const hint = !hasContext
-    ? 'Select an item to suggest'
-    : !inputValue.trim()
-    ? 'Type or pick a prompt'
-    : suggestion
-    ? 'Preview ready — Apply or discard'
-    : 'Press Enter or Suggest';
-
   const actions = SUGGESTED_ACTIONS[activeAgentId];
+  const activeConfig = providerConfigs.find((config) => config.id === activeProviderId);
+  const activeModelName = activeConfig?.models?.find((m) => m.id === activeConfig.selectedModel)?.name;
+  const modelLabel = activeConfig
+    ? (activeModelName || activeConfig.selectedModel || t('sidebar.noModel'))
+    : t('sidebar.noModel');
+  const actionsLabel = t('chat.actions');
 
   return (
     <div
@@ -454,41 +479,6 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
         />
       )}
 
-      {/* Subheader: CRM Agents header + agent selector */}
-      <div className="crm-ai-header">
-        <div className="crm-ai-header-title-row">
-          <span className="crm-ai-header-title">CRM Agents</span>
-          <span className="crm-ai-header-count">{CRM_AGENTS.length}</span>
-        </div>
-        <div className="crm-ai-agent-selector" role="tablist" aria-label="CRM Agents">
-          {CRM_AGENTS.map((agent) => {
-            const Icon = AGENT_ICONS[agent.id];
-            const isActive = agent.id === activeAgentId;
-            const isRelevant = relevantAgents.some((a) => a.id === agent.id);
-            return (
-              <button
-                key={agent.id}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                title={`${agent.name} — ${agent.description}`}
-                className={[
-                  'crm-ai-agent-chip',
-                  isActive ? 'crm-ai-agent-chip--on' : '',
-                  !isRelevant ? 'crm-ai-agent-chip--dim' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                onClick={() => setActiveAgentId(agent.id)}
-              >
-                <Icon size={15} />
-                <span className="crm-ai-agent-chip-name">{agent.name}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Body */}
       {!contextMeta ? (
         <div id="chat-empty-state" className="panel-body empty-state chat-empty-state">
@@ -507,17 +497,6 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
             style={{ paddingLeft: 18, paddingRight: 18 }}
           >
             <div className="ai-scroll crm-ai-scroll">
-              {/* Context summary card */}
-              <div className="crm-ai-context-card">
-                <div className="crm-ai-context-icon">
-                  <ContextIcon size={16} />
-                </div>
-                <div className="crm-ai-context-text">
-                  <span className="crm-ai-context-kind">{contextMeta.kindLabel}</span>
-                  <span className="crm-ai-context-sub">{contextMeta.subLabel}</span>
-                </div>
-              </div>
-
               {/* Suggested actions for the active agent + context */}
               <div>
                 <p className="crm-ai-section-label">
@@ -594,31 +573,24 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
         </div>
       )}
 
-      {/* Footer composer — always visible (bottom input stays reachable) */}
+      {/* Footer composer — same shell as task-mode ChatInput (#chat-input-card) */}
       <div className="ai-sidebar-composer panel-footer">
-        <div className="crm-ai-composer">
-          {/* Quick prompts for the active agent */}
-          <div className="crm-ai-quick-prompts">
-            {activeAgentDef.quickPrompts.map((prompt) => (
-              <button
-                key={prompt}
-                type="button"
-                className="crm-ai-quick-prompt"
-                onClick={() => handleQuickPrompt(prompt)}
-                disabled={!hasContext}
-                title={hasContext ? prompt : 'Select an item first'}
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
+        <div style={{ flexShrink: 0, paddingTop: 0, paddingBottom: 12, paddingLeft: 12, paddingRight: 12, height: 'fit-content' }}>
+          <ComposerCard id="chat-input-card">
+            <div
+              className="composer-resize-handle"
+              onMouseDown={handleResizeStart}
+              title="Drag up to expand"
+            />
 
-          {/* Input card — mirrors #chat-input-card visual (bg-2, radius 8) */}
-          <div className="crm-ai-composer-card">
-            <textarea
-              className="crm-ai-composer-input"
+            <ComposerTextarea
+              id="chat-input"
+              ref={textareaRef}
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                handleInput();
+              }}
               onKeyDown={handleKeyDown}
               placeholder={
                 hasContext
@@ -626,22 +598,172 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
                   : 'Select an item to get CRM Agent suggestions…'
               }
               rows={1}
+              style={{ height: '44px', paddingTop: '12px', paddingBottom: '12px' }}
               aria-label="CRM Agent prompt"
             />
-            <div className="crm-ai-composer-row">
-              <span className="crm-ai-composer-hint">{hint}</span>
-              <button
-                type="button"
-                className="crm-ai-suggest-btn"
-                onClick={handleSuggestClick}
-                disabled={!canSuggest}
-                title="Generate a suggestion preview"
-              >
-                <Sparkles size={13} />
-                Suggest
-              </button>
-            </div>
-          </div>
+
+            <ComposerRow className="chat-input-bottom-row">
+              <div className="chat-input-bottom-col chat-input-bottom-col--left">
+                <div className="chat-input-bottom-col chat-input-bottom-col--tools">
+                  <ComposerIconButton
+                    className="composer-attach-button"
+                    title={t('chat.attachImage')}
+                    aria-label={t('chat.attachImage')}
+                    disabled
+                  >
+                    <Plus size={14} />
+                  </ComposerIconButton>
+
+                  <div ref={actionsRef} className="relative">
+                    <ComposerIconButton
+                      onClick={() => setActionsDropdownOpen((v) => !v)}
+                      className="chat-input-dropup-btn"
+                      title={t('chat.actions')}
+                      aria-label={actionsLabel}
+                      aria-haspopup="menu"
+                      aria-expanded={actionsDropdownOpen}
+                      disabled={!hasContext}
+                    >
+                      <Zap size={14} className="chat-input-dropup-icon" />
+                    </ComposerIconButton>
+                    {actionsDropdownOpen && (
+                      <div className="drop" style={{ left: 0, bottom: '100%', marginBottom: 4, minWidth: 192 }}>
+                        {actions.map((action) => (
+                          <button
+                            type="button"
+                            key={action.title}
+                            onClick={() => {
+                              handleActionClick(action);
+                              setActionsDropdownOpen(false);
+                            }}
+                            className="drop-item"
+                          >
+                            <Zap size={11} style={{ color: accentColor, flexShrink: 0 }} />
+                            <span className="trunc med">{action.title}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div ref={modelRef} className="chat-input-bottom-col chat-input-bottom-col--model">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModelDropdownOpen((v) => !v);
+                      setAgentDropdownOpen(false);
+                    }}
+                    className="chat-input-dropup-btn"
+                    data-active="true"
+                    style={{ color: accentColor }}
+                    aria-label={modelLabel}
+                    aria-haspopup="menu"
+                    aria-expanded={modelDropdownOpen}
+                  >
+                    <Brain size={12} className="chat-input-dropup-icon" />
+                    <span className="trunc med chat-input-dropup-label">{modelLabel}</span>
+                  </button>
+                  {modelDropdownOpen && (
+                    <div className="drop" style={{ left: 0, bottom: '100%', marginBottom: 4, minWidth: 180 }}>
+                      {providerConfigs.length === 0 && (
+                        <div className="subtle" style={{ padding: '8px 12px', fontSize: 'var(--fs-xs)' }}>
+                          {t('sidebar.noProviders')}
+                        </div>
+                      )}
+                      {providerConfigs
+                        .filter((config) => config.status === 'connected')
+                        .flatMap((config) => {
+                          const visibleModels = (config.models ?? []).filter(
+                            (m) => !isModelHidden(config.id, m.id),
+                          );
+                          return visibleModels.map((model) => (
+                            <button
+                              type="button"
+                              key={`${config.id}:${model.id}`}
+                              onClick={() => {
+                                setActiveProvider(config.id);
+                                setActiveModel(config.id, model.id);
+                                setModelDropdownOpen(false);
+                              }}
+                              className={`drop-item${
+                                config.id === activeProviderId && config.selectedModel === model.id
+                                  ? ' header-dropdown-item--active'
+                                  : ''
+                              }`}
+                              style={{ fontSize: 'var(--fs-xs)' }}
+                            >
+                              <span className="med">
+                                {config.name} / {model.name}
+                              </span>
+                            </button>
+                          ));
+                        })}
+                      <div style={{ borderTop: '1px solid var(--c-border-1)', marginTop: 4, paddingTop: 4 }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            openSettings('models');
+                            setModelDropdownOpen(false);
+                          }}
+                          className="drop-item drop-item--brand"
+                        >
+                          {t('sidebar.manageModels')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div ref={agentRef} className="chat-input-bottom-col chat-input-bottom-col--agent">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAgentDropdownOpen((v) => !v);
+                      setModelDropdownOpen(false);
+                    }}
+                    className="chat-input-dropup-btn"
+                    data-active="true"
+                    style={{ color: accentColor }}
+                    aria-label={activeAgentDef.name}
+                    aria-haspopup="menu"
+                    aria-expanded={agentDropdownOpen}
+                  >
+                    <User size={12} className="chat-input-dropup-icon" />
+                    <span className="trunc med chat-input-dropup-label">{activeAgentDef.name}</span>
+                  </button>
+                  {agentDropdownOpen && (
+                    <div className="drop" style={{ right: 0, bottom: '100%', marginBottom: 4, minWidth: 180 }}>
+                      {CRM_AGENTS.map((agent) => (
+                        <button
+                          type="button"
+                          key={agent.id}
+                          onClick={() => {
+                            setActiveAgentId(agent.id);
+                            setAgentDropdownOpen(false);
+                          }}
+                          className={`drop-item${
+                            agent.id === activeAgentId ? ' header-dropdown-item--active' : ''
+                          }`}
+                          style={{ fontSize: 'var(--fs-xs)' }}
+                        >
+                          <span className="trunc med">{agent.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="chat-input-bottom-col chat-input-bottom-col--send">
+                <ComposerSendButton
+                  onClick={handleSuggestClick}
+                  disabled={!canSuggest}
+                  title="Generate a suggestion preview"
+                />
+              </div>
+            </ComposerRow>
+          </ComposerCard>
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 /* =========================================================
- * Token foundation imports â€” must come BEFORE any other
+ * Token foundation imports Ã¢â‚¬â€ must come BEFORE any other
  * rule so the cascade resolves in this order:
- *   tokens â†’ density â†’ layout â†’ utilities â†’ legacy index.css
+ *   tokens Ã¢â€ â€™ density Ã¢â€ â€™ layout Ã¢â€ â€™ utilities Ã¢â€ â€™ legacy index.css
  * ========================================================= */
 @import "./styles/tokens.css";
 @import "./styles/density.css";
@@ -31,13 +31,14 @@ select:focus-visible {
   /* Soft warm palette inspired by screenshots */
   --c-background-1: #f5f5f5;
   --c-background-2: #e9e9e9;
-  --c-background-3: #c2c2c2;
+  --c-background-3: #d3d3d3;
+ --c-background-4: #b1aeae;
 
 
 
   /* Panel Accents */
-  --c-accent-center-panel: #237244;
-  --c-accent-2:#114beb;
+  --c-accent-1: #df3f00;
+  --c-accent-2:#d35115;
   --c-accent-3:#cf11a0;
 
 
@@ -46,7 +47,7 @@ select:focus-visible {
   --c-text-2: #5c5c5c;
   --c-text-3: #444444;
 
-  /* Borders â€” single soft tone, no harsh contrast */
+  /* Borders Ã¢â‚¬â€ single soft tone, no harsh contrast */
   --c-border-1: #e4e4e4;
   --c-border-2: #afafaf;
   --border: var(--c-border-1);
@@ -58,7 +59,7 @@ select:focus-visible {
   --c-info: #3b82f6;
   --c-overlay: rgba(0,0,0,0.35);
   
-  /* Typography â€” fluid */
+  /* Typography Ã¢â‚¬â€ fluid */
   --c-font-1: 'Inter', sans-serif;
   --font-fluid-12: clamp(5px, 0.5vw, 11px);
   --font-fluid-14: clamp(7px, 0.7vw, 13px);
@@ -70,25 +71,19 @@ select:focus-visible {
   --fs-sm: var(--font-fluid-14);   /* small */
   --fs-base: var(--font-fluid-14); /* base */
 
-  /* Shadows â€” keep but remove from scaffold cards */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
-  --shadow-lg: 0 4px 6px -1px rgba(0,0,0,0.06);
-  --shadow-2xl: 0 10px 15px -3px rgba(0,0,0,0.08);
-  --shadow-subtask-card: 0px 0px 5px 0px rgba(0, 0, 0, 0.05);
-
-  /* Division height tokens â€” DEPRECATED. Use the control-height-*
+  /* Division height tokens Ã¢â‚¬â€ DEPRECATED. Use the control-height-*
    tokens from src/styles/tokens.css instead. The legacy names
    are kept as aliases that resolve to the new token values so
    older selectors continue to render at a stable size. The
    previous `vh` values caused the entire UI to scale with the
-   viewport (4vh â‰ˆ 43 px at 1080p, but 24 px at 800Ã—600). */
+   viewport (4vh Ã¢â€°Ë† 43 px at 1080p, but 24 px at 800Ãƒâ€”600). */
   --div-h-0: var(--control-height-xs);
   --div-h-1: var(--control-height-sm);
   --div-h-2: 64px;
   --div-h-3: var(--control-height-xl);
 }
 
-/* Text-size overrides â€” actually scale tokens up */
+/* Text-size overrides Ã¢â‚¬â€ actually scale tokens up */
 :root[data-text-size="14"] {
   --fs-xs: var(--font-fluid-14);
   --fs-sm: var(--font-fluid-16);
@@ -121,7 +116,7 @@ html, body {
   background: var(--c-background-3);
 }
 
-/* App shell â€” lock body scroll. The .app-shell and its children
+/* App shell Ã¢â‚¬â€ lock body scroll. The .app-shell and its children
  * manage their own internal scroll regions. Without this, the
  * `<body>` element becomes the main scroll container and breaks
  * the 100dvh shell contract in windowed mode. */
@@ -129,7 +124,7 @@ body {
   overflow: hidden;
 }
 
-/* App shell â€” overflow safety (Agent 7).
+/* App shell Ã¢â‚¬â€ overflow safety (Agent 7).
  * The .app-shell foundation is defined in src/styles/layout.css,
  * but `index.css` carries the legacy rules and may include
  * styles added by previous agents that lack `min-width: 0` or
@@ -137,12 +132,12 @@ body {
  * keeps the shell, workspace, panels, and panel bodies in
  * the correct overflow contract:
  *
- *   body / html / #root â†’ never scroll
- *   .app-shell          â†’ never scroll (overflow: hidden)
- *   .app-shell-main     â†’ never scroll (overflow: hidden)
- *   .workspace          â†’ never scroll (overflow: hidden)
- *   .panel / panel*     â†’ never scroll (overflow: hidden)
- *   .panel-body         â†’ scroll vertically (overflow-y: auto)
+ *   body / html / #root Ã¢â€ â€™ never scroll
+ *   .app-shell          Ã¢â€ â€™ never scroll (overflow: hidden)
+ *   .app-shell-main     Ã¢â€ â€™ never scroll (overflow: hidden)
+ *   .workspace          Ã¢â€ â€™ never scroll (overflow: hidden)
+ *   .panel / panel*     Ã¢â€ â€™ never scroll (overflow: hidden)
+ *   .panel-body         Ã¢â€ â€™ scroll vertically (overflow-y: auto)
  *
  * No `vh` is used for component sizing here; only the shell
  * is constrained to 100dvh. The whole document is the only
@@ -189,7 +184,7 @@ body {
   overflow-x: hidden;
 }
 
-/* Horizontal overflow guard â€” Agent 7. The workspace grid
+/* Horizontal overflow guard Ã¢â‚¬â€ Agent 7. The workspace grid
  * is responsible for sizing each column, but legacy inline
  * widths in some components (e.g. `style={{ width: Xvw }}`)
  * can still push the document wider than the viewport on
@@ -275,12 +270,12 @@ input.ctrl-xs.editor-topbar-title-input {
   min-width: 0;
   vertical-align: top;
   border-radius: 0;
-  background-color: transparent;
+  background-color: var(--c-background-3);
   padding: 0px;
   border: 0;
 }
 
-/* Universal Header â€” fixed at top, above all panels */
+/* Universal Header Ã¢â‚¬â€ fixed at top, above all panels */
 #universal-header {
   position: fixed;
   top: 0;
@@ -301,7 +296,7 @@ input.ctrl-xs.editor-topbar-title-input {
   height: 100%;
 }
 
-/* App content wrapper â€” offset for fixed universal header.
+/* App content wrapper Ã¢â‚¬â€ offset for fixed universal header.
  * Shell-level: 100dvh replaces the previous 100vh so the app fills
  * the *dynamic* viewport in windowed/mobile mode. The `<body>` is
  * locked via `overflow: hidden` (see GLOBAL RESETS above) so the
@@ -312,14 +307,14 @@ input.ctrl-xs.editor-topbar-title-input {
   overflow: hidden;
 }
 
-/* .app-shell â€” custom titlebar shell row. The first row is the
+/* .app-shell Ã¢â‚¬â€ custom titlebar shell row. The first row is the
  * frameless Tauri titlebar; the second row contains the shrink-safe
  * workspace. */
 .app-shell {
   grid-template-rows: auto minmax(0, 1fr);
 }
 
-/* .app-shell-main â€” the direct child that contains the app
+/* .app-shell-main Ã¢â‚¬â€ the direct child that contains the app
  * workspace. Must shrink correctly so internal panels can scroll
  * independently. Without `min-height: 0` the grid item will resist
  * shrinking and the shell will overflow vertically. */
@@ -345,7 +340,7 @@ input.ctrl-xs.editor-topbar-title-input {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
-  height: 32px;
+  height: 36px;
   overflow: hidden;
 }
 
@@ -420,7 +415,7 @@ input.ctrl-xs.editor-topbar-title-input {
   color: var(--c-text-2);
 }
 
-/* "+" new-tab button â€” last child of .tabs-row.
+/* "+" new-tab button Ã¢â‚¬â€ last child of .tabs-row.
    Sticky-right so it sits right after the last tab when scrolled to
    the end, and pins to the wrapper's right edge while scrolling. */
 .tabs-row .tabs-new-btn {
@@ -430,15 +425,14 @@ input.ctrl-xs.editor-topbar-title-input {
   flex-shrink: 0;
   background: unset;
   background-color: unset;
-  box-shadow: none;
 }
 
 .tabs-sidebar-toggle {
   border-right: 1px solid var(--c-border-1);
-  border-radius: 0;
+  border-radius: 8px;
 }
 
-/* Subtasks toggle bar â€” full-width strip under the header.
+/* Subtasks toggle bar Ã¢â‚¬â€ full-width strip under the header.
    Two columns: editable task title (doc-title look) + chevron toggle button. */
 .subtasks-toggle-bar {
   display: flex;
@@ -450,9 +444,9 @@ input.ctrl-xs.editor-topbar-title-input {
   height: fit-content;
   flex-shrink: 0;
   padding-top: 12px;
-  padding-bottom: 12px;
-  padding-left: 8px;
-  padding-right: 8px;
+  padding-bottom: 6px;
+  padding-left: 15px;
+  padding-right: 15px;
   background-color: rgba(233, 233, 233, 0);
   border-bottom: none;
   transition: background-color 0.15s;
@@ -484,6 +478,29 @@ input.ctrl-xs.editor-topbar-title-input {
 .subtasks-title-input:hover {
   background: transparent;
 }
+
+.tdp-meta-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 32px;
+  min-height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--c-text-2);
+}
+.tdp-meta-collapse-btn svg {
+  color: var(--c-text-2);
+}
+.tdp-meta-collapse-btn:hover {
+  background: var(--c-background-2);
+}
+
 button.subtasks-title-input {
   height: 32px;
   width: 100%;
@@ -504,7 +521,6 @@ button.subtasks-title-input:focus-visible {
   padding-right: 12px;
   outline: none;
   border: 1px solid var(--c-border-1);
-  box-shadow: none;
 }
 input.subtasks-title-input {
   height: 32px;
@@ -546,7 +562,7 @@ input.subtasks-title-input:focus-visible {
   background-color: transparent;
   color: var(--c-text-2);
   cursor: pointer;
-  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  transition: background-color 0.15s, color 0.15s;
 }
 .subtasks-complete-btn:hover:not(:disabled) {
   background-color: var(--c-background-2);
@@ -584,7 +600,7 @@ input.subtasks-title-input:focus-visible {
 }
 .subtasks-toggle-btn:hover {
   background-color: var(--c-background-2);
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 .subtasks-toggle-bar--on .subtasks-toggle-btn {
   color: var(--c-text-2);
@@ -603,7 +619,7 @@ input.subtasks-title-input:focus-visible {
   width: 100%;
 }
 
-/* Tabs row â€” visible tab bar replacing the old dropdown.
+/* Tabs row Ã¢â‚¬â€ visible tab bar replacing the old dropdown.
    Horizontally scrollable so the "+" button (last child) can use
    `position: sticky; right: 0;` to stay glued to the wrapper's
    right edge while the user scrolls, and sit naturally after the
@@ -644,17 +660,23 @@ input.subtasks-title-input:focus-visible {
 /* Cap individual tab width so they stay uniform */
 .tabs-row > .tab-active {
   max-width: 180px;
+  padding-right: 6px;
+  padding-top: 6px;
+  padding-bottom: 6px;
 }
 
 .tabs-row > .tab-passive {
   max-width: 180px;
   width: fit-content;
   padding-left: 12px;
-  padding-right: 6px;
+  padding-right: 12px;
 }
 
-.tabs-row > .tab-active {
-  padding-right: 6px;
+.tabs-row > .tab-active svg,
+.tabs-row > .tab-passive svg {
+  padding-top: 0;
+  padding-bottom: 0;
+  color: var(--c-text-2);
 }
 
 /* Per-tab-type base styling (id hooks for doc vs task) */
@@ -663,7 +685,9 @@ input.subtasks-title-input:focus-visible {
 [id^="tab-task-active"],
 [id^="tab-task-passive"],
 [id^="tab-chat-active"],
-[id^="tab-chat-passive"] {
+[id^="tab-chat-passive"],
+[id^="tab-module-active"],
+[id^="tab-module-passive"] {
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -672,7 +696,8 @@ input.subtasks-title-input:focus-visible {
 
 [id^="tab-doc-active"],
 [id^="tab-task-active"],
-[id^="tab-chat-active"] {
+[id^="tab-chat-active"],
+[id^="tab-module-active"] {
   border: 1px solid var(--c-border-2);
   border-radius: 0;
   height: 100%;
@@ -683,6 +708,15 @@ input.subtasks-title-input:focus-visible {
 }
 
 [id^="tab-doc-active"].tab-active {
+  border: none;
+  border-radius: 0;
+  height: 100%;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  background: var(--c-background-1);
+}
+
+[id^="tab-module-active"].tab-active {
   border: none;
   border-radius: 0;
   height: 100%;
@@ -704,7 +738,8 @@ input.subtasks-title-input:focus-visible {
 
 [id^="tab-doc-passive"],
 [id^="tab-task-passive"],
-[id^="tab-chat-passive"] {
+[id^="tab-chat-passive"],
+[id^="tab-module-passive"] {
   background: var(--c-background-2);
   border-top: none;
   border-right: none;
@@ -723,7 +758,8 @@ input.subtasks-title-input:focus-visible {
 
 [id^="tab-doc-passive"]:hover,
 [id^="tab-task-passive"]:hover,
-[id^="tab-chat-passive"]:hover {
+[id^="tab-chat-passive"]:hover,
+[id^="tab-module-passive"]:hover {
   background: var(--c-background-2);
   color: var(--c-text-1);
 }
@@ -799,12 +835,12 @@ input.subtasks-title-input:focus-visible {
 }
 
 .tabs-dropdown-item:hover {
-  background: var(--c-background-4);
+  background: var(--c-background-2);
 }
 
 .tabs-dropdown-item--active {
   background: var(--c-background-4);
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 
 .tabs-dropdown-item .trunc {
@@ -821,7 +857,7 @@ input.subtasks-title-input:focus-visible {
   height: var(--div-h-1);
   padding: 0;
   font-size: var(--fs-base);
-  border-radius: 4px;
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -832,7 +868,7 @@ input.subtasks-title-input:focus-visible {
 
 .tabs-dropdown-close:hover {
   color: var(--c-danger);
-  background: var(--c-background-3);
+  background: var(--c-background-2);
 }
 
 .tabs-doc-marker {
@@ -843,17 +879,17 @@ input.subtasks-title-input:focus-visible {
 }
 
 .tabs-doc-marker--clean {
-  border: 1px solid var(--c-text-3);
+  border: 1px solid var(--c-text-2);
   background: transparent;
 }
 
 .tabs-doc-marker--edited {
-  background: var(--c-accent-center-panel);
+  background: var(--c-accent-1);
 }
 
 .tabs-dropdown-rename-input {
   border: none;
-  border-bottom: 1px solid var(--c-accent-center-panel);
+  border-bottom: 1px solid var(--c-accent-1);
   background: transparent;
   color: var(--c-text-1);
   outline: none;
@@ -906,8 +942,15 @@ input.subtasks-title-input:focus-visible {
   color: var(--c-text-1);
 }
 
+[id^="tab-module-passive"].tab-passive,
+[id^="tab-module-passive"].tab-passive:hover {
+  background: unset;
+  background-color: rgba(211, 211, 211, 0);
+}
+
 [id^="tab-doc-"] span.txt-xs,
-[id^="tab-task-"] span.txt-xs {
+[id^="tab-task-"] span.txt-xs,
+[id^="tab-module-"] span.txt-xs {
   width: 100%;
   vertical-align: middle;
   line-height: var(--line-normal);
@@ -957,7 +1000,19 @@ input.subtasks-title-input:focus-visible {
   font-size: var(--fs-sm);
 }
 
-/* Tab close button â€” visible on every tab so users always know how to close it.
+[id^="tab-doc-"] svg.lucide-file-text {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+[id^="tab-module-"] svg.lucide {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+/* Tab close button Ã¢â‚¬â€ visible on every tab so users always know how to close it.
    Subdued by default, fully prominent on hover. */
 .tab-close {
   flex-shrink: 0;
@@ -967,7 +1022,7 @@ input.subtasks-title-input:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 8px;
   margin-left: 6px;
   transition: background-color 0.15s, color 0.15s, opacity 0.15s;
   opacity: 0.5;
@@ -1002,6 +1057,7 @@ input.subtasks-title-input:focus-visible {
 .tab-close:hover {
   color: var(--c-danger);
   opacity: 1;
+  background: var(--c-background-2);
 }
 
 /*TOGGLE*/
@@ -1013,7 +1069,6 @@ input.subtasks-title-input:focus-visible {
   width: 20px;
   height: 20px;
   border-radius: 9999px;
-  box-shadow: var(--shadow-sm);
   transition: transform 0.2s;
   display: flex;
   align-items: center;
@@ -1039,15 +1094,15 @@ input.subtasks-title-input:focus-visible {
 }
 .header-toggle--on {
   background: var(--c-background-4);
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 .header-toggle--on:hover {
   background: var(--c-background-4);
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 .header-toggle:hover {
   background: rgba(238,242,255,0.3);
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 /*SIDEBAR NAV*/
 .side-nav-tab {
@@ -1068,7 +1123,7 @@ input.subtasks-title-input:focus-visible {
   color: var(--c-text-2);
 }
 .side-nav-tab--on {
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
   background: var(--c-background-3);
 }
 .side-nav-tab:hover {
@@ -1083,7 +1138,6 @@ input.subtasks-title-input:focus-visible {
   z-index: 100;
   background: var(--c-background-3);
   border-radius: 16px;
-  box-shadow: var(--shadow-2xl);
   width: min(95vw, 560px);
   max-width: var(--modal-max-width);
   max-height: var(--modal-max-height);
@@ -1128,7 +1182,7 @@ input.subtasks-title-input:focus-visible {
   cursor: pointer;
   border: none;
   border-radius: 12px;
-  transition: background-color 0.15s, color 0.15s, box-shadow 0.15s;
+  transition: background-color 0.15s, color 0.15s;
 }
 .filetree-tab-passive {
   background: var(--c-background-2);
@@ -1155,7 +1209,7 @@ input.subtasks-title-input:focus-visible {
   justify-content: center;
   border: none;
   background: transparent;
-  border-radius: 3px;
+  border-radius: 8px;
   color: var(--c-text-2);
   cursor: pointer;
   font-size: var(--fs-base);
@@ -1164,7 +1218,7 @@ input.subtasks-title-input:focus-visible {
   transition: opacity 0.15s;
 }
 .filetree-tab-close:hover {
-  background: var(--c-background-4);
+  background: var(--c-background-2);
   color: var(--c-text-1);
 }
 .filetree-actions {
@@ -1212,7 +1266,7 @@ input.subtasks-title-input:focus-visible {
   color: var(--c-text-2);
 }
 .filetree-search-input:focus {
-  border-color: var(--c-accent-center-panel);
+  border-color: var(--c-accent-1);
   background: var(--c-background-3);
 }
 .filetree-search-clear {
@@ -1224,13 +1278,13 @@ input.subtasks-title-input:focus-visible {
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 5px;
+  border-radius: 8px;
   background: transparent;
   color: var(--c-text-2);
   cursor: pointer;
 }
 .filetree-search-clear:hover {
-  background: var(--c-background-4);
+  background: var(--c-background-2);
   color: var(--c-text-1);
 }
 .filetree-search-status {
@@ -1276,11 +1330,11 @@ input.subtasks-title-input:focus-visible {
   flex-shrink: 0;
 }
 .editor-bc-sep {
-  color: var(--c-text-3);
+  color: var(--c-text-2);
   flex-shrink: 0;
 }
 .editor-bc-ellipsis {
-  color: var(--c-text-3);
+  color: var(--c-text-2);
   font-size: var(--fs-base);
   flex-shrink: 0;
 }
@@ -1294,7 +1348,7 @@ input.subtasks-title-input:focus-visible {
   font-weight: 700;
 }
 .editor-bc-doc {
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
   font-weight: 500;
 }
 
@@ -1335,23 +1389,9 @@ ul {
 
 /*CENTER PANEL - EDITOR (shell rules moved to src/styles/panels.css) */
 
-/*SCROLLBARS*/
+/*SCROLLBARS â€” global rules in src/styles/utilities.css */
 .ai-scroll {
   background: transparent;
-}
-.ai-scroll::-webkit-scrollbar {
-  width: 3px;
-  height: 3px;
-}
-.ai-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-.ai-scroll::-webkit-scrollbar-thumb {
-  background: rgba(128, 128, 128, 0.15);
-  border-radius: 3px;
-}
-.ai-scroll::-webkit-scrollbar-thumb:hover {
-  background: var(--c-border-2);
 }
 
 /*FORMATTING TOOLBAR*/
@@ -1372,10 +1412,10 @@ ul {
 }
 .tbar-btn--on {
   background: var(--c-background-4);
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 .tbar-btn:hover {
-  background: var(--c-background-4);
+  background: var(--c-background-2);
   color: var(--c-text-1);
 }
 .toolbar-strip {
@@ -1409,7 +1449,6 @@ ul {
 }
 #editor-topbar button.ctrl-xs {
   font-size: var(--fs-base);
-  box-shadow: none;
   border-width: 0;
   border-color: transparent;
   border-style: none;
@@ -1418,7 +1457,6 @@ ul {
   background-color: unset;
 }
 #editor-topbar button.ctrl-xs:focus {
-  box-shadow: none;
 }
 .editor-topbar-col {
   flex: 1 1 50%;
@@ -1443,7 +1481,6 @@ ul {
   background: var(--c-background-1);
   border: 1px solid var(--c-border-2);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
   margin-top: 4px;
 }
 .editor-topbar-search-input {
@@ -1504,10 +1541,10 @@ ul {
   font-family: var(--c-font-1);
 }
 .doc-title-field:focus {
-  border-bottom-color: var(--c-accent-center-panel);
+  border-bottom-color: var(--c-accent-1);
 }
 .doc-title-field::placeholder {
-  color: var(--c-text-3);
+  color: var(--c-text-2);
   font-weight: 400;
 }
 
@@ -1518,14 +1555,14 @@ ul {
   --inline-preset-h3-size: var(--fs-base);
 }
 .tiptap-editor a {
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
   text-decoration: underline;
 }
 .tiptap-editor a:hover {
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 .tiptap-editor blockquote {
-  border-left: 3px solid var(--c-accent-center-panel);
+  border-left: 3px solid var(--c-accent-1);
   padding-left: 1rem;
   margin: 1rem 0;
   color: var(--c-text-2);
@@ -1591,7 +1628,7 @@ ul {
 .tiptap-editor p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
-  color: var(--c-text-3);
+  color: var(--c-text-2);
   pointer-events: none;
   height: 0;
   font-size: var(--fs-base);
@@ -1644,7 +1681,7 @@ ul {
   content: '\2022';
   position: absolute;
   left: -1.25rem;
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
   font-weight: 600;
   font-size: var(--fs-base);
 }
@@ -1684,7 +1721,7 @@ ul {
   transition: border-color 0.15s;
 }
 .ctrl-sm:focus {
-  border-color: var(--c-accent-center-panel);
+  border-color: var(--c-accent-1);
 }
 .ctrl-xs {
   font-size: var(--fs-base);
@@ -1697,7 +1734,7 @@ ul {
   transition: border-color 0.15s;
 }
 .ctrl-xs:focus {
-  border-color: var(--c-accent-center-panel);
+  border-color: var(--c-accent-1);
 }
 /* Editor topbar title button: no border, transparent background */
 .ctrl-xs.editor-topbar-title,
@@ -1717,7 +1754,7 @@ input.ctrl-xs.editor-topbar-title-input {
   color: var(--c-text-2);
 }
 .ctrl:focus {
-  border-color: var(--c-accent-center-panel);
+  border-color: var(--c-accent-1);
 }
 
 
@@ -1730,7 +1767,7 @@ input.ctrl-xs.editor-topbar-title-input {
 
 /*SHARED - BUTTONS*/
 
-/* Global button baseline â€” all 199 buttons connect to these tokens */
+/* Global button baseline Ã¢â‚¬â€ all 199 buttons connect to these tokens */
 button {
   min-height: var(--control-height-sm);
   min-width: var(--control-height-sm);
@@ -1740,14 +1777,37 @@ button {
 }
 
 /* Task list items: `.task-item` auto-sizes to its content
-   (meta row + title). No fixed height — the button grows
+   (meta row + title). No fixed height â€” the button grows
    as needed so both rows are always visible. The base
    layout (flex, padding, gap, border) lives in
    src/components/taskManager/taskList.css. */
 button.task-item,
-.task-item {
+.task-item,
+.crm-list-item,
+.forms-list-item,
+.settings-list-item {
   height: auto;
   min-height: 0;
+  padding: 12px;
+  border: none;
+  border-left: none;
+  border-image: none;
+}
+
+button.task-item--on,
+.task-item--on,
+.crm-list-item--active,
+.forms-list-item--active,
+.settings-list-item--active {
+  background: var(--c-background-2);
+  border: none;
+  border-image: none;
+}
+
+button.calendar-task-row {
+  height: auto;
+  min-height: var(--control-height-sm);
+  width: 100%;
 }
 
 #settings-panel button.btn {
@@ -1774,7 +1834,7 @@ button.task-item,
   gap: 6px;
   font-size: var(--fs-base);
   font-weight: 600;
-  background: var(--c-accent-center-panel);
+  background: var(--c-accent-1);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -1799,8 +1859,8 @@ button.task-item,
   flex-shrink: 0;
 }
 .btn-icon:hover {
-  background: transparent;
-  color: var(--c-accent-center-panel);
+  background: var(--c-background-2);
+  color: var(--c-accent-1);
 }
 .btn-icon .lucide-folder-plus {
   height: 13px;
@@ -1824,7 +1884,7 @@ button.task-item,
   transition: opacity 0.15s, transform 0.15s;
   cursor: pointer;
   border: none;
-  background: var(--c-accent-center-panel);
+  background: var(--c-accent-1);
   color: #fff;
 }
 .btn-send:disabled {
@@ -1854,7 +1914,7 @@ button.task-item,
   color: var(--c-text-1);
 }
 .btn--primary {
-  background: var(--c-accent-center-panel);
+  background: var(--c-accent-1);
   color: #fff;
 }
 .btn--primary:hover {
@@ -1885,15 +1945,15 @@ button.task-item,
 }
 .nav-btn--on {
   background: var(--c-background-4);
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 .nav-btn--on:hover {
   background: var(--c-background-4);
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 .nav-btn:hover {
-  background: transparent;
-  color: var(--c-accent-center-panel);
+  background: var(--c-background-2);
+  color: var(--c-accent-1);
 }
 #nav-btn-settings {
   border-radius: 0;
@@ -1907,20 +1967,23 @@ button.task-item,
   width: var(--div-h-1);
   height: var(--div-h-1);
   padding: 0;
-  border-radius: 0;
+  border-radius: 8px;
   border-top: none;
   border-bottom: none;
   border-left: none;
   border-right: none;
 }
+#nav-btn-toggle-panel:hover {
+  background: transparent;
+  color: var(--c-accent-1);
+}
+#nav-btn-toggle-panel:active {
+  color: var(--c-text-3);
+}
 #nav-btn-toggle-panel.nav-btn--on,
-#nav-btn-toggle-panel.nav-btn--on:hover,
-#nav-btn-tasks.nav-btn--on,
-#nav-btn-tasks.nav-btn--on:hover,
-#nav-btn-documents.nav-btn--on,
-#nav-btn-documents.nav-btn--on:hover,
-#nav-btn-documents:hover {
+#nav-btn-toggle-panel.nav-btn--on:hover {
   background-color: rgba(246, 241, 232, 0);
+  color: var(--c-text-2);
 }
 
 /* Mode buttons in universal header */
@@ -1953,31 +2016,41 @@ button.task-item,
   height: var(--div-h-1);
   min-height: var(--div-h-1);
   gap: 0;
-  border-radius: 0;
+  border-radius: 8px;
 }
 
 .mode-btn--on {
   background: var(--c-background-3);
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 
 .mode-btn--on:hover {
   background: var(--c-background-3);
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 
 #nav-btn-documents.mode-btn--on,
-#nav-btn-documents:hover,
 #nav-btn-tasks.mode-btn--on,
-#nav-btn-tasks:hover,
-#nav-btn-page.mode-btn--on,
-#nav-btn-page:hover {
+#nav-btn-crm.mode-btn--on,
+#nav-btn-settings.mode-btn--on {
   background: rgba(30, 41, 59, 0);
 }
 
+#nav-btn-documents:hover,
+#nav-btn-tasks:hover,
+#nav-btn-crm:hover,
+#nav-btn-settings:hover,
+#nav-btn-theme:hover,
+#nav-btn-documents.mode-btn--on:hover,
+#nav-btn-tasks.mode-btn--on:hover,
+#nav-btn-crm.mode-btn--on:hover,
+#nav-btn-settings.mode-btn--on:hover {
+  background: transparent;
+}
+
 .mode-btn:hover {
-  background: var(--c-background-3);
-  color: var(--c-accent-center-panel);
+  background: var(--c-background-2);
+  color: var(--c-accent-1);
 }
 
 .mode-btn-label {
@@ -2013,6 +2086,9 @@ button.task-item,
   align-items: center;
   width: fit-content;
   height: fit-content;
+  gap: 4px;
+  padding-top: 7px;
+  padding-bottom: 7px;
   padding-left: 0;
   padding-right: 0;
   border: none;
@@ -2043,7 +2119,6 @@ button.task-item,
 .card {
   background: transparent;
   border-radius: 0;
-  box-shadow: none;
 }
 .panel-s {
   padding: 0;
@@ -2117,30 +2192,41 @@ button.task-item,
   font-size: var(--fs-base);
 }
 /*SHARED - DROPDOWNS*/
+.drop,
+.dropdown-menu,
+.chat-history-dropdown,
+.tabs-dropdown-menu {
+  border: 1px solid var(--layout-border);
+  border-radius: 8px;
+  background: var(--center-bg);
+  overflow: hidden;
+  animation: fadeIn 0.1s ease-out;
+}
 .drop {
   position: absolute;
   z-index: 2147483647;
   margin-top: 4px;
-  border: 1px solid var(--layout-border);
-  border-radius: 0;
-  box-shadow: var(--shadow-sm);
-  background: var(--center-bg);
   padding: 4px 0;
-  overflow: hidden;
-  animation: fadeIn 0.1s ease-out;
   min-width: 130px;
+}
+.dropdown-menu {
+  padding: 4px 0;
+}
+.chat-history-dropdown {
+  padding: 4px 0;
 }
 
 /* Specific styles for dropdown in chat input */
 .chat-input-bottom-row .drop {
-  border-radius: 8px;
-  box-shadow: 0px 1px 13.5px 4.3px rgba(0, 0, 0, 0.07);
   margin-left: -32px;
   margin-right: -32px;
   min-width: 245px;
 }
+.chat-input-bottom-row button.drop-item.header-dropdown-item--active {
+  background-color: var(--c-background-2);
+}
 
-/* File explorer search dropdown — matches chat composer drop styling */
+/* File explorer search dropdown â€” matches chat composer drop styling */
 .fep-header .filetree-search {
   width: 100%;
   margin: 0 5px;
@@ -2148,8 +2234,6 @@ button.task-item,
 }
 
 .fep-header .filetree-search .drop {
-  border-radius: 8px;
-  box-shadow: 0px 1px 13.5px 4.3px rgba(0, 0, 0, 0.07);
   max-height: 280px;
   overflow-y: auto;
 }
@@ -2168,13 +2252,13 @@ button.task-item,
   text-align: left;
 }
 .drop-item--brand {
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 .drop-item--brand:hover {
-  background: var(--c-background-4);
+  background: var(--c-background-2);
 }
 .drop-item:hover {
-  background: var(--c-background-4);
+  background: var(--c-background-2);
 }
 .drop-item .med {
   font-size: var(--fs-xs);
@@ -2207,7 +2291,7 @@ button.task-item,
   transition: background-color 0.15s, color 0.15s;
 }
 .header-dropdown-button:hover {
-  background: var(--c-background-4);
+  background: var(--c-background-2);
 }
 #btn-chat-clear {
   height: var(--div-h-1);
@@ -2263,7 +2347,7 @@ button.task-item,
 }
 .header-dropdown-item--active {
   background: var(--c-background-4);
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 .header-dropdown-item--stacked {
   flex-direction: column;
@@ -2287,7 +2371,6 @@ button.task-item,
 .modal {
   background: var(--c-background-3);
   border-radius: 16px;
-  box-shadow: var(--shadow-2xl);
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
@@ -2374,7 +2457,6 @@ button.task-item,
   border-radius: 14px;
   overflow: hidden;
   background: var(--c-background-1);
-  box-shadow: var(--shadow-sm);
   flex: 0 0 auto;
 }
 
@@ -2397,7 +2479,7 @@ button.task-item,
 }
 
 .provider-accordion-trigger:focus-visible {
-  outline: 1px solid var(--c-accent-center-panel);
+  outline: 1px solid var(--c-accent-1);
   outline-offset: -1px;
 }
 
@@ -2424,7 +2506,7 @@ button.task-item,
 }
 
 .provider-model-row:focus-visible {
-  outline: 1px solid var(--c-accent-center-panel);
+  outline: 1px solid var(--c-accent-1);
   outline-offset: -1px;
 }
 
@@ -2434,7 +2516,6 @@ button.task-item,
   border-radius: 14px;
   overflow: hidden;
   background: var(--c-background-1);
-  box-shadow: var(--shadow-sm);
   flex: 0 0 auto;
 }
 
@@ -2457,7 +2538,7 @@ button.task-item,
 }
 
 .agent-accordion-trigger:focus-visible {
-  outline: 1px solid var(--c-accent-center-panel);
+  outline: 1px solid var(--c-accent-1);
   outline-offset: -1px;
 }
 
@@ -2505,12 +2586,12 @@ button.task-item,
 
 .new-agent-btn:hover {
   background: var(--c-background-2);
-  border-color: var(--c-accent-center-panel);
+  border-color: var(--c-accent-1);
   color: var(--c-text-1);
 }
 
 .new-agent-btn:focus-visible {
-  outline: 2px solid var(--c-accent-center-panel);
+  outline: 2px solid var(--c-accent-1);
   outline-offset: 1px;
 }
 
@@ -2534,12 +2615,12 @@ button.task-item,
 
 .connect-provider-btn:hover {
   background: var(--c-background-2);
-  border-color: var(--c-accent-center-panel);
+  border-color: var(--c-accent-1);
   color: var(--c-text-1);
 }
 
 .connect-provider-btn:focus-visible {
-  outline: 2px solid var(--c-accent-center-panel);
+  outline: 2px solid var(--c-accent-1);
   outline-offset: 1px;
 }
 
@@ -2561,7 +2642,6 @@ button.task-item,
   max-width: 90vw;
   background: var(--c-background-1);
   border-left: 1px solid var(--c-border-1);
-  box-shadow: var(--shadow-lg, 0 10px 30px rgba(0, 0, 0, 0.15));
   z-index: 201;
   display: flex;
   flex-direction: column;
@@ -2616,7 +2696,7 @@ button.task-item,
 }
 
 .model-switch:focus-visible {
-  outline: 2px solid var(--c-accent-center-panel);
+  outline: 2px solid var(--c-accent-1);
   outline-offset: 2px;
 }
 
@@ -2625,7 +2705,6 @@ button.task-item,
   border: 1px solid var(--c-border-1);
   border-radius: 12px;
   padding: 12px;
-  box-shadow: var(--shadow-2xl);
   pointer-events: none;
 }
 
@@ -2645,7 +2724,6 @@ button.task-item,
 .confirm-box {
   background: var(--c-background-3);
   border-radius: 16px;
-  box-shadow: var(--shadow-2xl);
   padding: 24px;
   max-width: 400px;
   width: 90%;
@@ -3021,13 +3099,13 @@ button.task-item,
   border: none;
 }
 :root #left-resize-handle:hover {
-  background: var(--c-accent-center-panel);
+  background: var(--c-accent-1);
 }
 :root #right-resize-handle {
   background: var(--c-border-2);
 }
 :root #right-resize-handle:hover {
-  background: var(--c-accent-center-panel);
+  background: var(--c-accent-1);
 }
 :root #center-resize-handle {
   background-color: var(--c-background-1);
@@ -3040,6 +3118,7 @@ button.task-item,
   flex-wrap: nowrap;
   vertical-align: top;
   border-radius: 0;
+  background-color: var(--c-background-3);
   padding: 0px;
 }
 :root #header-bar .tabs-row {
@@ -3066,6 +3145,9 @@ button.task-item,
   cursor: pointer;
   color: var(--c-text-2);
 }
+.ai-toggle-btn:hover {
+  color: var(--c-accent-1);
+}
 .ai-toggle-btn--on {
   background: unset;
 }
@@ -3083,11 +3165,11 @@ button.task-item,
 :root .tabs-dropdown-menu {
   background: var(--center-bg);
   border: 1px solid var(--layout-border);
-  border-radius: 0;
+  border-radius: 8px;
 }
 :root .tabs-dropdown-item:hover,
 :root .tabs-dropdown-item--active {
-  background: var(--c-background-4);
+  background: var(--c-background-2);
 }
 :root .tabs-doc-marker--clean {
   border-color: var(--c-text-2);
@@ -3096,7 +3178,7 @@ button.task-item,
   background: var(--c-accent-left-panel);
 }
 :root .tabs-dropdown-close:hover {
-  background: var(--c-background-1);
+  background: var(--c-background-2);
 }
 :root .tab-active {
   background: var(--c-background-1);
@@ -3108,6 +3190,14 @@ button.task-item,
   color: var(--c-text-1);
 }
 :root [id^="tab-doc-active"].tab-active {
+  border: none;
+  border-radius: 0;
+  height: 100%;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  background: var(--c-background-1);
+}
+:root [id^="tab-module-active"].tab-active {
   border: none;
   border-radius: 0;
   height: 100%;
@@ -3136,6 +3226,12 @@ button.task-item,
   background: var(--c-background-2);
 }
 
+:root [id^="tab-module-passive"].tab-passive,
+:root [id^="tab-module-passive"].tab-passive:hover {
+  background: unset;
+  background-color: rgba(211, 211, 211, 0);
+}
+
 :root #tab-plus-button,
 :root #tab-plus-button-task {
   position: sticky;
@@ -3156,6 +3252,7 @@ button.task-item,
 }
 :root .tab-close:hover {
   color: var(--c-danger);
+  background: var(--c-background-2);
 }
 
 /*SIDEBAR NAV*/
@@ -3163,7 +3260,7 @@ button.task-item,
   color: var(--c-text-2);
 }
 :root .side-nav-tab--on {
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 :root .side-nav-tab:hover {
   color: var(--c-text-1);
@@ -3178,7 +3275,6 @@ button.task-item,
   z-index: 100;
   background: var(--c-background-3);
   border-radius: 16px;
-  box-shadow: var(--shadow-2xl);
   width: min(95vw, 560px);
   max-width: var(--modal-max-width);
   max-height: var(--modal-max-height);
@@ -3206,7 +3302,7 @@ button.task-item,
 }
 :root .filetree-tab.filetree-tab-active {
   background: var(--c-background-2);
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
   border: 1px solid var(--c-border-1);
 }
 :root .filetree-tab-close:hover {
@@ -3221,15 +3317,6 @@ button.task-item,
   background: transparent;
   margin: 0;
   border-radius: 0;
-}
-
-/*SCROLLBARS*/
-:root .ai-scroll::-webkit-scrollbar-thumb {
-  background: rgba(128, 128, 128, 0.15);
-  border-radius: 3px;
-}
-:root .ai-scroll::-webkit-scrollbar-thumb:hover {
-  background: var(--c-border-2);
 }
 
 /*DOCUMENT TITLE FIELD*/
@@ -3248,10 +3335,10 @@ button.task-item,
   transition: border-color 0.15s;
 }
 :root .doc-title-field:focus {
-  border-bottom-color: var(--c-accent-center-panel);
+  border-bottom-color: var(--c-accent-1);
 }
 :root .doc-title-field::placeholder {
-  color: var(--c-text-3);
+  color: var(--c-text-2);
   font-weight: 400;
 }
 
@@ -3268,16 +3355,15 @@ button.task-item,
 /*FORMATTING TOOLBAR*/
 :root .tbar-btn--on {
   background: var(--c-background-4);
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 :root .tbar-btn:hover {
-  background: var(--c-background-1);
-  color: var(--c-accent-center-panel);
+  background: var(--c-background-2);
+  color: var(--c-accent-1);
 }
 
 /*CENTER PANEL - TASK DETAILS (shell rules moved to src/styles/panels.css) */
 :root #task-detail-card {
-  box-shadow: none;
   padding: 0px;
 }
 
@@ -3290,8 +3376,6 @@ button.task-item,
 
 /* Dropdowns */
 :root .drop,
-:root select,
-:root option,
 :root .dropdown,
 :root [role="listbox"],
 :root [role="menu"],
@@ -3303,10 +3387,18 @@ button.task-item,
 :root .options-list,
 :root .select-options,
 :root .menu-dropdown,
-:root .header-dropdown-menu {
+:root .header-dropdown-menu,
+:root .chat-history-dropdown,
+:root .tabs-dropdown-menu {
   font-family: var(--c-font-1) !important;
   background: var(--c-background-1) !important;
   border: 1px solid var(--c-border-1) !important;
+  border-radius: 8px !important;
+}
+
+:root select,
+:root option {
+  font-family: var(--c-font-1) !important;
 }
 
 #filetree-root-row .tbar-btn {
@@ -3317,14 +3409,29 @@ button.task-item,
 
 #filetree-root-row .tbar-btn:hover {
   background: var(--c-background-2);
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 
 #filetree-root-row select {
   font-family: var(--c-font-1) !important;
-  background: transparent !important;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
   border: none !important;
-  padding: 0 !important;
+  padding: 0 20px 0 0 !important;
+  background-color: transparent !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--c-text-2) 50%),
+    linear-gradient(135deg, var(--c-text-2) 50%, transparent 50%) !important;
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 8px) 50% !important;
+  background-size: 6px 6px, 6px 6px !important;
+  background-repeat: no-repeat !important;
+}
+
+#filetree-root-row select::-ms-expand {
+  display: none;
 }
 
 #filetree-root-row select option {
@@ -3333,11 +3440,10 @@ button.task-item,
 
 /* File-tree search input (shell rules moved to src/styles/panels.css) */
 
-/* Task Details Panel â€” dropdown pills & chat input */
+/* Task Details Panel Ã¢â‚¬â€ dropdown pills & chat input */
 :root #task-metadata-bar .header-dropdown-button {
   background: var(--c-background-1);
   border: 1px solid var(--c-border-1);
-  box-shadow: none;
   border-radius: 8px;
 }
 :root #task-comment-input {
@@ -3354,7 +3460,6 @@ button.task-item,
   padding-right: 0px;
   padding-bottom: 0;
   height: 66px;
-  box-shadow: none;
 }
 :root #task-comment-card .task-comment-bottom-row {
   display: grid;
@@ -3400,15 +3505,14 @@ button.task-item,
   padding: 0;
 }
 
-/* AI Sidebar â€” header dropdowns */
+/* AI Sidebar Ã¢â‚¬â€ header dropdowns */
 :root #chat-header .header-dropdown-button {
   background: transparent;
   border: none;
-  box-shadow: none;
   border-radius: 0;
 }
 
-/* AI Sidebar â€” clear chat button */
+/* AI Sidebar Ã¢â‚¬â€ clear chat button */
 :root #btn-clear-chat {
   background: var(--c-background-1);
   border: none;
@@ -3419,14 +3523,12 @@ button.task-item,
 :root #scroll-ai .card {
   background: transparent;
   border: none;
-  box-shadow: none;
 }
 
 /*CHAT INPUT*/
 :root #chat-input-card {
   background: var(--c-background-2);
   border-radius: 8px;
-  box-shadow: none;
   border: none;
   container-type: inline-size;
   padding: 0;
@@ -3435,7 +3537,6 @@ button.task-item,
 }
 :root #chat-input-root {
   border-radius: 8px;
-  box-shadow: none;
   border: none;
 }
 :root #chat-input-card .composer-row {
@@ -3484,7 +3585,7 @@ button.task-item,
 }
 :root #chat-input-card .chat-input-bottom-col--tools {
   display: flex;
-  gap: 6px;
+  gap: 2px;
   padding: 0 0 0 6px;
   min-width: 0;
   overflow: visible;
@@ -3519,12 +3620,16 @@ button.task-item,
 }
 :root #chat-input-card .chat-input-bottom-col--tools .chat-input-dropup-btn {
   width: var(--div-h-1);
+  border-radius: 8px;
+}
+:root #chat-input-card .chat-input-bottom-col--tools .chat-input-dropup-btn:hover {
+  background: var(--c-background-2);
 }
 :root #chat-input-card .chat-input-dropup-btn .chat-input-dropup-icon {
   flex-shrink: 0;
   width: 12px;
   height: 12px;
-  color: var(--c-accent-center-panel);
+  color: var(--c-text-2);
 }
 :root #chat-input-card .chat-input-bottom-col--model {
   height: fit-content;
@@ -3545,29 +3650,33 @@ button.task-item,
 }
 :root #chat-input-card .chat-input-dropup-btn .chat-input-dropup-chevron {
   flex-shrink: 0;
-  color: var(--c-accent-center-panel);
+  color: var(--c-text-2);
 }
 :root #chat-input-card .chat-input-dropup-btn .chat-input-dropup-label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--fs-xs);
-  color: var(--c-accent-center-panel);
+  font-size: var(--fs-base);
+  color: var(--c-text-2);
 }
 :root #chat-input-card .chat-input-dropup-btn:hover {
   background: transparent;
 }
-:root #chat-input-card .chat-input-dropup-btn:hover .chat-input-dropup-label,
+:root #chat-input-card .chat-input-dropup-btn:hover .chat-input-dropup-label {
+  color: var(--c-text-2);
+}
 :root #chat-input-card .chat-input-dropup-btn:hover .chat-input-dropup-chevron {
-  color: var(--c-accent-center-panel);
+  color: var(--c-text-2);
 }
 :root #chat-input-card .chat-input-dropup-btn[data-active='true'] {
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
-:root #chat-input-card .chat-input-dropup-btn[data-active='true']:hover .chat-input-dropup-label,
-:root #chat-input-card .chat-input-dropup-btn[data-active='true']:hover .chat-input-dropup-chevron {
+:root #chat-input-card .chat-input-dropup-btn[data-active='true']:hover .chat-input-dropup-label {
   color: inherit;
+}
+:root #chat-input-card .chat-input-dropup-btn[data-active='true']:hover .chat-input-dropup-chevron {
+  color: var(--c-text-2);
 }
 @container (max-width: 280px) {
   :root #chat-input-card .chat-input-dropup-btn {
@@ -3611,7 +3720,7 @@ button.task-item,
   align-items: center;
   justify-content: center;
   z-index: 2;
-  color: var(--c-text-3, #999);
+  color: var(--c-text-2, #999);
 }
 :root #chat-input-card .composer-resize-handle::before {
   content: '';
@@ -3641,7 +3750,7 @@ button.task-item,
 
 /* === END BASE THEME SYNC === */
 
-/* â”€â”€ Auth gate (full-screen login / bootstrap / invite) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Auth gate (full-screen login / bootstrap / invite) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .auth-gate {
   position: fixed;
@@ -3665,7 +3774,6 @@ button.task-item,
   border: 1px solid var(--c-border-1);
   border-radius: 16px;
   padding: 28px 24px;
-  box-shadow: var(--shadow-2xl);
 }
 
 .auth-gate-head {
@@ -3683,7 +3791,7 @@ button.task-item,
   align-items: center;
   justify-content: center;
   border-radius: 12px;
-  background: var(--c-accent-center-panel);
+  background: var(--c-accent-1);
   color: #fff;
   font-size: var(--fs-base);
   font-weight: 700;
@@ -3767,7 +3875,7 @@ button.task-item,
 }
 
 .auth-gate-input:focus {
-  border-color: var(--c-accent-center-panel);
+  border-color: var(--c-accent-1);
   outline: none;
 }
 
@@ -3781,7 +3889,7 @@ button.task-item,
   font-size: var(--fs-base);
   font-weight: 600;
   border-radius: 8px;
-  background: var(--c-accent-center-panel);
+  background: var(--c-accent-1);
   color: #fff;
   border: none;
   cursor: pointer;
@@ -3794,7 +3902,7 @@ button.task-item,
 }
 
 .auth-gate-submit:not(:disabled):hover {
-  background: var(--c-accent-center-panel);
+  background: var(--c-accent-1);
   opacity: 0.9;
 }
 
@@ -3803,7 +3911,7 @@ button.task-item,
   border: none;
   cursor: pointer;
   font-size: var(--fs-xs);
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3858,8 +3966,7 @@ button.task-item,
 
 .auth-gate-switcher-btn--on {
   background: var(--c-background-1);
-  color: var(--c-accent-center-panel);
-  box-shadow: var(--shadow-sm);
+  color: var(--c-accent-1);
 }
 
 .auth-gate-switcher-btn:not(.auth-gate-switcher-btn--on):hover {
@@ -3869,7 +3976,7 @@ button.task-item,
 .auth-gate-spinner {
   width: 28px;
   height: 28px;
-  border: 2px solid var(--c-accent-center-panel);
+  border: 2px solid var(--c-accent-1);
   border-top-color: transparent;
   border-radius: 50%;
   align-self: center;
@@ -3887,7 +3994,7 @@ button.task-item,
   padding: 12px 14px;
   border-radius: 10px;
   background: var(--c-background-3);
-  border: 1px solid var(--c-accent-center-panel);
+  border: 1px solid var(--c-accent-1);
 }
 
 .auth-gate-invite-head {
@@ -3901,7 +4008,7 @@ button.task-item,
   font-family: 'SF Mono', Menlo, Consolas, monospace;
   font-size: var(--fs-base);
   font-weight: 700;
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
   background: var(--c-background-1);
   padding: 8px 10px;
   border-radius: 6px;
@@ -3940,7 +4047,7 @@ button.task-item,
   transform-origin: center;
 }
 
-/* â”€â”€ AI Chat: Context-scoped top bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ AI Chat: Context-scoped top bar Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .ai-chat-top-bar {
   display: flex;
@@ -3970,7 +4077,7 @@ button.task-item,
   width: var(--div-h-1);
   height: var(--div-h-1);
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   background: transparent;
   color: var(--c-text-2);
   cursor: pointer;
@@ -3978,7 +4085,7 @@ button.task-item,
 }
 
 .ai-chat-icon-btn:hover {
-  background: var(--c-background-3);
+  background: var(--c-background-2);
   color: var(--c-text-1);
 }
 
@@ -4001,16 +4108,13 @@ button.task-item,
   max-width: 280px;
   max-height: 300px;
   overflow-y: auto;
-  background: var(--c-background-2);
-  border: 1px solid var(--c-border-1);
-  border-radius: 6px;
   z-index: 100;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .chat-history-empty {
-  padding: 12px 16px;
-  font-size: var(--fs-xs);
+  padding: 8px 12px;
+  font-size: var(--fs-base);
+  color: var(--c-text-2);
   text-align: center;
 }
 
@@ -4018,20 +4122,21 @@ button.task-item,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  gap: 8px;
+  padding: 8px 12px;
   cursor: pointer;
-  font-size: var(--fs-xs);
+  font-size: var(--fs-base);
   color: var(--c-text-1);
-  transition: background-color 0.1s;
+  transition: background-color 0.15s;
 }
 
 .chat-history-item:hover {
-  background: var(--c-background-3);
+  background: var(--c-background-4);
 }
 
 .chat-history-item.active {
-  background-color: var(--c-background-1);
-  color: var(--c-accent-center-panel);
+  background: var(--c-background-4);
+  color: var(--c-accent-1);
 }
 
 .chat-history-item .trunc {
@@ -4047,7 +4152,7 @@ button.task-item,
   width: var(--div-h-1);
   height: var(--div-h-1);
   border: none;
-  border-radius: 3px;
+  border-radius: 8px;
   background: transparent;
   color: var(--c-text-2);
   cursor: pointer;
@@ -4061,8 +4166,8 @@ button.task-item,
 }
 
 .chat-history-delete:hover {
-  background: rgba(255, 0, 0, 0.1);
-  color: #e53e3e;
+  background: var(--c-background-2);
+  color: var(--c-danger);
 }
 
 /* Chat empty state */
@@ -4095,7 +4200,7 @@ button.task-item,
   max-width: 200px;
 }
 
-/* â”€â”€ Right panel subheader (AI sidebar toolbar) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Right panel subheader (AI sidebar toolbar) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 
 .right-panel-subheader {
   display: flex;

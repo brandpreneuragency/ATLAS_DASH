@@ -32,7 +32,6 @@ const cardStyle: CSSProperties = {
   background: '#ffffff',
   border: '1px solid rgba(15, 23, 42, 0.12)',
   borderRadius: 12,
-  boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
   overflow: 'hidden',
 };
 

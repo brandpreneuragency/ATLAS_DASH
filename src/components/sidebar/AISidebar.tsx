@@ -11,10 +11,12 @@ import type { ChatMessage } from '../../types';
 interface AISidebarProps {
   documentId: string | null;
   taskId?: string | null;
+  /** Identifier for the Settings sub-tab this sidebar is mounted under. */
+  settingsTab?: string | null;
   editor: Editor | null;
 }
 
-export function AISidebar({ documentId, taskId, editor }: AISidebarProps) {
+export function AISidebar({ documentId, taskId, settingsTab, editor }: AISidebarProps) {
   const { t } = useTranslation();
   const {
     activeThreadId,
@@ -25,24 +27,34 @@ export function AISidebar({ documentId, taskId, editor }: AISidebarProps) {
   const [replyToMessage, setReplyToMessage] = useState<ChatMessage | null>(null);
 
   const isTaskMode = Boolean(taskId);
+  const isSettingsMode = Boolean(settingsTab);
   const mode = isTaskMode ? 'task' : 'writer';
-  const hasContext = Boolean(documentId || taskId);
+  const hasContext = Boolean(documentId || taskId || settingsTab);
 
-  // Auto-swap on context change: when documentId/taskId changes, load threads for that context
+  // Auto-swap on context change: when documentId/taskId/settingsTab changes,
+  // load threads for that context.
   useEffect(() => {
     const context = taskId
       ? { taskId }
       : documentId
       ? { documentId }
+      : settingsTab
+      ? { settingsTab }
       : null;
     if (context) {
       setActiveContext(context);
     }
-  }, [documentId, taskId, setActiveContext]);
+  }, [documentId, taskId, settingsTab, setActiveContext]);
 
   // Empty state: no active thread or thread has no messages
   const activeMessages = getActiveThreadMessages();
   const showEmptyState = !activeThreadId || activeMessages.length === 0;
+
+  const contextLabel = isTaskMode
+    ? 'task'
+    : isSettingsMode
+    ? 'settings'
+    : 'document';
 
   return (
     <div
@@ -87,7 +99,7 @@ export function AISidebar({ documentId, taskId, editor }: AISidebarProps) {
                 </div>
                 <p className="chat-empty-state-title">Start a conversation</p>
                 <p className="chat-empty-state-subtitle subtle">
-                  Send a message to begin chatting about this {isTaskMode ? 'task' : 'document'}.
+                  Send a message to begin chatting about this {contextLabel}.
                 </p>
               </div>
             ) : (
@@ -109,6 +121,7 @@ export function AISidebar({ documentId, taskId, editor }: AISidebarProps) {
             threadId={activeThreadId ?? ''}
             documentId={documentId}
             taskId={taskId}
+            settingsTab={settingsTab}
             replyToMessage={replyToMessage}
             onClearReply={() => setReplyToMessage(null)}
           />

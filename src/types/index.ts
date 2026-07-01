@@ -22,6 +22,10 @@ export interface ChatThreadMeta {
   mode: 'writer' | 'task';
   documentId?: string;
   taskId?: string;
+  /** Identifier for the Settings sub-tab (e.g. "models", "actions"). When
+   *  set, the thread is scoped to the Settings AI sidebar instead of a
+   *  document or task. */
+  settingsTab?: string;
   title: string;
   createdAt: number;
   updatedAt: number;
@@ -42,6 +46,7 @@ export interface ChatMessage {
   mode: 'writer' | 'task';
   documentId?: string;
   taskId?: string;
+  settingsTab?: string;
   agentId: string;
   role: 'user' | 'assistant';
   content: string;

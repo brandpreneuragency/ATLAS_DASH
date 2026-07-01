@@ -25,6 +25,7 @@ function getDaysInMonth(year: number, month: number): { day: number; weekday: st
 }
 
 export function TaskCalendarView({ tasks, onSetDate }: TaskCalendarViewProps) {
+  const activeTaskId = useTaskStore((s) => s.activeTaskId);
   const now = new Date();
   const [currentMonth, setCurrentMonth] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1));
   const [filterProjectId] = useState<string | null>(null);
@@ -95,7 +96,7 @@ export function TaskCalendarView({ tasks, onSetDate }: TaskCalendarViewProps) {
                 <button
                   key={t.id}
                   type="button"
-                  className="calendar-task-row"
+                  className={`calendar-task-row${t.id === activeTaskId ? ' calendar-task-row--active' : ''}`}
                   onClick={() => useTaskStore.getState().openTaskInActiveTab(t.id)}
                 >
                   {importanceDot(t.importance)}

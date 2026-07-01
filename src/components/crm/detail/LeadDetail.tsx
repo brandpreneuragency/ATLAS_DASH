@@ -1,9 +1,13 @@
 import { useMemo, useState } from 'react';
 import {
+  Briefcase,
   Building2,
+  Globe,
   Link2,
   Mail,
+  MapPin,
   Pencil,
+  Phone,
   Plus,
   User,
 } from 'lucide-react';
@@ -71,10 +75,6 @@ export function LeadDetail({ lead }: LeadDetailProps) {
   const submission = lead.sourceSubmissionId ? submissions.find((s) => s.id === lead.sourceSubmissionId) : undefined;
   const sourceForm = lead.sourceFormId ? getFormById(lead.sourceFormId) : undefined;
 
-  const utmEntries = lead.utm
-    ? Object.entries(lead.utm).filter(([, v]) => v !== undefined && v !== '')
-    : [];
-
   return (
     <div className="crm-page">
       <div className="crm-page-header">
@@ -91,9 +91,8 @@ export function LeadDetail({ lead }: LeadDetailProps) {
                 <Building2 size={11} /> {company.name}
               </span>
             )}
-            <StatusBadge stage={lead.status} />
             <span className="crm-page-header-meta-item">Stage: <StatusBadge stage={lead.stage} /></span>
-            <ScoreBadge score={lead.score} compact />
+            <span className="crm-page-header-meta-item">Score: <ScoreBadge score={lead.score} compact /></span>
           </div>
         </div>
         <div className="crm-page-header-actions">
@@ -101,6 +100,7 @@ export function LeadDetail({ lead }: LeadDetailProps) {
             type="button"
             className="crm-btn crm-btn--ghost crm-btn--sm"
             title="Edit lead"
+            aria-label="Edit lead"
             onClick={() => {
               const next = window.prompt('Lead title', lead.title);
               if (next && next.trim() && next.trim() !== lead.title) {
@@ -108,7 +108,7 @@ export function LeadDetail({ lead }: LeadDetailProps) {
               }
             }}
           >
-            <Pencil size={12} /> Edit
+            <Pencil size={12} />
           </button>
         </div>
       </div>
@@ -118,100 +118,142 @@ export function LeadDetail({ lead }: LeadDetailProps) {
       <div className="crm-page-body">
         {tab === 'overview' && (
           <>
-            <div className="crm-card">
-              <div className="crm-card-title">Linked records</div>
-              <div className="crm-detail-grid">
-                <div className="crm-detail-field">
-                  <span className="crm-detail-field-label">Contact</span>
-                  <span className="crm-detail-field-value">
-                    {contact ? fullName(contact.firstName, contact.lastName) : '—'}
-                  </span>
-                </div>
-                <div className="crm-detail-field">
-                  <span className="crm-detail-field-label">Company</span>
-                  <span className="crm-detail-field-value">{company?.name ?? '—'}</span>
-                </div>
-                <div className="crm-detail-field">
-                  <span className="crm-detail-field-label">Email (via contact)</span>
-                  <span className="crm-detail-field-value crm-detail-field-value--muted">{contact?.email ?? '—'}</span>
-                </div>
-                <div className="crm-detail-field">
-                  <span className="crm-detail-field-label">Phone (via contact)</span>
-                  <span className="crm-detail-field-value crm-detail-field-value--muted">{contact?.phone ?? '—'}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="crm-card">
-              <div className="crm-card-title">Source & attribution</div>
-              <div className="crm-detail-grid">
-                <div className="crm-detail-field">
-                  <span className="crm-detail-field-label">Source form</span>
-                  <span className="crm-detail-field-value crm-detail-field-value--muted">{lead.source ?? '—'}</span>
-                </div>
-                <div className="crm-detail-field">
-                  <span className="crm-detail-field-label">Form name</span>
-                  <span className="crm-detail-field-value crm-detail-field-value--muted">{sourceForm?.name ?? '—'}</span>
-                </div>
-                <div className="crm-detail-field">
-                  <span className="crm-detail-field-label">Page URL</span>
-                  <span className="crm-detail-field-value crm-detail-field-value--muted">
-                    {lead.sourcePageUrl ?? '—'}
-                  </span>
-                </div>
-                <div className="crm-detail-field">
-                  <span className="crm-detail-field-label">Owner</span>
-                  <span className="crm-detail-field-value crm-detail-field-value--muted">{lead.ownerId ?? '—'}</span>
-                </div>
-              </div>
-              {utmEntries.length > 0 && (
-                <>
-                  <div className="crm-card-title" style={{ marginTop: 4 }}>UTM / attribution</div>
-                  <div className="crm-detail-grid">
-                    {utmEntries.map(([k, v]) => (
-                      <div className="crm-detail-field" key={k}>
-                        <span className="crm-detail-field-label">{k}</span>
-                        <span className="crm-detail-field-value crm-detail-field-value--muted">{String(v)}</span>
-                      </div>
-                    ))}
+            {contact ? (
+              <div className="crm-card">
+                <div className="crm-card-title">Contact</div>
+                <div className="crm-detail-grid">
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">First name</span>
+                    <span className="crm-detail-field-value">{contact.firstName}</span>
                   </div>
-                </>
-              )}
-            </div>
-
-            <div className="crm-card">
-              <div className="crm-card-title">Status & scoring</div>
-              <div className="crm-detail-grid">
-                <div className="crm-detail-field">
-                  <span className="crm-detail-field-label">Status</span>
-                  <span className="crm-detail-field-value"><StatusBadge stage={lead.status} /></span>
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">Last name</span>
+                    <span className="crm-detail-field-value">{contact.lastName}</span>
+                  </div>
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">Email</span>
+                    <span className="crm-detail-field-value crm-detail-field-value--muted">
+                      {contact.email ? (
+                        <span className="crm-detail-field-row"><Mail size={12} /> {contact.email}</span>
+                      ) : '—'}
+                    </span>
+                  </div>
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">Phone</span>
+                    <span className="crm-detail-field-value crm-detail-field-value--muted">
+                      {contact.phone ? (
+                        <span className="crm-detail-field-row"><Phone size={12} /> {contact.phone}</span>
+                      ) : '—'}
+                    </span>
+                  </div>
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">Job title</span>
+                    <span className="crm-detail-field-value crm-detail-field-value--muted">
+                      {contact.jobTitle ? (
+                        <span className="crm-detail-field-row"><Briefcase size={12} /> {contact.jobTitle}</span>
+                      ) : '—'}
+                    </span>
+                  </div>
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">Lifecycle status</span>
+                    <span className="crm-detail-field-value crm-detail-field-value--muted">{contact.lifecycleStatus ?? '—'}</span>
+                  </div>
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">Tags</span>
+                    <span className="crm-detail-field-value">
+                      {contact.tags.length > 0 ? <TagChips tags={contact.tags} max={6} /> : '—'}
+                    </span>
+                  </div>
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">Created</span>
+                    <span className="crm-detail-field-value crm-detail-field-value--muted">{formatDate(contact.createdAt)}</span>
+                  </div>
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">Last activity</span>
+                    <span className="crm-detail-field-value crm-detail-field-value--muted">{formatRelative(contact.lastActivityAt)}</span>
+                  </div>
                 </div>
-                <div className="crm-detail-field">
-                  <span className="crm-detail-field-label">Stage</span>
-                  <span className="crm-detail-field-value"><StatusBadge stage={lead.stage} /></span>
-                </div>
-                <div className="crm-detail-field">
-                  <span className="crm-detail-field-label">Score</span>
-                  <span className="crm-detail-field-value"><ScoreBadge score={lead.score} /></span>
-                </div>
-                <div className="crm-detail-field">
-                  <span className="crm-detail-field-label">Tags</span>
-                  <span className="crm-detail-field-value">
-                    {lead.tags.length > 0 ? <TagChips tags={lead.tags} max={6} /> : '—'}
-                  </span>
-                </div>
-                <div className="crm-detail-field">
-                  <span className="crm-detail-field-label">Created</span>
-                  <span className="crm-detail-field-value crm-detail-field-value--muted">{formatDate(lead.createdAt)}</span>
-                </div>
-                <div className="crm-detail-field">
-                  <span className="crm-detail-field-label">Last activity</span>
-                  <span className="crm-detail-field-value crm-detail-field-value--muted">
-                    {formatRelative(lead.lastActivityAt)}
-                  </span>
-                </div>
+                {contact.notes && (
+                  <>
+                    <div className="crm-card-title" style={{ marginTop: 4 }}>Contact notes</div>
+                    <div className="crm-muted-block">{contact.notes}</div>
+                  </>
+                )}
               </div>
-            </div>
+            ) : (
+              <div className="crm-card">
+                <div className="crm-card-title">Contact</div>
+                <div className="crm-muted-block">No contact linked to this lead.</div>
+              </div>
+            )}
+
+            {company ? (
+              <div className="crm-card">
+                <div className="crm-card-title">Company</div>
+                <div className="crm-detail-grid">
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">Name</span>
+                    <span className="crm-detail-field-value">{company.name}</span>
+                  </div>
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">Website</span>
+                    <span className="crm-detail-field-value crm-detail-field-value--muted">
+                      {company.website ? (
+                        <span className="crm-detail-field-row"><Globe size={12} /> {company.website}</span>
+                      ) : '—'}
+                    </span>
+                  </div>
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">Industry</span>
+                    <span className="crm-detail-field-value crm-detail-field-value--muted">{company.industry ?? '—'}</span>
+                  </div>
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">Size</span>
+                    <span className="crm-detail-field-value crm-detail-field-value--muted">{company.size ?? '—'}</span>
+                  </div>
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">Location</span>
+                    <span className="crm-detail-field-value crm-detail-field-value--muted">
+                      {(company.city || company.country) ? (
+                        <span className="crm-detail-field-row">
+                          <MapPin size={12} /> {[company.city, company.country].filter(Boolean).join(', ')}
+                        </span>
+                      ) : '—'}
+                    </span>
+                  </div>
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">Owner</span>
+                    <span className="crm-detail-field-value crm-detail-field-value--muted">{company.ownerId ?? '—'}</span>
+                  </div>
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">Tags</span>
+                    <span className="crm-detail-field-value">
+                      {company.tags.length > 0 ? <TagChips tags={company.tags} max={6} /> : '—'}
+                    </span>
+                  </div>
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">Created</span>
+                    <span className="crm-detail-field-value crm-detail-field-value--muted">{formatDate(company.createdAt)}</span>
+                  </div>
+                  <div className="crm-detail-field">
+                    <span className="crm-detail-field-label">Last activity</span>
+                    <span className="crm-detail-field-value crm-detail-field-value--muted">{formatRelative(company.lastActivityAt)}</span>
+                  </div>
+                </div>
+                {company.notes && (
+                  <>
+                    <div className="crm-card-title" style={{ marginTop: 4 }}>Company notes</div>
+                    <div className="crm-muted-block">{company.notes}</div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="crm-card">
+                <div className="crm-card-title">Company</div>
+                <div className="crm-muted-block">No company linked to this lead.</div>
+              </div>
+            )}
+
           </>
         )}
 
@@ -315,7 +357,7 @@ export function LeadDetail({ lead }: LeadDetailProps) {
       </div>
 
       {tab === 'notes' && (
-        <div className="crm-page-footer">
+        <div className="tdp-comment-footer panel-footer">
           <CRMNoteInput
             placeholder="Add a note about this lead…"
             onSubmit={async (body) => {

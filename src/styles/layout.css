@@ -1,7 +1,7 @@
 /* =========================================================
- * layout.css â€” Layout foundation classes
+ * layout.css Ã¢â‚¬â€ Layout foundation classes
  * These classes are the contract later agents will adopt.
- * They are NOT yet applied to existing components â€”
+ * They are NOT yet applied to existing components Ã¢â‚¬â€
  * this file is foundation only.
  *
  * No `vh` for component sizing. Top-level shell uses
@@ -36,12 +36,12 @@ body {
 }
 
 /* ---------------------------------------------------------------
- * .workspace â€” Agent 4
+ * .workspace Ã¢â‚¬â€ Agent 4
  * The actual DOM has up to 4 children at the workspace level:
- *   1. .sidebar-panel  â†’ narrow left rail (always visible)
- *   2. .task-list-panel â†’ settings / file-tree / task-list
- *   3. .workspace-handle â†’ optional left resize handle
- *   4. .main-panel    â†’ flexible centre area (header + main-row + modals)
+ *   1. .sidebar-panel  Ã¢â€ â€™ narrow left rail (always visible)
+ *   2. .task-list-panel Ã¢â€ â€™ settings / file-tree / task-list
+ *   3. .workspace-handle Ã¢â€ â€™ optional left resize handle
+ *   4. .main-panel    Ã¢â€ â€™ flexible centre area (header + main-row + modals)
  * The right detail-panel lives INSIDE #main-row, not at this level,
  * so it does not occupy a column here. Column widths are `auto`
  * for the side panels because the actual panels carry their own
@@ -63,7 +63,7 @@ body {
   overflow: hidden;
 }
 
-/* Direct children of .workspace â€” shrink-safety + explicit column. */
+/* Direct children of .workspace Ã¢â‚¬â€ shrink-safety + explicit column. */
 .sidebar-panel {
   min-width: 0;
   min-height: 0;
@@ -121,7 +121,7 @@ body {
   container-name: main-panel;
 }
 
-/* Right-side panel wrapper â€” lives inside #main-row, not at the
+/* Right-side panel wrapper Ã¢â‚¬â€ lives inside #main-row, not at the
  * workspace level. It is a flex row so the resize handle and the
  * panel sit side-by-side and collapse together via `display: none`. */
 .detail-panel {
@@ -134,10 +134,10 @@ body {
   overflow: hidden;
   /* NOTE: container-type moved to the inner panel (#ai-sidebar-panel /
    * #file-viewer-panel) because inline-size containment on this wrapper
-   * breaks CSS grid auto-sizing â€” the track collapses to 0px. */
+   * breaks CSS grid auto-sizing Ã¢â‚¬â€ the track collapses to 0px. */
 }
 
-/* Container context for the right detail column â€” lives on the inner
+/* Container context for the right detail column Ã¢â‚¬â€ lives on the inner
  * panels so @container detail-panel queries still work, without
  * breaking the grid auto-sizing on the wrapper. */
 #ai-sidebar-panel,
@@ -158,6 +158,32 @@ body {
 
 #main-row.main-row--swapped {
   grid-template-columns: auto minmax(0, 1fr);
+}
+
+/* One visible panel in the main row â€” remaining panel fills the row
+ * (center when the right detail panel is collapsed, or detail panel
+ * when swapped and the center column on the right is collapsed). */
+#main-row.main-row--single-panel {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#main-row.main-row--single-panel > #center-panel {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: none;
+}
+
+#main-row.main-row--single-panel > .detail-panel {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: none;
+}
+
+#main-row.main-row--single-panel .detail-panel > #ai-sidebar-panel,
+#main-row.main-row--single-panel .detail-panel > #file-viewer-panel {
+  width: 100%;
+  max-width: none;
+  flex: 1 1 auto;
 }
 
 .panel {
@@ -236,7 +262,6 @@ body {
     overflow: hidden;
     background: var(--c-background-1);
     border-left: var(--border-width) solid var(--c-border-1);
-    box-shadow: 0 0 24px rgb(0 0 0 / 12%);
   }
 
   #main-row.main-row--swapped .detail-panel {
@@ -270,7 +295,7 @@ body {
   }
 }
 
-/* Extra-small (phones / very narrow windows) â€” Agent 7.
+/* Extra-small (phones / very narrow windows) Ã¢â‚¬â€ Agent 7.
  * Do NOT hide the sidebar (its 36 px is the irreducible shell).
  * Relax the main-panel min-width to 0 so the column can use
  * the remaining space. Optional UI labels collapse so the
@@ -297,7 +322,7 @@ body {
     display: none !important;
   }
 
-  /* Optional labels collapse on narrow widths â€” the underlying
+  /* Optional labels collapse on narrow widths Ã¢â‚¬â€ the underlying
    * control keeps its size from the token, only the textual
    * label disappears. Apply via the `.optional-toolbar-label`
    * or `.secondary-panel-label` classes; components opt in. */
@@ -311,12 +336,12 @@ body {
 /* Keep the AI sidebar reachable on narrow windows. The header
  * button still controls whether this panel exists; this only
  * changes its placement when inline layout is too tight. */
-/* Responsive drawer removed â€” panels stay inline at all widths. */
+/* Responsive drawer removed Ã¢â‚¬â€ panels stay inline at all widths. */
 
 /* ---------- Drawer preparation hooks ----------
  * Agent 7 adds these as future-use classes. They do NOT
  * change current behavior because no element gets them
- * automatically â€” they only kick in when a future agent
+ * automatically Ã¢â‚¬â€ they only kick in when a future agent
  * (or feature work) applies them to the panel roots.
  *
  * The drawer classes re-position the panel as a fixed
@@ -367,7 +392,7 @@ body {
   border-right: var(--border-width) solid var(--c-border-1);
 }
 
-/* Scrim â€” opt-in. The workspace adds `.is-drawer-open`
+/* Scrim Ã¢â‚¬â€ opt-in. The workspace adds `.is-drawer-open`
  * when any drawer is open, and the drawer hooks above
  * stack above the scrim via z-drawer. The scrim stays
  * at z-modal-backdrop via the modal z range, so it sits
@@ -398,7 +423,7 @@ body {
 }
 
 /* =========================================================
- * Agent 5: Panel Primitive Migration â€” Compatibility Rules
+ * Agent 5: Panel Primitive Migration Ã¢â‚¬â€ Compatibility Rules
  *
  * These rules preserve the existing visual identity when the
  * `.panel / .panel-header / .panel-body / .panel-footer`
@@ -432,7 +457,7 @@ body {
 
 /* Task list MAIN WRAPPER: it is a sub-container that groups the
  * scrollable list and the composer footer. It acts as the panel
- * body â€” a flex column where the inner list scrolls and the
+ * body Ã¢â‚¬â€ a flex column where the inner list scrolls and the
  * footer is pinned to the bottom. The wrapper itself does NOT
  * scroll (the inner #task-list-content handles its own overflow),
  * so we override `.panel-body`'s default `overflow-y: auto` to
@@ -480,6 +505,8 @@ body {
 
 /* Thread (the scrollable comment list): it is the panel body. */
 #tdc-thread.panel-body {
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
@@ -506,7 +533,9 @@ body {
  * (only when `subtasksOpen`). Its height is dynamic (32px to 40%
  * of the panel). Size to content; scroll when exceeding max-height. */
 #task-detail-panel > .tdp-subtasks-bar {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-height: 0;
+  height: fit-content;
   max-height: 40%;
   overflow-y: auto;
   background-color: transparent;
@@ -570,7 +599,7 @@ body {
  * and content area (.file-viewer-content). Add the panel
  * primitive without changing the visual. */
 .file-viewer-panel.panel {
-  /* No margin/padding/border overrides â€” keep current visual. */
+  /* No margin/padding/border overrides Ã¢â‚¬â€ keep current visual. */
 }
 
 /* File viewer content: the body (inner scroll). */
@@ -583,7 +612,7 @@ body {
 
 /* ---- Center panel (#center-panel + .panel) ----
  * The center panel hosts the editor OR the task detail panel.
- * Keep the inline min-width: 260 (from JSX) â€” `.panel` does
+ * Keep the inline min-width: 140 (from JSX) Ã¢â‚¬â€ `.panel` does
  * not set min-width, so the inline style still wins. */
 .panel#center-panel {
   width: 100%;
@@ -594,13 +623,17 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
-  padding: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 /* Editor column (#editor-column + .panel): the editor already
  * has its own header (EditorTopBar) and scroll viewport
  * (#scroll-main). Add panel primitive for consistency. */
 .panel#editor-column {
+  min-width: auto;
   margin-left: 0;
   margin-right: 0;
   padding: 0;
@@ -710,15 +743,15 @@ body {
 @container task-list-panel (max-width: 300px) {
   /* `.task-item` min-height is owned by src/index.css.
    *
-   * The meta row is no longer hidden here — the
+   * The meta row is no longer hidden here â€” the
    * `.trunc` utility on its text children handles
    * overflow with ellipsis, so the row can stay
    * visible at narrow widths. */
 
   .task-title {
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
   }
 }
 
@@ -791,7 +824,7 @@ body {
  * file viewer. The container queries below target the
  * chat composer + chat thread + chat empty state.
  * The task-detail-panel content (comments + subtasks)
- * lives in the *main panel*, not here â€” see the
+ * lives in the *main panel*, not here Ã¢â‚¬â€ see the
  * main-panel block above.
  *  - <= 520px: hide optional labels in the chat
  *    composer's dropup buttons (model name, agent name).
@@ -850,7 +883,7 @@ body {
 /* ---- Task list content (inner list) ----
  * Targets the actual scrollable list (inside the panel
  * padding). The `.task-item` min-height and padding for
- * narrow widths are owned by src/index.css — keep them
+ * narrow widths are owned by src/index.css â€” keep them
  * in one place. */
 
 /* ---- Task list header ----

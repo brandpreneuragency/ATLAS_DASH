@@ -296,7 +296,8 @@ function AgentAccordionItem({
                 background: 'var(--c-background-2)',
                 minHeight: '3.5em',
                 outline: 'none',
-                transition: 'background-color 0.15s, box-shadow 0.15s',
+                border: '1px solid transparent',
+                transition: 'background-color 0.15s, border-color 0.15s',
               }}
               onFocus={handlePromptFocus}
               onBlur={handlePromptBlur}
@@ -305,13 +306,13 @@ function AgentAccordionItem({
               onMouseEnter={(e) => {
                 if (!isEditingRef.current) {
                   e.currentTarget.style.background = 'var(--c-background-3)';
-                  e.currentTarget.style.boxShadow = 'inset 0 0 0 1px var(--c-border-1)';
+                  e.currentTarget.style.borderColor = 'var(--c-border-1)';
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isEditingRef.current) {
                   e.currentTarget.style.background = 'var(--c-background-2)';
-                  e.currentTarget.style.boxShadow = 'none';
+                  e.currentTarget.style.borderColor = 'transparent';
                 }
               }}
               title="Click to edit system prompt"

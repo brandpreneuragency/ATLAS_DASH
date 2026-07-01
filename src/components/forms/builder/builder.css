@@ -88,6 +88,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  width: fit-content;
   height: 34px;
   padding: 0 12px;
   border: none;
@@ -121,17 +122,13 @@
   flex-direction: column;
 }
 
-/* ---------- Build tab: 3-column ---------- */
+/* ---------- Build tab: 2-column ---------- */
 .forms-builder-build {
   display: grid;
-  grid-template-columns: 180px minmax(0, 1fr) 280px;
+  grid-template-columns: 180px minmax(0, 1fr);
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
-}
-
-.forms-builder-build--inspector-closed {
-  grid-template-columns: 180px minmax(0, 1fr);
 }
 
 .forms-builder-col {
@@ -149,11 +146,6 @@
 
 .forms-builder-canvas-col {
   background: var(--c-background-1);
-}
-
-.forms-builder-inspector {
-  border-left: 1px solid var(--c-border-1);
-  background: var(--c-background-2);
 }
 
 /* Section header inside a builder column */
@@ -255,25 +247,63 @@
   background: var(--c-border-1);
 }
 
+.forms-builder-field-wrap {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-md);
+  background: var(--c-background-1);
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.forms-builder-field-wrap--expanded {
+  border-color: var(--c-accent-center-panel);
+}
+
 .forms-builder-field-card {
   display: flex;
   align-items: flex-start;
   gap: 10px;
   padding: 10px 12px;
-  border: 1px solid var(--c-border-1);
-  border-radius: var(--radius-md);
-  background: var(--c-background-1);
+  border: none;
+  border-radius: 0;
+  background: transparent;
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+  transition: background-color 0.15s;
 }
-.forms-builder-field-card:hover {
-  border-color: var(--c-border-2);
+.forms-builder-field-wrap:not(.forms-builder-field-wrap--expanded) .forms-builder-field-card:hover {
   background: var(--c-background-2);
 }
-.forms-builder-field-card--active,
-.forms-builder-field-card--active:hover {
-  border-color: var(--c-accent-center-panel);
-  box-shadow: var(--shadow-sm);
+.forms-builder-field-wrap--expanded .forms-builder-field-card {
+  border-bottom: 1px solid var(--c-border-1);
+  background: var(--c-background-1);
+}
+
+.forms-builder-field-card-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 26px;
+  color: var(--c-text-3);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.forms-builder-field-card-chevron svg {
+  transition: transform 0.15s ease;
+}
+.forms-builder-field-card-chevron--open svg {
+  transform: rotate(90deg);
+}
+
+.forms-builder-field-details {
+  background: var(--c-background-2);
+  cursor: default;
+}
+.forms-builder-field-details .forms-builder-inspector-section {
+  padding: 10px 12px;
+}
+.forms-builder-field-card--active {
   background: var(--c-background-1);
 }
 .forms-builder-field-card--disabled {
@@ -332,7 +362,7 @@
 }
 .forms-builder-field-card-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
@@ -347,12 +377,12 @@
   outline: none;
   background: transparent;
   color: var(--c-text-2);
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.15s, color 0.15s;
 }
 .forms-builder-field-card-btn:hover {
-  background: var(--c-background-3);
+  background: var(--c-background-2);
   color: var(--c-text-1);
 }
 .forms-builder-field-card-btn--danger:hover {
@@ -471,6 +501,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  width: fit-content;
   height: 28px;
   padding: 0 10px;
   border: none;
@@ -523,7 +554,6 @@
   font-family: var(--tabs-form-font);
   font-size: var(--tabs-form-font-size);
   border-radius: calc(var(--tabs-form-radius) + 4px);
-  box-shadow: var(--shadow-2xl);
   transition: width 0.18s ease;
   overflow: hidden;
 }
@@ -531,7 +561,7 @@
 .forms-builder-preview-surface--tablet { width: 768px; max-width: 100%; }
 .forms-builder-preview-surface--mobile { width: 375px; max-width: 100%; }
 
-/* Rendered form (preview / published output) — all scoped to surface */
+/* Rendered form (preview / published output) â€” all scoped to surface */
 .forms-builder-form {
   padding: var(--tabs-form-padding);
   display: flex;
@@ -746,7 +776,7 @@
   flex-direction: column;
 }
 
-/* ---------- Responsive (inspector drawer + palette collapse) ---------- */
+/* ---------- Responsive (palette collapse) ---------- */
 @media (max-width: 980px) {
   .forms-builder-build {
     grid-template-columns: 64px minmax(0, 1fr);
@@ -756,27 +786,6 @@
   .forms-builder-palette-btn {
     justify-content: center;
     padding: 0;
-  }
-  .forms-builder-inspector {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 300px;
-    max-width: 90vw;
-    z-index: 90;
-    transform: translateX(100%);
-    transition: transform 0.2s ease;
-    box-shadow: var(--shadow-2xl);
-  }
-  .forms-builder-inspector--open {
-    transform: translateX(0);
-  }
-  .forms-builder-inspector-scrim {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.35);
-    z-index: 89;
   }
 }
 @media (max-width: 760px) {
@@ -791,22 +800,12 @@
 }
 
 /* =========================================================
- * Appended: shell / BuildTab / FieldInspector / SubmissionsTab / SettingsTab
+ * Appended: shell / BuildTab / FieldDetailsPanel / SubmissionsTab / SettingsTab
  * additions. Reuses tokens and existing forms-builder-* / forms-*
  * classes where possible. Only new classes added here.
  * ========================================================= */
 
-/* ---------- Inspector: empty state + checkbox rows ---------- */
-.forms-builder-inspector-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 8px;
-  padding: 40px 16px;
-  color: var(--c-text-2);
-}
+/* ---------- Field details: checkbox rows ---------- */
 .forms-builder-checkbox-row {
   display: flex;
   align-items: center;
@@ -822,10 +821,6 @@
   accent-color: var(--c-accent-center-panel);
   flex-shrink: 0;
 }
-
-/* Inspector scrim: hidden on desktop, revealed on mobile only. */
-.forms-builder-inspector-scrim { display: none; }
-
 /* ---------- Submissions tab ---------- */
 .forms-builder-submissions-toolbar {
   display: flex;
@@ -953,10 +948,6 @@
   flex-direction: column;
 }
 
-/* ---------- Mobile: reveal scrim + ensure overlay sits above ---------- */
-@media (max-width: 980px) {
-  .forms-builder-inspector-scrim { display: block; }
-}
 @media (max-width: 760px) {
   .forms-builder-settings-scroll {
     padding: 14px 14px;
@@ -965,9 +956,8 @@
 
 /* =========================================================
  * Appended: narrow-width graceful degradation.
- * The build tab already collapses at 980px (palette→icons,
- * inspector→slide-over drawer) and the style tab stacks at
- * 760px. These additions only tighten padding/gaps at very
+ * The build tab already collapses at 980px (paletteâ†’icons)
+ * and the style tab stacks at 760px. These additions only tighten padding/gaps at very
  * narrow panel or viewport widths so the canvas stays usable.
  * No existing rules rewritten; only new blocks appended.
  * ========================================================= */

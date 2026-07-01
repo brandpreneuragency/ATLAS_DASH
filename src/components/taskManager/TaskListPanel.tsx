@@ -1,10 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import './taskList.css';
 import { useTaskStore } from '../../stores/taskStore';
+import { useUIStore } from '../../stores/uiStore';
 import { TaskListItem } from './TaskListItem';
 import { QuickCreateInput } from './QuickCreateInput';
-import { TaskListHeader } from './TaskListHeader';
-import type { ViewTab } from './TaskListHeader';
 import { TaskCalendarView } from './TaskCalendarView';
 import { TaskProjectView } from './TaskProjectView';
 
@@ -38,7 +37,7 @@ function getCategoryLabel(category: DateCategory): string {
 
 export function TaskListPanel() {
   const { tasks, activeTaskId } = useTaskStore();
-  const [activeTab, setActiveTab] = useState<ViewTab>('list');
+  const activeTab = useUIStore((s) => s.activeTaskPage);
   const [prefillText, setPrefillText] = useState<string | null>(null);
   const [assignedDate, setAssignedDate] = useState<string | null>(null);
   const [assignedProject, setAssignedProject] = useState<string | null>(null);
@@ -83,8 +82,6 @@ export function TaskListPanel() {
   return (
     <div id="task-list-panel" className="panel flex-col h-full overflow-hidden" style={{ marginLeft: '0px', marginRight: '0px' }}>
       <div id="task-list-main-wrapper" className="panel-body" style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column', borderRadius: '0px', backgroundColor: 'var(--c-background-1)', border: 'none' }}>
-        <TaskListHeader activeTab={activeTab} onTabChange={setActiveTab} />
-
         {activeTab === 'list' && (
           <div
             id="task-list-content"
@@ -96,12 +93,13 @@ export function TaskListPanel() {
               height: '100%',
               paddingLeft: '18px',
               paddingRight: '12px',
-              paddingTop: '0px',
+              paddingTop: '12px',
               paddingBottom: '0px',
+              verticalAlign: 'middle',
             }}
           >
             {filteredTasks.length === 0 && (
-              <div className="flex-col items-center justify-center py-12 text-center" style={{ padding: '0 16px' }}>
+              <div className="flex-col items-center justify-center py-12 text-center" style={{ padding: '6px 16px', verticalAlign: 'middle' }}>
                 <p className="txt-xs subtle">No tasks yet</p>
                 <p className="label mt-1">Type below to create your first task</p>
               </div>
@@ -121,8 +119,8 @@ export function TaskListPanel() {
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                     textAlign: 'center',
-                    height: '32px',
-                    backgroundColor: 'var(--c-background-2)',
+                    height: '20px',
+                    backgroundColor: 'var(--c-background-3)',
                     paddingTop: '6px',
                     paddingBottom: '6px',
                     paddingLeft: '0px',

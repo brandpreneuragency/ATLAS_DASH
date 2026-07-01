@@ -4,7 +4,8 @@
 // specific provider's accordion (master-detail feel) without rebuilding state.
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, RefreshCw, Globe, Eye, EyeOff, Plus } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { X, RefreshCw, Globe, Eye, EyeOff, Plus, Layers, Database } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../../stores/uiStore';
 import { useAIStore } from '../../stores/aiStore';
@@ -38,6 +39,42 @@ function delay(ms: number): Promise<void> {
   });
 }
 
+function renderComingSoonSection({
+  icon,
+  title,
+  hint,
+}: {
+  icon: ReactNode;
+  title: string;
+  hint: string;
+}) {
+  return (
+    <div className="col gap-3">
+      <div className="row gap-2" style={{ padding: '0 4px 8px' }}>
+        {icon}
+        <span className="label-sm">{title}</span>
+      </div>
+      <div
+        className="col"
+        style={{
+          padding: 24,
+          borderRadius: 12,
+          border: '1px dashed var(--c-border-2)',
+          background: 'var(--c-background-1)',
+          alignItems: 'center',
+          textAlign: 'center',
+          gap: 8,
+        }}
+      >
+        <span className="label-sm" style={{ color: 'var(--c-text-2)' }}>Coming soon</span>
+        <p className="subtle" style={{ fontSize: 'var(--fs-sm)', maxWidth: 420, margin: 0 }}>
+          {hint}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 interface PersistDraftOptions {
   includeKeys?: boolean;
 }
@@ -61,6 +98,22 @@ async function verifySavedProviderKey(
   }
 
   throw new Error(`Could not verify the saved API key for ${providerName}.`);
+}
+
+/** Virtual provider ids for search providers in the left-rail list. */
+export const EXA_PROVIDER_ID = 'exa';
+export const TAVILY_PROVIDER_ID = 'tavily';
+
+export function isSearchProviderId(id: string | null | undefined): boolean {
+  return id === EXA_PROVIDER_ID || id === TAVILY_PROVIDER_ID;
+}
+
+/** Virtual group ids for placeholder provider groups (no backend yet). */
+export const EMBEDDINGS_GROUP_ID = 'embeddings';
+export const VECTOR_GROUP_ID = 'vector';
+
+export function isPlaceholderGroupId(id: string | null | undefined): boolean {
+  return id === EMBEDDINGS_GROUP_ID || id === VECTOR_GROUP_ID;
 }
 
 interface ModelManagementContentProps {
@@ -121,7 +174,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
 
   // Expand the provider requested by the left-rail list (master-detail focus).
   useEffect(() => {
-    if (!focusProviderId) return;
+    if (!focusProviderId || isSearchProviderId(focusProviderId) || isPlaceholderGroupId(focusProviderId)) return;
     setExpandedIds(new Set([focusProviderId]));
   }, [focusProviderId]);
 
@@ -530,11 +583,16 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     await useAIStore.getState().refreshAllProviderStatuses();
   };
 
+  const focusedProviders =
+    focusProviderId && !isSearchProviderId(focusProviderId) && !isPlaceholderGroupId(focusProviderId)
+      ? draftProviders.filter((p) => p.id === focusProviderId)
+      : draftProviders;
+
   const providerAccordionList = (
     <>
-      {draftProviders.length > 0 && (
+      {focusedProviders.length > 0 && (
         <div className="provider-accordion-list">
-          {draftProviders.map((provider) => (
+          {focusedProviders.map((provider) => (
             <ProviderAccordionItem
               key={provider.id}
               provider={provider}
@@ -556,7 +614,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
         </div>
       )}
 
-      {draftProviders.length === 0 && (
+      {focusedProviders.length === 0 && (
         <div
           className="col"
           style={{
@@ -605,21 +663,18 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     }
   };
 
-  const webSearchSection = (
-    <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid var(--c-border-1)' }}>
+  const exaSection = (
+    <div className="col gap-3">
       <div className="row gap-2" style={{ padding: '0 4px 8px' }}>
         <Globe size={14} style={{ color: 'var(--c-accent-center-panel)' }} />
-        <span className="label-sm">{t('settings.webSearch')}</span>
+        <span className="label-sm">{t('settings.exa')}</span>
       </div>
       <div className="col gap-3" style={{ padding: 12, borderRadius: 12 }}>
         <p className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>
-          {t('settings.tavilyKeyHint')}
+          {t('settings.exaKeyHint')}
         </p>
-
         <div className="col gap-1">
-          <div className="label-sm">
-            Exa API Key <span style={{ fontWeight: 400, textTransform: 'none' }}>(Primary)</span>
-          </div>
+          <div className="label-sm">{t('settings.exaKey')}</div>
           <div className="row gap-2">
             <input
               type={showExaKey ? 'text' : 'password'}
@@ -634,11 +689,22 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  );
 
+  const tavilySection = (
+    <div className="col gap-3">
+      <div className="row gap-2" style={{ padding: '0 4px 8px' }}>
+        <Globe size={14} style={{ color: 'var(--c-accent-center-panel)' }} />
+        <span className="label-sm">{t('settings.tavily')}</span>
+      </div>
+      <div className="col gap-3" style={{ padding: 12, borderRadius: 12 }}>
+        <p className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>
+          {t('settings.tavilyKeyHint')}
+        </p>
         <div className="col gap-1">
-          <div className="label-sm">
-            Tavily API Key <span style={{ fontWeight: 400, textTransform: 'none' }}>(Fallback)</span>
-          </div>
+          <div className="label-sm">{t('settings.tavilyKey')}</div>
           <div className="row gap-2">
             <input
               type={showTavilyKey ? 'text' : 'password'}
@@ -656,6 +722,28 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
       </div>
     </div>
   );
+
+  const searchProviderSection =
+    focusProviderId === EXA_PROVIDER_ID
+      ? exaSection
+      : focusProviderId === TAVILY_PROVIDER_ID
+        ? tavilySection
+        : null;
+
+  const placeholderGroupSection =
+    focusProviderId === EMBEDDINGS_GROUP_ID
+      ? renderComingSoonSection({
+          icon: <Layers size={14} style={{ color: 'var(--c-accent-center-panel)' }} />,
+          title: t('settings.groupEmbeddings'),
+          hint: t('settings.embeddingsHint'),
+        })
+      : focusProviderId === VECTOR_GROUP_ID
+        ? renderComingSoonSection({
+            icon: <Database size={14} style={{ color: 'var(--c-accent-center-panel)' }} />,
+            title: t('settings.groupVector'),
+            hint: t('settings.vectorHint'),
+          })
+        : null;
 
   if (isInline) {
     return (
@@ -678,8 +766,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
           </button>
         </div>
         <div className="model-provider-body flex-1 col gap-2" style={{ padding: '0px 12px 16px 12px', overflowY: 'auto' }}>
-          {providerAccordionList}
-          {webSearchSection}
+          {placeholderGroupSection ?? searchProviderSection ?? providerAccordionList}
         </div>
 
         <ModalFooter
@@ -749,8 +836,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
         </div>
 
         <div className="model-provider-body flex-1 col gap-2" style={{ padding: '16px 20px' }}>
-          {providerAccordionList}
-          {webSearchSection}
+          {placeholderGroupSection ?? searchProviderSection ?? providerAccordionList}
         </div>
 
         <ModalFooter

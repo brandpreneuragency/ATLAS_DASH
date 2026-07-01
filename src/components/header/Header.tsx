@@ -1,26 +1,25 @@
 import { PanelRight } from 'lucide-react';
 import { TabBar } from './TabBar';
-import { useUIStore } from '../../stores/uiStore';
+import { selectIsRightPanelOpen, useUIStore } from '../../stores/uiStore';
 
 export function Header() {
-  const { aiSidebarOpen, setAiSidebarOpen, pageMode } = useUIStore();
+  const rightPanelOpen = useUIStore(selectIsRightPanelOpen);
+  const toggleRightPanel = useUIStore((s) => s.toggleRightPanel);
 
   return (
     <div id="header-bar" className="header-bar">
       <TabBar />
       <div className="ai-toggle-col">
-        {!pageMode && (
-          <button
-            type="button"
-            title={aiSidebarOpen ? 'Hide AI Sidebar' : 'Show AI Sidebar'}
-            onMouseDown={(event) => event.stopPropagation()}
-            onClick={() => setAiSidebarOpen(!aiSidebarOpen)}
-            aria-pressed={aiSidebarOpen}
-            className={`ai-toggle-btn${aiSidebarOpen ? ' ai-toggle-btn--on' : ''}`}
-          >
-            <PanelRight size={16} />
-          </button>
-        )}
+        <button
+          type="button"
+          title={rightPanelOpen ? 'Hide right panel' : 'Show right panel'}
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={() => toggleRightPanel()}
+          aria-pressed={rightPanelOpen}
+          className={`ai-toggle-btn${rightPanelOpen ? ' ai-toggle-btn--on' : ''}`}
+        >
+          <PanelRight size={16} />
+        </button>
       </div>
     </div>
   );

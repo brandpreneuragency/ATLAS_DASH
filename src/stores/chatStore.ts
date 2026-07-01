@@ -7,9 +7,10 @@ import { db } from '../services/db';
 import { nanoid } from 'nanoid';
 
 /** Context key for lastViewedPerContext map. */
-function contextKey(params: { documentId?: string; taskId?: string }): string | null {
+function contextKey(params: { documentId?: string; taskId?: string; settingsTab?: string }): string | null {
   if (params.documentId) return `doc:${params.documentId}`;
   if (params.taskId) return `task:${params.taskId}`;
+  if (params.settingsTab) return `settings:${params.settingsTab}`;
   return null;
 }
 
@@ -21,12 +22,12 @@ interface ChatStore {
   isStreaming: boolean;
 
   // Context tracking
-  currentContext: { documentId?: string; taskId?: string } | null;
+  currentContext: { documentId?: string; taskId?: string; settingsTab?: string } | null;
   lastViewedPerContext: Record<string, string>;
 
-  loadThreadsForContext: (params: { documentId?: string; taskId?: string }) => Promise<void>;
-  setActiveContext: (params: { documentId?: string; taskId?: string }) => void;
-  newChat: (params: { mode: 'writer' | 'task'; documentId?: string; taskId?: string }) => Promise<void>;
+  loadThreadsForContext: (params: { documentId?: string; taskId?: string; settingsTab?: string }) => Promise<void>;
+  setActiveContext: (params: { documentId?: string; taskId?: string; settingsTab?: string }) => void;
+  newChat: (params: { mode: 'writer' | 'task'; documentId?: string; taskId?: string; settingsTab?: string }) => Promise<void>;
   selectThread: (threadId: string) => Promise<void>;
   deleteThread: (id: string) => Promise<void>;
   addMessage: (msg: ChatMessage) => Promise<void>;
@@ -59,8 +60,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           .where('taskId')
           .equals(params.taskId)
           .toArray();
+      } else if (params.settingsTab) {
+        threads = await db.chatThreads
+          .where('settingsTab')
+          .equals(params.settingsTab)
+          .toArray();
       }
-      
+
       set({ threads, currentContext: params });
 
       // Auto-select the thread already associated with this context when possible.
@@ -105,7 +111,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const changed =
       !current ||
       current.documentId !== params.documentId ||
-      current.taskId !== params.taskId;
+      current.taskId !== params.taskId ||
+      current.settingsTab !== params.settingsTab;
     if (changed) {
       get().loadThreadsForContext(params);
     }
@@ -125,6 +132,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       mode: params.mode,
       documentId: params.documentId ?? undefined,
       taskId: params.taskId ?? undefined,
+      settingsTab: params.settingsTab ?? undefined,
       title,
       createdAt: nowMs,
       updatedAt: nowMs,

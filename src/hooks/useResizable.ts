@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import { useUIStore } from '../stores/uiStore';
+import { useUIStore, selectIsMainRowSwapped } from '../stores/uiStore';
 
 const RIGHT_PANEL_MIN_WIDTH = 320;
 // No hard max — the center panel's 260px minimum is the only constraint.
@@ -10,7 +10,7 @@ const CENTER_PANEL_MIN_WIDTH = 260;
 
 export function useResizable() {
   const setSidebarWidth = useUIStore((s) => s.setSidebarWidth);
-  const panelsSwapped = useUIStore((s) => s.panelsSwapped);
+  const mainRowSwapped = useUIStore(selectIsMainRowSwapped);
   const isDragging = useRef(false);
 
   const onMouseDown = useCallback(
@@ -22,7 +22,7 @@ export function useResizable() {
       const rowEl = handleEl.closest('#main-row') as HTMLElement | null;
       if (!rowEl) return;
 
-      const sidebarEl = (panelsSwapped
+      const sidebarEl = (mainRowSwapped
         ? handleEl.previousElementSibling
         : handleEl.nextElementSibling) as HTMLElement | null;
       if (!sidebarEl) return;
@@ -33,18 +33,18 @@ export function useResizable() {
 
       // Preserve the cursor offset inside the handle so the first move does
       // not snap the sidebar to its minimum width.
-      const pointerToMovingEdge = panelsSwapped
+      const pointerToMovingEdge = mainRowSwapped
         ? sidebarRect.right - startX
         : startX - sidebarRect.left;
-      const fixedEdge = panelsSwapped ? sidebarRect.left : sidebarRect.right;
+      const fixedEdge = mainRowSwapped ? sidebarRect.left : sidebarRect.right;
 
       const onMouseMove = (ev: MouseEvent) => {
         if (!isDragging.current) return;
 
-        const movingEdge = panelsSwapped
+        const movingEdge = mainRowSwapped
           ? ev.clientX + pointerToMovingEdge
           : ev.clientX - pointerToMovingEdge;
-        const newWidth = panelsSwapped
+        const newWidth = mainRowSwapped
           ? movingEdge - fixedEdge
           : fixedEdge - movingEdge;
 
@@ -66,7 +66,7 @@ export function useResizable() {
       window.addEventListener('mousemove', onMouseMove);
       window.addEventListener('mouseup', onMouseUp);
     },
-    [setSidebarWidth, panelsSwapped]
+    [setSidebarWidth, mainRowSwapped]
   );
 
   return { onMouseDown };

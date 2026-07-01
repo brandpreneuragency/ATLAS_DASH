@@ -30,7 +30,7 @@ export default function CRMDashboardPage() {
     createCompany,
   } = useCrmStore();
   const { submissions, forms, isLoaded: formsLoaded, loadForms } = useFormsStore();
-  const { setFormsMode, setActiveCRMPage } = useUIStore();
+  const { setActiveCRMPage, setActiveFormsPage } = useUIStore();
 
   useEffect(() => {
     if (!isLoaded) void loadCrm();
@@ -129,7 +129,7 @@ export default function CRMDashboardPage() {
           <button type="button" className="crm-btn crm-btn--sm" onClick={handleCreateFollowUp}>
             <CalendarClock size={12} /> Follow-up
           </button>
-          <button type="button" className="crm-btn crm-btn--sm crm-btn--primary" onClick={() => setFormsMode(true)}>
+          <button type="button" className="crm-btn crm-btn--sm crm-btn--primary" onClick={() => { setActiveCRMPage('forms'); setActiveFormsPage('list'); }}>
             <SquarePen size={12} /> Open Forms
           </button>
         </div>
@@ -244,7 +244,7 @@ export default function CRMDashboardPage() {
           <div className="crm-card">
             <div className="crm-card-header">
               <span className="crm-card-title">Recent Form Submissions</span>
-              <button type="button" className="crm-card-link" onClick={() => setFormsMode(true)}>Open Forms →</button>
+              <button type="button" className="crm-card-link" onClick={() => { setActiveCRMPage('forms'); setActiveFormsPage('submissions'); }}>Open Forms →</button>
             </div>
             <div className="crm-card-body">
               {recentSubmissions.length === 0 ? (
@@ -290,7 +290,7 @@ export default function CRMDashboardPage() {
             <button type="button" className="crm-btn crm-btn--sm" onClick={handleCreateFollowUp}>
               <CalendarClock size={12} /> Create follow-up task
             </button>
-            <button type="button" className="crm-btn crm-btn--sm crm-btn--primary" onClick={() => setFormsMode(true)}>
+            <button type="button" className="crm-btn crm-btn--sm crm-btn--primary" onClick={() => { setActiveCRMPage('forms'); setActiveFormsPage('list'); }}>
               <SquarePen size={12} /> Open Forms module
             </button>
             <button type="button" className="crm-btn crm-btn--sm" onClick={() => setActiveCRMPage('pipeline')}>

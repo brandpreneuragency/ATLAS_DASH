@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from 'react';
-import { Calculator, DollarSign, KanbanSquare, Plus, Scale } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Calculator, DollarSign, KanbanSquare, Scale } from 'lucide-react';
 import { useCrmStore } from '../../../stores/crmStore';
 import type { CRMDealStage } from '../../../types/crm';
 import { CRMEmptyState, KanbanBoard, KPICard, StatusBadge, TagChips } from '../components';
+import { LeadDetailModal } from '../detail/LeadDetailModal';
 import { formatCurrency, formatDate } from '../components/format';
 import '../crm.css';
 
@@ -32,6 +33,8 @@ export default function CRMPipelinePage() {
     createDeal,
   } = useCrmStore();
 
+  const [leadDetailModalId, setLeadDetailModalId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!isLoaded) void loadCrm();
   }, [isLoaded, loadCrm]);
@@ -54,6 +57,12 @@ export default function CRMPipelinePage() {
     await createDeal({ title: title.trim(), stage: 'new', ownerId: 'you', value: 0 });
   };
 
+  const handleEditDeal = (dealId: string) => {
+    const deal = deals.find((d) => d.id === dealId);
+    if (!deal?.leadId) return;
+    setLeadDetailModalId(deal.leadId);
+  };
+
   if (deals.length === 0) {
     return (
       <div className="crm-page">
@@ -70,25 +79,9 @@ export default function CRMPipelinePage() {
 
   return (
     <div className="crm-page">
-      <div className="crm-page-header">
-        <div className="crm-page-header-main">
-          <div className="crm-page-header-title">Pipeline</div>
-          <div className="crm-page-header-meta">
-            <span className="crm-page-header-meta-item">
-              {metrics.totalDeals} deals · {metrics.openCount} open
-            </span>
-            <span className="crm-page-header-meta-item">
-              View: {activePipelineView === 'list' ? 'list' : 'kanban'}
-            </span>
-          </div>
-        </div>
-        <div className="crm-page-header-actions">
-          <button type="button" className="crm-btn crm-btn--sm crm-btn--primary" onClick={handleAddDeal}>
-            <Plus size={12} /> Add deal
-          </button>
-        </div>
-      </div>
-
+      {leadDetailModalId && (
+        <LeadDetailModal leadId={leadDetailModalId} onClose={() => setLeadDetailModalId(null)} />
+      )}
       <div className="crm-page-body" style={{ paddingTop: 14 }}>
         <div className="crm-kpi-row">
           <KPICard
@@ -163,6 +156,7 @@ export default function CRMPipelinePage() {
               void setDealStage(dealId, toStage);
             }}
             onSelectDeal={(dealId) => setActiveDealId(dealId)}
+            onEditDeal={handleEditDeal}
             activeDealId={activeDealId}
           />
         )}

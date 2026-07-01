@@ -1,11 +1,38 @@
 import { Clock, Plus, X, ArrowLeftRight } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useChatStore } from '../../stores/chatStore';
-import { useUIStore } from '../../stores/uiStore';
+import { useUIStore, selectCanSwapPanels } from '../../stores/uiStore';
 import { useDocumentStore } from '../../stores/documentStore';
 import { ContextWindowPanel, ContextWindowSummaryTooltip, ContextWindowRing } from '../contextWindow';
 
-export function RightPanelSubheader() {
+interface RightPanelSubheaderProps {
+  /**
+   * Optional override for the chat mode. When `undefined`, the subheader
+   * derives the mode from the global UI store (task mode -> 'task',
+   * otherwise 'writer'). Settings sub-tabs should pass `mode: 'writer'`.
+   */
+  mode?: 'writer' | 'task';
+  /** Optional override for the document context (when not in task mode). */
+  documentId?: string | null;
+  /** Optional override for the task context (task mode). */
+  taskId?: string | null;
+  /** Optional Settings sub-tab id — when set, threads are scoped per tab. */
+  settingsTab?: string | null;
+  /**
+   * Hide the "Move AI panel" swap button. Defaults to false. Settings
+   * sub-tabs pass `true` because the chat lives inside a fixed 3-column
+   * page template, not the main-row swap container.
+   */
+  hideSwapButton?: boolean;
+}
+
+export function RightPanelSubheader({
+  mode: modeOverride,
+  documentId: documentIdOverride,
+  taskId: taskIdOverride,
+  settingsTab,
+  hideSwapButton = false,
+}: RightPanelSubheaderProps = {}) {
   const { threads, newChat, selectThread, deleteThread, activeThreadId } = useChatStore();
   const {
     taskMode,
@@ -16,15 +43,30 @@ export function RightPanelSubheader() {
     contextWindowOpen,
     setContextWindowOpen,
   } = useUIStore();
+  const canSwapPanels = useUIStore(selectCanSwapPanels);
+  const layoutSwapped = canSwapPanels && panelsSwapped && !settingsTab;
   const { activeDocumentId } = useDocumentStore();
   const [historyOpen, setHistoryOpen] = useState(false);
   const [contextSummaryOpen, setContextSummaryOpen] = useState(false);
   const historyRef = useRef<HTMLDivElement>(null);
   const contextWindowRef = useRef<HTMLDivElement>(null);
 
-  const mode = taskMode ? 'task' : 'writer';
-  const contextDocId = taskMode ? null : activeDocumentId;
-  const contextTaskId = taskMode ? activeTaskId : null;
+  // Resolve the active chat context. Props take precedence so this
+  // subheader can be mounted under a Settings sub-tab without the global
+  // uiStore knowing about the settings context.
+  const mode: 'writer' | 'task' = modeOverride ?? (taskMode ? 'task' : 'writer');
+  const contextDocId = taskIdOverride
+    ? null
+    : documentIdOverride !== undefined
+    ? documentIdOverride
+    : taskMode
+    ? null
+    : activeDocumentId;
+  const contextTaskId = taskIdOverride !== undefined
+    ? taskIdOverride
+    : taskMode
+    ? activeTaskId
+    : null;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -57,6 +99,7 @@ export function RightPanelSubheader() {
       mode,
       documentId: contextDocId || undefined,
       taskId: contextTaskId || undefined,
+      settingsTab: settingsTab || undefined,
     });
     setHistoryOpen(false);
   };
@@ -108,7 +151,7 @@ export function RightPanelSubheader() {
     <div
       ref={historyRef}
       className="right-panel-subheader-actions"
-      data-align={panelsSwapped ? 'left' : 'right'}
+      data-align={layoutSwapped ? 'left' : 'right'}
     >
       <button
         type="button"
@@ -162,11 +205,11 @@ export function RightPanelSubheader() {
 
   return (
     <div id="right-panel-subheader" className="right-panel-subheader">
-      {!panelsSwapped ? (
+      {!layoutSwapped ? (
         // Normal: AI sidebar on right panel
         <>
           <div className="editor-topbar-col justify-start">
-            {aiSidebarOpen && (
+            {canSwapPanels && aiSidebarOpen && !hideSwapButton && (
               <button
                 type="button"
                 className="tbar-btn"
@@ -184,14 +227,14 @@ export function RightPanelSubheader() {
           </div>
         </>
       ) : (
-        // Swapped: AI sidebar on center panel (left side)
+        // Swapped: AI sidebar on center panel (left side) — doc mode only
         <>
           <div className="editor-topbar-col justify-start">
             {renderHistoryControls()}
           </div>
           <div className="editor-topbar-col justify-end">
             {renderContextButton('right')}
-            {aiSidebarOpen && (
+            {aiSidebarOpen && !hideSwapButton && (
               <button
                 type="button"
                 className="tbar-btn"

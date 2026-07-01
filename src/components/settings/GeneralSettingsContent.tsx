@@ -73,7 +73,7 @@ export function SettingsContent() {
                 <ChevronDown size={14} className="subtle" style={{ transform: fontOpen ? 'rotate(180deg)' : undefined, transition: 'transform 0.15s' }} />
               </button>
               {fontOpen && (
-                <div className="drop" style={{ left: 0, right: 0, borderRadius: 12 }}>
+                <div className="drop" style={{ left: 0, right: 0 }}>
                   {FONT_FAMILIES.map((font) => (
                     <button
                       type="button"

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useUIStore } from '../../stores/uiStore';
+import { useUIStore, selectIsMainRowSwapped } from '../../stores/uiStore';
 import { CenterResizableHandle } from './CenterResizableHandle';
 import { LeftResizableHandle } from './LeftResizableHandle';
 import { LeftNarrowSidebar } from './LeftNarrowSidebar';
@@ -18,7 +18,8 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, subtasksBar }: AppLayoutProps) {
-  const { sidebarWidth, fileExplorerOpen, fileExplorerWidth, taskMode, pageMode, taskListOpen, fileViewerOpen, editorFontSize, panelsSwapped, aiSidebarOpen, crmMode, formsMode, activeView } = useUIStore();
+  const { sidebarWidth, fileExplorerOpen, fileExplorerWidth, taskMode, taskListOpen, fileViewerOpen, editorFontSize, aiSidebarOpen, centerPanelOpen, crmMode, activeView, activeCRMPage, activeTaskPage } = useUIStore();
+  const mainRowSwapped = useUIStore(selectIsMainRowSwapped);
 
   useEffect(() => {
     if (editorFontSize === 14) {
@@ -30,19 +31,26 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
     }
   }, [editorFontSize]);
 
-  // CRM/Forms modules always render the full 3-panel layout.
-  const crmOrForms = crmMode || formsMode;
+  // CRM module (now hosting the merged Forms sub-module) always renders the full 3-panel layout.
   // The Settings doc owns the whole center area (its own left+center layout),
-  // so hide the outer file explorer / task list / CRM list / AI sidebar — like
-  // page mode, but only in doc mode (not task/page/crm/forms).
-  const settingsActive = !pageMode && !crmOrForms && !taskMode && activeView === 'settings';
+  // so hide the outer file explorer / task list / CRM list / AI sidebar — only
+  // in doc mode (not task/crm).
+  const settingsActive = !crmMode && !taskMode && activeView === 'settings';
 
-  const showFileExplorer = !pageMode && !settingsActive && !crmOrForms && (fileExplorerOpen && !taskMode);
-  const showTaskList = !pageMode && !settingsActive && !crmOrForms && taskMode && taskListOpen;
-  const showCrmFormsList = !pageMode && !settingsActive && crmOrForms;
-  const showLeftResizableHandle = !pageMode && !settingsActive && (crmOrForms || (fileExplorerOpen && !taskMode) || (taskMode && taskListOpen));
-  const showSidebarPanel = !pageMode && !settingsActive && (aiSidebarOpen || fileViewerOpen || crmOrForms);
-  const mainRowSwapped = panelsSwapped && showSidebarPanel;
+  const showFileExplorer = !settingsActive && !crmMode && (fileExplorerOpen && !taskMode);
+  // Task mode "Projects" tab renders a full-width kanban board in Panel 2,
+  // so the left task list panel (and its resize handle) are hidden, mirroring
+  // how the CRM pipeline page hides the CRM list panel.
+  const taskProjectsOnly = taskMode && activeTaskPage === 'projects';
+  const showTaskList = !settingsActive && !crmMode && taskMode && taskListOpen && !taskProjectsOnly;
+  const crmPipelineOnly = crmMode && activeCRMPage === 'pipeline';
+  const showCrmFormsList = !settingsActive && crmMode && !crmPipelineOnly;
+  const showLeftResizableHandle = !settingsActive && ((crmMode && !crmPipelineOnly) || (fileExplorerOpen && !taskMode) || (taskMode && taskListOpen && !taskProjectsOnly));
+  const showSidebarPanel = !settingsActive && (aiSidebarOpen || fileViewerOpen);
+  const showCenterPanel = !mainRowSwapped || centerPanelOpen;
+  const singlePanelMainRow =
+    (!mainRowSwapped && !showSidebarPanel) ||
+    (mainRowSwapped && showSidebarPanel && !centerPanelOpen);
   const rightPanelWidth = `clamp(320px, ${sidebarWidth}vw, calc(100vw - var(--sidebar-width) - 6px))`;
   const detailPanelWidth = `calc(6px + ${rightPanelWidth})`;
 
@@ -87,7 +95,7 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
          *  (centre | .detail-panel wrapper) defined in layout.css. */}
         <div
           id="main-row"
-          className={`flex flex-1 h-full overflow-h min-w-0${mainRowSwapped ? ' main-row--swapped' : ''}`}
+          className={`flex flex-1 h-full overflow-h min-w-0${mainRowSwapped ? ' main-row--swapped' : ''}${singlePanelMainRow ? ' main-row--single-panel' : ''}`}
         >
           {mainRowSwapped ? (
             <>
@@ -95,50 +103,60 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
                   .detail-panel wraps (panel, handle) so the handle
                   stays adjacent to its panel. */}
               {showSidebarPanel && (
-                <div className="detail-panel" style={{ width: detailPanelWidth }}>
+                <div
+                  className="detail-panel"
+                  style={singlePanelMainRow ? undefined : { width: detailPanelWidth }}
+                >
                   <div
                     id={fileViewerOpen ? 'file-viewer-panel' : 'ai-sidebar-panel'}
                     className="relative shrink-0 overflow-h flex-col h-full min-w-0"
-                    style={{ paddingLeft: '0px', paddingRight: '0px', width: rightPanelWidth }}
+                    style={singlePanelMainRow ? undefined : { paddingLeft: '0px', paddingRight: '0px', width: rightPanelWidth }}
                   >
                     {/* Subheader always stays visible */}
-                    {(aiSidebarOpen || crmOrForms) && !fileViewerOpen && <RightPanelSubheader />}
+                    {(aiSidebarOpen) && !fileViewerOpen && <RightPanelSubheader />}
                     {/* Content body */}
                     <div className="flex-1 min-h-0 overflow-hidden">
                       {fileViewerOpen ? <FileViewerPanel /> : sidebar}
                     </div>
                   </div>
-                  <CenterResizableHandle />
+                  {showCenterPanel && <CenterResizableHandle />}
                 </div>
               )}
 
-              <div id="center-panel" className="panel flex-1 h-full overflow-h flex-col min-w-0" style={{ minWidth: 260 }}>
+              {showCenterPanel && (
+              <div id="center-panel" className="panel flex-1 h-full overflow-h flex-col min-w-0" style={{ minWidth: 140 }}>
                 {subtasksBar}
-                <div id="center-panel-body" className="panel-body flex-1 h-full overflow-h">
+                <div id="center-panel-body" className="panel-body flex-1 min-h-0 overflow-h">
                   {editor}
                 </div>
               </div>
+              )}
             </>
           ) : (
             <>
-              <div id="center-panel" className="panel flex-1 h-full overflow-h flex-col min-w-0" style={{ minWidth: 260 }}>
+              {showCenterPanel && (
+              <div id="center-panel" className="panel flex-1 h-full overflow-h flex-col min-w-0" style={{ minWidth: 140 }}>
                 {subtasksBar}
-                <div id="center-panel-body" className="panel-body flex-1 h-full overflow-h">
+                <div id="center-panel-body" className="panel-body flex-1 min-h-0 overflow-h">
                   {editor}
                 </div>
               </div>
+              )}
 
               {/* Normal order: centre | (handle, panel). */}
               {showSidebarPanel && (
-                <div className="detail-panel" style={{ width: detailPanelWidth }}>
-                  <CenterResizableHandle />
+                <div
+                  className="detail-panel"
+                  style={singlePanelMainRow ? undefined : { width: detailPanelWidth }}
+                >
+                  {showCenterPanel && <CenterResizableHandle />}
                   <div
                     id={fileViewerOpen ? 'file-viewer-panel' : 'ai-sidebar-panel'}
                     className="relative shrink-0 overflow-h flex-col h-full min-w-0"
-                    style={{ paddingLeft: '0px', paddingRight: '0px', width: rightPanelWidth }}
+                    style={singlePanelMainRow ? undefined : { paddingLeft: '0px', paddingRight: '0px', width: rightPanelWidth }}
                   >
                     {/* Subheader always stays visible */}
-                    {(aiSidebarOpen || crmOrForms) && !fileViewerOpen && <RightPanelSubheader />}
+                    {(aiSidebarOpen) && !fileViewerOpen && <RightPanelSubheader />}
                     {/* Content body */}
                     <div className="flex-1 min-h-0 overflow-hidden">
                       {fileViewerOpen ? <FileViewerPanel /> : sidebar}

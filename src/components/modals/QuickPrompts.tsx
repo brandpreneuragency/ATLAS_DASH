@@ -170,7 +170,7 @@ export function QuickPrompts({ onSelectPrompt }: QuickPromptsProps) {
                 <button
                   onClick={(e) => { e.stopPropagation(); handleDelete(qp.id); }}
                   className="btn-icon"
-                  style={{ padding: 4, borderRadius: 4 }}
+                  style={{ padding: 4 }}
                 >
                   <Trash2 size={13} />
                 </button>

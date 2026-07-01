@@ -56,7 +56,6 @@
   background: var(--c-background-1);
   border: 1px solid var(--c-border-1);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
 }
 
 .forms-kpi-card-row {
@@ -190,25 +189,25 @@
   font-size: var(--fs-xs);
   font-weight: 600;
   text-transform: capitalize;
-  border: 1px solid transparent;
   white-space: nowrap;
 }
 
 .forms-status-badge--draft {
-  background: var(--c-background-2);
+  background: transparent;
   color: var(--c-text-3);
-  border-color: var(--c-border-1);
 }
 .forms-status-badge--published {
-  background: rgba(34, 197, 94, 0.12);
-  color: var(--c-success);
-  border-color: rgba(34, 197, 94, 0.3);
+  background: transparent;
+  color: var(--c-accent-center-panel);
 }
 .forms-status-badge--archived {
-  background: var(--c-background-2);
+  background: transparent;
   color: var(--c-text-2);
-  border-color: var(--c-border-1);
   opacity: 0.7;
+}
+.forms-status-badge--template {
+  background: transparent;
+  color: var(--c-accent-center-panel);
 }
 
 .forms-spam-badge {
@@ -224,9 +223,11 @@
   white-space: nowrap;
 }
 .forms-spam-badge--low {
-  background: rgba(34, 197, 94, 0.12);
+  background: unset;
   color: var(--c-success);
-  border-color: rgba(34, 197, 94, 0.3);
+  border: none;
+  padding-left: 0;
+  padding-right: 0;
 }
 .forms-spam-badge--mid {
   background: rgba(245, 158, 11, 0.14);
@@ -234,9 +235,11 @@
   border-color: rgba(245, 158, 11, 0.3);
 }
 .forms-spam-badge--high {
-  background: rgba(239, 68, 68, 0.12);
+  background: rgba(239, 68, 68, 0);
   color: var(--c-danger);
-  border-color: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0);
+  padding-left: 0;
+  padding-right: 0;
 }
 
 /* ---------- Section / card ---------- */
@@ -425,11 +428,10 @@
   border: 1px solid var(--c-border-1);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s;
 }
 .forms-form-card:hover {
   border-color: var(--c-accent-center-panel);
-  box-shadow: var(--shadow-sm);
 }
 .forms-form-card-head {
   display: flex;
@@ -466,7 +468,8 @@
   border: 1px solid var(--c-border-1);
   border-radius: var(--radius-md);
   background: var(--c-background-1);
-  margin-bottom: 8px;
+  margin-top: 4px;
+  margin-bottom: 12px;
   flex-shrink: 0;
 }
 .forms-list-search:focus-within {
@@ -495,10 +498,12 @@
 .forms-filter-chip {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   width: fit-content;
-  height: 22px;
-  padding: 0 8px;
+  height: 18px;
+  min-height: 0;
+  padding: 0 6px;
   border: 1px solid var(--c-border-1);
   border-radius: var(--radius-full);
   background: var(--c-background-1);
@@ -528,43 +533,59 @@
   padding: 10px 0 4px;
 }
 
+.forms-list-templates-section {
+  margin-top: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--c-border-1);
+}
+
+/* Mirrors `.crm-list-item` (crm.css) so Forms/Submissions card
+   buttons share the same border, hover, spacing and font rhythm
+   as CRM leads. Keep these in sync with crm-list-item rules. */
 .forms-list-item {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 3px;
   width: 100%;
-  text-align: left;
-  padding: 7px 10px;
-  border: 1px solid transparent;
-  border-bottom: 1px solid var(--c-border-1);
-  border-radius: 0;
-  background: transparent;
-  cursor: pointer;
-  transition: background-color 0.12s, border-color 0.12s;
-  flex-shrink: 0;
-  font-family: inherit;
-  color: inherit;
   height: fit-content;
   min-height: 0;
   min-width: 0;
+  text-align: left;
+  padding: 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  margin-bottom: 2px;
+  transition: background-color 0.12s;
+  flex-shrink: 0;
+  font-family: inherit;
+  color: inherit;
 }
 .forms-list-item:hover {
-  background: var(--c-background-2);
+  background: var(--c-background-3);
 }
 .forms-list-item--active,
 .forms-list-item--active:hover {
   background: var(--c-background-2);
-  border-color: var(--c-border-2);
+  border-left: none;
+  border-image: none;
 }
 .forms-list-item-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--c-text-1);
   line-height: 1.3;
-  word-break: break-word;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+}
+.forms-list-item-title .trunc {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 .forms-list-item-meta {
   display: flex;
@@ -572,6 +593,10 @@
   gap: 6px;
   font-size: var(--fs-xs);
   color: var(--c-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 .forms-list-item-meta .trunc {
   overflow: hidden;
@@ -593,7 +618,7 @@
 .forms-textarea {
   width: 100%;
   border: 1px solid var(--c-border-1);
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   background: var(--c-background-1);
   color: var(--c-text-1);
   font-size: var(--fs-sm);
@@ -678,7 +703,6 @@
   border-radius: 50%;
   background: #fff;
   transition: transform 0.15s;
-  box-shadow: var(--shadow-sm);
 }
 .forms-toggle-track--on .forms-toggle-thumb {
   transform: translateX(14px);
@@ -763,6 +787,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  width: fit-content;
   height: 24px;
   padding: 0 9px;
   border: 1px solid var(--c-border-1);
@@ -846,7 +871,6 @@
   background: var(--c-background-1);
   border: 1px solid var(--c-border-1);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-2xl);
   overflow: hidden;
 }
 .forms-preview-modal-head {
@@ -944,9 +968,9 @@
 .forms-divider { height: 1px; background: var(--c-border-1); margin: 4px 0; }
 
 /* =========================================================
- * Appended: responsive behavior (ARCHITECTURE_NOTES §11 +
+ * Appended: responsive behavior (ARCHITECTURE_NOTES Â§11 +
  * wireframe "Responsive Behavior"). Container queries scale
- * Panel 2 content with the center-panel width — the real
+ * Panel 2 content with the center-panel width â€” the real
  * trigger for Forms surfaces, since the shell collapses Panel
  * 1/3 via the existing toggles. Viewport media queries add
  * graceful degradation for very narrow viewports. No existing
@@ -966,7 +990,7 @@
   .forms-kpi-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
   .forms-form-grid { grid-template-columns: 1fr; }
   .forms-template-grid { grid-template-columns: 1fr; }
-  /* Tables already live in .forms-table-wrap (overflow:auto) —
+  /* Tables already live in .forms-table-wrap (overflow:auto) â€”
      hold the table at a legible width so the wrap scrolls x. */
   .forms-table { min-width: 520px; }
   .forms-field-row { grid-template-columns: 1fr; gap: 4px; }

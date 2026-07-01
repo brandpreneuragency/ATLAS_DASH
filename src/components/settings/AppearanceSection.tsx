@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { useThemeStore, getTokenDisplayValue } from '../../stores/themeStore';
 import { useTheme } from '../../hooks/useTheme';
@@ -11,7 +12,13 @@ const GENERAL_CATEGORY_ID = 'general';
 
 const isHex = (v: string) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
 
-export function AppearanceSection() {
+interface AppearanceSectionProps {
+  rightHeader?: ReactNode;
+  rightMain?: ReactNode;
+  rightFooter?: ReactNode;
+}
+
+export function AppearanceSection({ rightHeader, rightMain, rightFooter }: AppearanceSectionProps = {}) {
   const tokens = useThemeStore((s) => s.tokens);
   const setToken = useThemeStore((s) => s.setToken);
   const resetToken = useThemeStore((s) => s.resetToken);
@@ -105,6 +112,9 @@ export function AppearanceSection() {
       leftMain={leftMain}
       centerHeader={<div className="settings-list-head"><h3>{active.label}</h3></div>}
       centerMain={centerMain}
+      rightHeader={rightHeader}
+      rightMain={rightMain}
+      rightFooter={rightFooter}
     />
   );
 }
@@ -146,14 +156,6 @@ function TokenRow({ token, overridden, onSet, onReset }: {
           <option value="">— default —</option>
           {THEME_FONT_OPTIONS.map((f) => <option key={f} value={f}>{f.split(',')[0]}</option>)}
         </select>
-      ) : token.type === 'shadow' ? (
-        <textarea
-          className="ctrl settings-token-input"
-          style={{ fontSize: 'var(--fs-xs)', minHeight: 48, resize: 'vertical' }}
-          defaultValue={overridden ? current : ''}
-          placeholder={current || 'e.g. 0 4px 12px rgba(0,0,0,0.08)'}
-          onBlur={(e) => onSet(e.target.value)}
-        />
       ) : (
         <input
           className="ctrl settings-token-input"

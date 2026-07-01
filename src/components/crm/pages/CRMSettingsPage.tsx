@@ -53,7 +53,7 @@ const DEFAULT_LEAD_STATUSES = [
 export default function CRMSettingsPage() {
   const { isLoaded, loadCrm, leads, contacts, companies, pipelineStages, exportLeads } =
     useCrmStore();
-  const { setFormsMode } = useUIStore();
+  const { setActiveCRMPage, setActiveFormsPage } = useUIStore();
   const { tab, setTab } = useCrmSettingsTab();
 
   // Local tag management state — crmStore has no tag CRUD setter, so add/remove
@@ -271,7 +271,7 @@ export default function CRMSettingsPage() {
               <button
                 type="button"
                 className="crm-btn crm-btn--sm"
-                onClick={() => setFormsMode(true)}
+                onClick={() => { setActiveCRMPage('forms'); setActiveFormsPage('settings'); }}
               >
                 <FileInput size={12} /> Open Forms Settings
               </button>

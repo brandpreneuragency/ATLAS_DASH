@@ -1,6 +1,6 @@
 interface ScoreBadgeProps {
   score?: number;
-  /** Pass true to render a compact dot + number form. */
+  /** Pass true for compact list-row rendering. */
   compact?: boolean;
 }
 
@@ -17,7 +17,6 @@ export function ScoreBadge({ score, compact }: ScoreBadgeProps) {
   const b = band(score);
   return (
     <span className={`crm-score-badge crm-score-badge--${b}${compact ? ' crm-score-badge--compact' : ''}`}>
-      <span className="crm-score-badge-dot" />
       {score}
     </span>
   );

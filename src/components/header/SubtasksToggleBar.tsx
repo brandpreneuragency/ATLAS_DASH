@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { CheckCircle2, Circle } from 'lucide-react';
+import { CheckCircle2, Circle, ChevronDown } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import { useTaskStore } from '../../stores/taskStore';
 import { TASK_TITLE_MAX_LENGTH } from '../../types';
 
 export function SubtasksToggleBar() {
-  const { taskMode, activeTaskId } = useUIStore();
+  const { taskMode, activeTaskPage, activeTaskId, subtasksOpen, setSubtasksOpen } = useUIStore();
   const storeActiveId = useTaskStore((s) => s.activeTaskId);
   const tasks = useTaskStore((s) => s.tasks);
   const updateTask = useTaskStore((s) => s.updateTask);
@@ -32,6 +32,9 @@ export function SubtasksToggleBar() {
   }, [isEditingTitle]);
 
   if (!taskMode) return null;
+  // The "Projects" tab shows a full-width kanban board in the center panel;
+  // the task-detail subtasks bar does not apply there.
+  if (activeTaskPage === 'projects') return null;
 
   const startEditingTitle = () => {
     setLocalTitle(activeTask?.title ?? '');
@@ -63,13 +66,19 @@ export function SubtasksToggleBar() {
     >
       <button
         type="button"
-        className={`subtasks-complete-btn${isCompleted ? ' subtasks-complete-btn--completed' : ''}`}
-        onClick={toggleComplete}
-        disabled={!activeTask}
-        title={isCompleted ? 'Mark as Incomplete' : 'Mark as Completed'}
-        aria-label={isCompleted ? 'Mark as Incomplete' : 'Mark as Completed'}
+        className="tdp-meta-collapse-btn"
+        onClick={() => setSubtasksOpen(!subtasksOpen)}
+        title={subtasksOpen ? 'Collapse details' : 'Expand details'}
+        aria-label={subtasksOpen ? 'Collapse details' : 'Expand details'}
+        aria-expanded={subtasksOpen}
       >
-        {isCompleted ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+        <ChevronDown
+          size={12}
+          style={{
+            transform: subtasksOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.2s',
+          }}
+        />
       </button>
 
       {isEditingTitle ? (
@@ -104,6 +113,17 @@ export function SubtasksToggleBar() {
           {activeTask?.title || 'Untitled task'}
         </button>
       )}
+
+      <button
+        type="button"
+        className={`subtasks-complete-btn${isCompleted ? ' subtasks-complete-btn--completed' : ''}`}
+        onClick={toggleComplete}
+        disabled={!activeTask}
+        title={isCompleted ? 'Mark as Incomplete' : 'Mark as Completed'}
+        aria-label={isCompleted ? 'Mark as Incomplete' : 'Mark as Completed'}
+      >
+        {isCompleted ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+      </button>
     </div>
   );
 }

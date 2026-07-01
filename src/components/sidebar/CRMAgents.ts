@@ -39,8 +39,6 @@ export interface CRMAgentDef {
   description: string;
   /** lucide-react icon name (rendered via a typed icon map in CRMAISidebar). */
   icon: string;
-  /** 3–6 contextual quick prompts shown in the composer. */
-  quickPrompts: string[];
   /** Which CRM/Forms contexts this agent is relevant for. */
   contextScope: CRMAgentContextScope[];
 }
@@ -51,12 +49,6 @@ export const CRM_AGENTS: CRMAgentDef[] = [
     name: 'Lead Qualifier',
     description: 'Score and qualify new leads',
     icon: 'Target',
-    quickPrompts: [
-      'Score this lead',
-      'Suggest next step',
-      'Flag missing data',
-      'Qualify by ICP',
-    ],
     contextScope: ['dashboard', 'lead', 'contact', 'submission'],
   },
   {
@@ -64,12 +56,6 @@ export const CRM_AGENTS: CRMAgentDef[] = [
     name: 'Follow-up Writer',
     description: 'Draft personalized outreach',
     icon: 'Mail',
-    quickPrompts: [
-      'Draft follow-up email',
-      'Write reply to last message',
-      'Suggest subject lines',
-      'Create follow-up task',
-    ],
     contextScope: ['dashboard', 'lead', 'contact', 'company', 'submission'],
   },
   {
@@ -77,12 +63,6 @@ export const CRM_AGENTS: CRMAgentDef[] = [
     name: 'Pipeline Analyst',
     description: 'Analyze deals and forecast',
     icon: 'TrendingUp',
-    quickPrompts: [
-      'Find stuck deals',
-      'Forecast this month',
-      'Summarize pipeline',
-      'Suggest deals to push',
-    ],
     contextScope: ['dashboard', 'pipeline'],
   },
   {
@@ -90,12 +70,6 @@ export const CRM_AGENTS: CRMAgentDef[] = [
     name: 'Form Assistant',
     description: 'Map and improve forms',
     icon: 'FormInput',
-    quickPrompts: [
-      'Simplify this form',
-      'Suggest missing fields',
-      'Improve labels',
-      'Generate multi-step version',
-    ],
     contextScope: ['dashboard', 'form', 'embed', 'submission'],
   },
 ];

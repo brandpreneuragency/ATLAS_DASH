@@ -13,6 +13,7 @@ import {
   Copy,
   Save,
   FilePlus2,
+  Pencil,
 } from 'lucide-react';
 import '../forms.css';
 
@@ -43,6 +44,7 @@ export default function FormsListPage() {
   const saveFormAsTemplate = useFormsStore((s) => s.saveFormAsTemplate);
   const setActiveFormId = useFormsStore((s) => s.setActiveFormId);
   const showToast = useUIStore((s) => s.showToast);
+  const setActiveFormsPage = useUIStore((s) => s.setActiveFormsPage);
 
   const [showEmbed, setShowEmbed] = useState(false);
   const [embedMode, setEmbedMode] = useState<EmbedSnippetMode>('iframe');
@@ -84,6 +86,9 @@ export default function FormsListPage() {
     );
   }
 
+  const handleEdit = () => {
+    setActiveFormsPage('builder');
+  };
   const handleGetEmbed = () => {
     setShowEmbed((v) => !v);
   };
@@ -116,14 +121,12 @@ export default function FormsListPage() {
 
   return (
     <div className="forms-page forms-page--scroll">
-      <div className="forms-page-head">
-        <h2 className="forms-page-title">Forms</h2>
-        <p className="forms-page-subtitle">Summary, embed code and quick actions for the selected form.</p>
-      </div>
-
       <FormSummary form={form} kpis={kpis} />
 
       <div className="forms-actions">
+        <button type="button" className="forms-action-btn forms-action-btn--primary" onClick={handleEdit}>
+          <Pencil size={14} /> Edit
+        </button>
         <button type="button" className="forms-action-btn" onClick={handleGetEmbed}>
           <Code2 size={14} /> Get embed code
         </button>

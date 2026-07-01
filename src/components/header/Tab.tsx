@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Document } from '../../types';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
@@ -125,9 +125,12 @@ export function Tab({ doc, isActive, onSelect, onClose, onRename, charLimit }: T
             className="txt-xs med bg-transparent outline-none w-24" style={{ borderBottom: '1px solid var(--c-accent-center-panel)' }}
           />
         ) : (
-          <span className={`txt-xs med trunc${isReplaceable ? ' italic' : ''}`}>
-            {(doc.title ?? '').slice(0, charLimit)}{(doc.title ?? '').length > charLimit ? '…' : ''}
-          </span>
+          <>
+            <FileText size={12} className="mr-1 flex-shrink-0" />
+            <span className={`txt-xs med trunc${isReplaceable ? ' italic' : ''}`}>
+              {(doc.title ?? '').slice(0, charLimit)}{(doc.title ?? '').length > charLimit ? '…' : ''}
+            </span>
+          </>
         )}
 
         <button

@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { Plus, Search } from 'lucide-react';
 import { useCrmStore } from '../../../stores/crmStore';
-import type { CRMLead, CRMLeadStatus, CRMDealStage } from '../../../types/crm';
-import { ScoreBadge, StatusBadge, TagChips } from '../components';
+import type { CRMLead, CRMLeadStatus } from '../../../types/crm';
+import type { CRMLeadScoreBand } from '../../../stores/crmStore';
+import { ScoreBadge, StatusBadge } from '../components';
 import { byNewestFirst, formatRelative } from '../components/format';
 
 const STATUS_OPTIONS: { value: '' | CRMLeadStatus; label: string }[] = [
@@ -16,7 +17,20 @@ const STATUS_OPTIONS: { value: '' | CRMLeadStatus; label: string }[] = [
   { value: 'spam', label: 'Spam' },
 ];
 
-const STAGE_OPTIONS: { value: '' | CRMDealStage; label: string }[] = STATUS_OPTIONS;
+const SCORE_OPTIONS: { value: '' | CRMLeadScoreBand; label: string }[] = [
+  { value: '', label: 'All scores' },
+  { value: 'high', label: 'High (80+)' },
+  { value: 'med', label: 'Medium (50–79)' },
+  { value: 'low', label: 'Low (<50)' },
+  { value: 'none', label: 'No score' },
+];
+
+function leadScoreBand(score?: number): CRMLeadScoreBand {
+  if (score === undefined || score === null || Number.isNaN(score)) return 'none';
+  if (score >= 80) return 'high';
+  if (score >= 50) return 'med';
+  return 'low';
+}
 
 function leadTitle(lead: CRMLead): string {
   return lead.title;
@@ -40,19 +54,14 @@ export function LeadList({ onAddLead }: LeadListProps) {
     setActiveLeadId,
     filters,
     setLeadFilters,
-    savedViews,
-    activeSavedViewId,
-    applySavedView,
   } = useCrmStore();
 
-  const leadSavedViews = savedViews.filter((v) => v.entity === 'lead');
-
   const filtered = useMemo(() => {
-    const { status, stage, ownerId, search, tags } = filters.lead;
+    const { status, scoreBand, ownerId, search, tags } = filters.lead;
     const searchLower = search?.trim().toLowerCase();
     return leads
       .filter((l) => (status ? l.status === status : true))
-      .filter((l) => (stage ? l.stage === stage : true))
+      .filter((l) => (scoreBand ? leadScoreBand(l.score) === scoreBand : true))
       .filter((l) => (ownerId ? l.ownerId === ownerId : true))
       .filter((l) => (tags && tags.length > 0 ? tags.every((t) => l.tags.includes(t)) : true))
       .filter((l) => {
@@ -98,40 +107,15 @@ export function LeadList({ onAddLead }: LeadListProps) {
           </select>
           <select
             className="crm-list-filter-select"
-            value={filters.lead.stage ?? ''}
-            onChange={(e) => setLeadFilters({ stage: (e.target.value || undefined) as CRMDealStage | undefined })}
+            value={filters.lead.scoreBand ?? ''}
+            onChange={(e) => setLeadFilters({ scoreBand: (e.target.value || undefined) as CRMLeadScoreBand | undefined })}
           >
-            {STAGE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+            {SCORE_OPTIONS.map((o) => (
+              <option key={o.value || 'all'} value={o.value}>{o.label}</option>
             ))}
           </select>
         </div>
       </div>
-
-      {leadSavedViews.length > 0 && (
-        <>
-          <div className="crm-list-section-label">Saved views</div>
-          <div className="crm-saved-views">
-            <button
-              type="button"
-              className={`crm-saved-view-item${!activeSavedViewId ? ' crm-saved-view-item--active' : ''}`}
-              onClick={() => applySavedView(null)}
-            >
-              All leads
-            </button>
-            {leadSavedViews.map((v) => (
-              <button
-                key={v.id}
-                type="button"
-                className={`crm-saved-view-item${activeSavedViewId === v.id ? ' crm-saved-view-item--active' : ''}`}
-                onClick={() => applySavedView(v.id)}
-              >
-                {v.name}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
 
       <div className="crm-list-section-label">Leads · {filtered.length}</div>
 
@@ -161,7 +145,6 @@ export function LeadList({ onAddLead }: LeadListProps) {
             </div>
             <div className="crm-list-item-row">
               <span className="crm-list-item-sub">{formatRelative(lead.lastActivityAt)}</span>
-              {lead.tags.length > 0 && <TagChips tags={lead.tags} max={2} />}
             </div>
           </button>
         );

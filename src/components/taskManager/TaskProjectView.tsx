@@ -12,6 +12,7 @@ interface TaskProjectViewProps {
 }
 
 export function TaskProjectView({ tasks, onSetProject }: TaskProjectViewProps) {
+  const activeTaskId = useTaskStore((s) => s.activeTaskId);
   const { projects } = useProjectStore();
   const [maxDate, setMaxDate] = useState<string>('');
 
@@ -100,7 +101,12 @@ export function TaskProjectView({ tasks, onSetProject }: TaskProjectViewProps) {
               </div>
             )}
             {groupTasks.map((t) => (
-              <button key={t.id} type="button" className="calendar-task-row" onClick={() => useTaskStore.getState().openTaskInActiveTab(t.id)}>
+              <button
+                key={t.id}
+                type="button"
+                className={`calendar-task-row${t.id === activeTaskId ? ' calendar-task-row--active' : ''}`}
+                onClick={() => useTaskStore.getState().openTaskInActiveTab(t.id)}
+              >
                 {importanceDot(t.importance)}
                 <span className="trunc">{t.title}</span>
                 <span className="calendar-task-project">{formatDate(t.date)}</span>

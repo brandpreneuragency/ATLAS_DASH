@@ -1,5 +1,5 @@
 /*
- * embed.css — ISOLATED styling surface for published / previewed lead forms.
+ * embed.css â€” ISOLATED styling surface for published / previewed lead forms.
  *
  * This stylesheet is intentionally independent of the host app's design tokens.
  * It does NOT reference any `--c-*` (app) variables. Every visual is driven by
@@ -17,7 +17,7 @@
    --------------------------------------------------------------------------- */
 
 .forms-embed-root {
-  /* Design tokens — overridden inline by FormRenderer from form.style. */
+  /* Design tokens â€” overridden inline by FormRenderer from form.style. */
   --tabs-form-primary: #4f46e5;
   --tabs-form-bg: #ffffff;
   --tabs-form-text: #111827;
@@ -143,7 +143,7 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Inputs — base + three inputStyle modifiers (boxed / underline / minimal)
+   Inputs â€” base + three inputStyle modifiers (boxed / underline / minimal)
    --------------------------------------------------------------------------- */
 
 .forms-embed-input {
@@ -156,7 +156,7 @@
   border-radius: var(--tabs-form-radius);
   padding: 10px 12px;
   transition: border-color var(--tabs-form-transition),
-    box-shadow var(--tabs-form-transition), background var(--tabs-form-transition);
+    background var(--tabs-form-transition);
   outline: none;
   appearance: none;
   -webkit-appearance: none;
@@ -173,7 +173,6 @@
 
 .forms-embed-input:focus {
   border-color: var(--tabs-form-primary);
-  box-shadow: 0 0 0 3px var(--tabs-form-focus-ring);
 }
 
 .forms-embed-input:disabled {
@@ -201,7 +200,6 @@
 
 .forms-embed-input--underline:focus {
   border-bottom-color: var(--tabs-form-primary);
-  box-shadow: 0 2px 0 -1px var(--tabs-form-focus-ring);
 }
 
 .forms-embed-input--minimal {
@@ -216,7 +214,6 @@
 }
 
 .forms-embed-input--minimal:focus {
-  box-shadow: inset 0 0 0 2px var(--tabs-form-primary);
   background: var(--tabs-form-field-bg);
 }
 
@@ -300,7 +297,7 @@ input[type='date'].forms-embed-input {
   line-height: 1.4;
 }
 
-/* Single boolean checkbox (no options) — inline, lighter chrome. */
+/* Single boolean checkbox (no options) â€” inline, lighter chrome. */
 .forms-embed-option--single {
   border: none;
   padding: 4px 0;
@@ -384,7 +381,7 @@ input[type='file'].forms-embed-input {
 }
 
 /* ---------------------------------------------------------------------------
-   Buttons — base + three buttonStyle modifiers (solid / outline / ghost)
+   Buttons â€” base + three buttonStyle modifiers (solid / outline / ghost)
    --------------------------------------------------------------------------- */
 
 .forms-embed-btn {
@@ -402,7 +399,7 @@ input[type='file'].forms-embed-input {
   cursor: pointer;
   transition: background var(--tabs-form-transition),
     border-color var(--tabs-form-transition), color var(--tabs-form-transition),
-    box-shadow var(--tabs-form-transition), transform var(--tabs-form-transition);
+    transform var(--tabs-form-transition);
   user-select: none;
   white-space: nowrap;
 }
@@ -413,7 +410,6 @@ input[type='file'].forms-embed-input {
 
 .forms-embed-btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--tabs-form-focus-ring);
 }
 
 .forms-embed-btn:active:not(:disabled) {
@@ -468,9 +464,8 @@ input[type='file'].forms-embed-input {
   margin-top: 4px;
 }
 
-.forms-embed-actions .forms-embed-btn--solid,
-.forms-embed-actions .forms-embed-btn--outline {
-  margin-left: auto;
+.forms-embed-actions .forms-embed-btn {
+  width: 100%;
 }
 
 /* ---------------------------------------------------------------------------
@@ -507,7 +502,6 @@ input[type='file'].forms-embed-input {
 .forms-embed-step-dot.is-current {
   background: var(--tabs-form-primary);
   transform: scale(1.35);
-  box-shadow: 0 0 0 3px var(--tabs-form-focus-ring);
 }
 
 .forms-embed-step-title {
@@ -544,7 +538,7 @@ input[type='file'].forms-embed-input {
 }
 
 /* ---------------------------------------------------------------------------
-   Honeypot — visually hidden but stays in the DOM so bots fill it.
+   Honeypot â€” visually hidden but stays in the DOM so bots fill it.
    display:none would stop bots from populating it, so we use off-screen.
    --------------------------------------------------------------------------- */
 
@@ -624,7 +618,7 @@ input[type='file'].forms-embed-input {
 }
 
 /* ---------------------------------------------------------------------------
-   Layouts — two-column collapses to single on narrow widths
+   Layouts â€” two-column collapses to single on narrow widths
    --------------------------------------------------------------------------- */
 
 .forms-embed-layout-single .forms-embed-fields {
@@ -646,7 +640,7 @@ input[type='file'].forms-embed-input {
 }
 
 /* ---------------------------------------------------------------------------
-   Responsive — narrow / mobile
+   Responsive â€” narrow / mobile
    --------------------------------------------------------------------------- */
 
 @media (max-width: 768px) {

@@ -1,16 +1,16 @@
 import { useMemo } from 'react';
-import { Building2, KanbanSquare, UserPlus, Users } from 'lucide-react';
+import { Building2, KanbanSquare, UserPlus } from 'lucide-react';
 import { useCrmStore } from '../../../stores/crmStore';
 import { useUIStore } from '../../../stores/uiStore';
 import { StatusBadge } from '../components';
 import { byNewestFirst, formatRelative } from '../components/format';
 
 /**
- * Panel 1 content for the CRM Dashboard page — saved views across entities,
- * quick filter shortcuts, and a "recent objects" list (latest leads/companies).
+ * Panel 1 content for the CRM Dashboard page — quick filter shortcuts and
+ * a "recent objects" list (latest leads/companies/deals).
  */
 export function DashboardSavedViews() {
-  const { savedViews, leads, companies, deals, applySavedView, activeSavedViewId, setActiveLeadId, setActiveCompanyId, setActiveDealId } = useCrmStore();
+  const { leads, companies, deals, setActiveLeadId, setActiveCompanyId, setActiveDealId } = useCrmStore();
   const { setActiveCRMPage } = useUIStore();
 
   const recentLeads = useMemo(
@@ -28,37 +28,10 @@ export function DashboardSavedViews() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div className="crm-list-section-label">Saved views</div>
-      <div className="crm-saved-views">
-        <button
-          type="button"
-          className={`crm-saved-view-item${!activeSavedViewId ? ' crm-saved-view-item--active' : ''}`}
-          onClick={() => applySavedView(null)}
-        >
-          All
-        </button>
-        {savedViews.slice(0, 6).map((v) => (
-          <button
-            key={v.id}
-            type="button"
-            className={`crm-saved-view-item${activeSavedViewId === v.id ? ' crm-saved-view-item--active' : ''}`}
-            onClick={() => applySavedView(v.id)}
-          >
-            {v.name}
-          </button>
-        ))}
-      </div>
-
       <div className="crm-list-section-label">Quick filters</div>
       <div className="crm-quick-filters">
         <button type="button" className="crm-quick-filter" onClick={() => setActiveCRMPage('leads')}>
           <UserPlus size={11} /> Leads · {leads.length}
-        </button>
-        <button type="button" className="crm-quick-filter" onClick={() => setActiveCRMPage('contacts')}>
-          <Users size={11} /> Contacts
-        </button>
-        <button type="button" className="crm-quick-filter" onClick={() => setActiveCRMPage('companies')}>
-          <Building2 size={11} /> Companies · {companies.length}
         </button>
         <button type="button" className="crm-quick-filter" onClick={() => setActiveCRMPage('pipeline')}>
           <KanbanSquare size={11} /> Deals · {deals.length}
@@ -112,7 +85,7 @@ export function DashboardSavedViews() {
           className="crm-list-item"
           onClick={() => {
             setActiveCompanyId(company.id);
-            setActiveCRMPage('companies');
+            setActiveCRMPage('leads');
           }}
         >
           <div className="crm-list-item-row">

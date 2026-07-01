@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import type { LeadForm, LeadFormField } from '../../../types/forms';
 import { useFormsStore, type BuilderTab, type PreviewMode } from '../../../stores/formsStore';
+import { useUIStore } from '../../../stores/uiStore';
 import { StatusBadge } from '../components/StatusBadge';
 import { FormsEmptyState } from '../components/FormsEmptyState';
 import BuildTab from './BuildTab';
@@ -45,21 +46,23 @@ const PREVIEW_MODES: ReadonlyArray<{ key: PreviewMode; label: string; icon: Luci
 ];
 
 export default function FormBuilder() {
-  const forms = useFormsStore((s) => s.forms);
-  const activeFormId = useFormsStore((s) => s.activeFormId);
+  const activeTemplateId = useFormsStore((s) => s.activeTemplateId);
+  const activeForm = useFormsStore((s) => s.getActiveBuilderForm());
+  const isTemplateMode = Boolean(activeTemplateId);
   const activeBuilderTab = useFormsStore((s) => s.activeBuilderTab);
   const setActiveBuilderTab = useFormsStore((s) => s.setActiveBuilderTab);
   const createForm = useFormsStore((s) => s.createForm);
+  const createFormFromTemplate = useFormsStore((s) => s.createFormFromTemplate);
   const updateForm = useFormsStore((s) => s.updateForm);
   const publishForm = useFormsStore((s) => s.publishForm);
   const archiveForm = useFormsStore((s) => s.archiveForm);
   const previewMode = useFormsStore((s) => s.previewMode);
   const setPreviewMode = useFormsStore((s) => s.setPreviewMode);
+  const showToast = useUIStore((s) => s.showToast);
+  const setActiveFormsPage = useUIStore((s) => s.setActiveFormsPage);
 
   const [previewing, setPreviewing] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
-
-  const activeForm = forms.find((f) => f.id === activeFormId);
 
   if (!activeForm) {
     return (
@@ -100,6 +103,14 @@ export default function FormBuilder() {
     }
   };
 
+  const handleCreateFromTemplate = async (): Promise<void> => {
+    const form = await createFormFromTemplate(activeForm.id, activeForm.name);
+    if (form) {
+      setActiveFormsPage('builder');
+      showToast(`Created form “${form.name}” from template.`, 'info');
+    }
+  };
+
   const renderTab = (): React.ReactNode => {
     switch (activeBuilderTab) {
       case 'build':
@@ -130,7 +141,7 @@ export default function FormBuilder() {
             onChange={(e) => void updateForm(activeForm.id, { name: e.target.value })}
             placeholder="Untitled form"
           />
-          <StatusBadge status={activeForm.status} />
+          <StatusBadge status={activeForm.status} variant={isTemplateMode ? 'template' : 'form'} />
         </div>
         <div className="forms-builder-toolbar-spacer" />
         <div className="forms-builder-toolbar-actions">
@@ -150,7 +161,15 @@ export default function FormBuilder() {
           >
             <Eye size={15} /> Preview
           </button>
-          {activeForm.status === 'published' ? (
+          {isTemplateMode ? (
+            <button
+              type="button"
+              className="forms-action-btn forms-action-btn--primary"
+              onClick={() => void handleCreateFromTemplate()}
+            >
+              <FilePlus2 size={15} /> Create form
+            </button>
+          ) : activeForm.status === 'published' ? (
             <button
               type="button"
               className="forms-action-btn"

@@ -55,7 +55,7 @@ export function SidebarHeader() {
           </button>
 
           {modelDropdownOpen && (
-            <div className="dropdown-menu absolute left-0 top-full mt-1 w-56 bg-white border border-border rounded-lg shadow-lg z-50 py-1">
+            <div className="dropdown-menu absolute left-0 top-full mt-1 w-56 bg-white border border-border rounded-lg z-50 py-1">
               {providerConfigs.length === 0 && (
                 <div className="px-3 py-2 text-xs text-text-secondary">{t('sidebar.noProviders')}</div>
               )}
@@ -97,7 +97,7 @@ export function SidebarHeader() {
           </button>
 
           {agentDropdownOpen && (
-            <div className="dropdown-menu absolute right-0 top-full mt-1 w-52 bg-white border border-border rounded-lg shadow-lg z-50 py-1">
+            <div className="dropdown-menu absolute right-0 top-full mt-1 w-52 bg-white border border-border rounded-lg z-50 py-1">
               {agents.map((agent) => (
                 <button
                   type="button"
@@ -145,7 +145,7 @@ export function SidebarHeader() {
           </button>
 
           {actionsDropdownOpen && (
-            <div className="dropdown-menu absolute right-0 top-full mt-1 w-48 bg-white border border-border rounded-lg shadow-lg z-50 py-1">
+            <div className="dropdown-menu absolute right-0 top-full mt-1 w-48 bg-white border border-border rounded-lg z-50 py-1">
               {quickPrompts.length === 0 ? (
                 <div className="px-3 py-2 text-xs text-text-secondary">{t('sidebar.noActions')}</div>
               ) : (

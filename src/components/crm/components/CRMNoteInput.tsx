@@ -1,5 +1,18 @@
 import { useRef, useState } from 'react';
-import { Send } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import {
+  ComposerCard,
+  ComposerIconButton,
+  ComposerLeft,
+  ComposerRoot,
+  ComposerRow,
+  ComposerSendButton,
+  ComposerTextarea,
+} from '../../ui/Composer';
+
+function maxHeightVw(): number {
+  return Math.round(window.innerWidth * 0.5);
+}
 
 interface CRMNoteInputProps {
   /** Called when the user submits a non-empty note. */
@@ -10,21 +23,46 @@ interface CRMNoteInputProps {
 }
 
 /**
- * Bottom note/comment input mirroring TaskCommentInput styling (composer-like
- * card, textarea grows, send button bottom-right). Scoped to `crm-note-input-*`.
+ * Bottom note composer — structural/visual match for TaskCommentInput
+ * inside `.tdp-comment-footer.panel-footer`.
  */
 export function CRMNoteInput({ onSubmit, placeholder = 'Add a note…', busy }: CRMNoteInputProps) {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const userHeightRef = useRef<number>(0);
 
   const handleInput = () => {
     const ta = textareaRef.current;
     if (!ta) return;
     ta.style.height = 'auto';
-    ta.style.height = `${Math.min(Math.max(ta.scrollHeight, 40), 180)}px`;
+    const max = maxHeightVw();
+    const base = Math.max(ta.scrollHeight, userHeightRef.current || 0);
+    ta.style.height = `${Math.min(Math.max(base, 44), max)}px`;
   };
 
-  const submit = async () => {
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const startY = e.clientY;
+    const startHeight = ta.offsetHeight;
+    const max = maxHeightVw();
+
+    const onMove = (ev: MouseEvent) => {
+      const next = Math.min(Math.max(startHeight - (ev.clientY - startY), 44), max);
+      userHeightRef.current = next;
+      ta.style.height = `${next}px`;
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  const handleSend = async () => {
     const trimmed = text.trim();
     if (!trimmed || busy) return;
     try {
@@ -33,24 +71,31 @@ export function CRMNoteInput({ onSubmit, placeholder = 'Add a note…', busy }: 
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
       }
+      userHeightRef.current = 0;
     } catch {
       // Keep the text so the user can retry; the store surfaces the toast.
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      void submit();
+      void handleSend();
     }
   };
 
+  const sendDisabled = busy || !text.trim();
+
   return (
-    <div className="crm-note-input">
-      <div className="crm-note-input-card">
-        <textarea
+    <ComposerRoot id="crm-note-input" className="composer-root--clear">
+      <ComposerCard id="crm-note-card">
+        <div
+          className="composer-resize-handle"
+          onMouseDown={handleResizeStart}
+          title="Drag up to expand"
+        />
+        <ComposerTextarea
           ref={textareaRef}
-          className="crm-note-input-textarea"
           value={text}
           onChange={(e) => {
             setText(e.target.value);
@@ -58,22 +103,28 @@ export function CRMNoteInput({ onSubmit, placeholder = 'Add a note…', busy }: 
           }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
+          title="Note input"
           rows={1}
           disabled={busy}
+          style={{ height: 'fit-content' }}
         />
-        <div className="crm-note-input-row">
-          <span className="crm-note-input-hint subtle">⌘/Ctrl + Enter to save</span>
-          <button
-            type="button"
-            className="crm-note-input-send"
-            onClick={() => void submit()}
-            disabled={busy || !text.trim()}
-            title="Save note"
-          >
-            <Send size={13} />
-          </button>
-        </div>
-      </div>
-    </div>
+        <ComposerRow className="task-comment-bottom-row" style={{ height: 'fit-content' }}>
+          <ComposerLeft className="task-comment-bottom-col task-comment-bottom-col--left" style={{ height: 'fit-content' }}>
+            <ComposerIconButton
+              onClick={() => fileInputRef.current?.click()}
+              className="composer-attach-button"
+              title="Attach file"
+              disabled={busy}
+            >
+              <Plus size={14} />
+            </ComposerIconButton>
+            <input ref={fileInputRef} type="file" style={{ display: 'none' }} />
+          </ComposerLeft>
+          <div className="task-comment-bottom-col task-comment-bottom-col--send">
+            <ComposerSendButton onClick={() => void handleSend()} disabled={sendDisabled} title="Save note" />
+          </div>
+        </ComposerRow>
+      </ComposerCard>
+    </ComposerRoot>
   );
 }

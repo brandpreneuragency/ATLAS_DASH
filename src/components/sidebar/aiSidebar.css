@@ -18,7 +18,6 @@
   padding: 0 4px 4px;
   border-radius: 0;
   border-color: var(--c-border-1);
-  box-shadow: none;
   overflow: visible;
 }
 .composer-attachments {
@@ -187,7 +186,6 @@
   padding: 0 4px 4px;
   border-radius: 0;
   border-color: var(--c-border-1);
-  box-shadow: none;
   overflow: visible;
 }
 :root .composer-attachments {

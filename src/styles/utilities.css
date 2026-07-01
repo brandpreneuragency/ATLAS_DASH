@@ -249,3 +249,35 @@
     display: none;
   }
 }
+
+/* =========================================================
+ * Vertical scrollbars — global token contract
+ * Track: transparent | Thumb: --c-background-3 | Hover: --c-background-4
+ * Width: 3px (WebKit). Firefox uses scrollbar-width: thin.
+ * Intentionally hidden scrollbars (.tabs-row, .forms-builder-tabs)
+ * override with scrollbar-width: none / display: none.
+ * ========================================================= */
+
+*,
+*::before,
+*::after {
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-background-3) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--c-background-3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--c-background-4);
+}

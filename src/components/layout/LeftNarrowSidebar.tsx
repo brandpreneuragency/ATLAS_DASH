@@ -1,37 +1,27 @@
-import { ClipboardList, FileText, LayoutTemplate, PanelLeft, Sparkles, Users, SquarePen, Settings as SettingsIcon } from 'lucide-react';
+import { ClipboardList, FileText, PanelLeft, Sparkles, Users, Settings as SettingsIcon } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import { useTheme } from '../../hooks/useTheme';
 
 export function LeftNarrowSidebar() {
   const {
     taskMode,
-    pageMode,
-    pagePanelOpen,
     setTaskMode,
-    setPageMode,
-    setPagePanelOpen,
     fileExplorerOpen,
     setFileExplorerOpen,
     taskListOpen,
     setTaskListOpen,
     crmMode,
-    formsMode,
     setCrmMode,
-    setFormsMode,
     setActiveCRMPage,
-    setActiveFormsPage,
     activeView,
     openSettings,
+    setActiveView,
   } = useUIStore();
   const { isCyberpunk, toggleTheme } = useTheme();
 
-  const leftPanelOpen = pageMode ? pagePanelOpen : (taskMode ? taskListOpen : fileExplorerOpen);
+  const leftPanelOpen = taskMode ? taskListOpen : fileExplorerOpen;
 
   const toggleLeftPanel = () => {
-    if (pageMode) {
-      setPagePanelOpen(!pagePanelOpen);
-      return;
-    }
     if (taskMode) {
       setTaskListOpen(!taskListOpen);
       return;
@@ -41,7 +31,7 @@ export function LeftNarrowSidebar() {
 
   return (
     <div id="nav-bar" className="nav-bar">
-      <div className="nav-section" style={{ paddingTop: 0, gap: 8, borderTop: 'none' }}>
+      <div className="nav-section" style={{ paddingTop: 2, paddingBottom: 2, gap: 0, borderTop: 'none' }}>
         <button
           id="nav-btn-toggle-panel"
           type="button"
@@ -53,17 +43,16 @@ export function LeftNarrowSidebar() {
         </button>
       </div>
 
-      <div className="nav-section" style={{ width: 'fit-content', gap: 12, paddingTop: 12, paddingBottom: 12 }}>
+      <div className="nav-section" style={{ width: 'fit-content', gap: 6, paddingTop: 10, paddingBottom: 10, borderTop: 'none' }}>
         <button
           id="nav-btn-documents"
           type="button"
           onClick={() => {
-            setPagePanelOpen(true);
             setTaskMode(false);
             if (!fileExplorerOpen) setFileExplorerOpen(true);
           }}
           title="Documents"
-          className={`mode-btn${!taskMode && !pageMode && !crmMode && !formsMode ? ' mode-btn--on' : ''}`}
+          className={`mode-btn${!taskMode && !crmMode && activeView !== 'settings' ? ' mode-btn--on' : ''}`}
         >
           <FileText size={15} />
         </button>
@@ -72,7 +61,6 @@ export function LeftNarrowSidebar() {
           id="nav-btn-tasks"
           type="button"
           onClick={() => {
-            setPagePanelOpen(true);
             setTaskMode(true);
             if (!taskListOpen) setTaskListOpen(true);
           }}
@@ -83,23 +71,10 @@ export function LeftNarrowSidebar() {
         </button>
 
         <button
-          id="nav-btn-page"
-          type="button"
-          onClick={() => {
-            setPagePanelOpen(true);
-            setPageMode(true);
-          }}
-          title="Page Template"
-          className={`mode-btn${pageMode ? ' mode-btn--on' : ''}`}
-        >
-          <LayoutTemplate size={15} />
-        </button>
-
-        <button
           id="nav-btn-crm"
           type="button"
           onClick={() => {
-            setActiveCRMPage('dashboard');
+            setActiveCRMPage('leads');
             setCrmMode(true);
           }}
           title="CRM"
@@ -109,36 +84,25 @@ export function LeftNarrowSidebar() {
         </button>
 
         <button
-          id="nav-btn-forms"
-          type="button"
-          onClick={() => {
-            setActiveFormsPage('dashboard');
-            setFormsMode(true);
-          }}
-          title="Forms"
-          className={`mode-btn${formsMode ? ' mode-btn--on' : ''}`}
-        >
-          <SquarePen size={15} />
-        </button>
-      </div>
-
-      <div className="nav-section" style={{ justifyContent: 'flex-end', paddingBottom: 0, gap: 8 }}>
-        <button
           id="nav-btn-settings"
           type="button"
           onClick={() => {
             setTaskMode(false);
-            setPageMode(false);
             setCrmMode(false);
-            setFormsMode(false);
-            openSettings();
+            if (!taskMode && !crmMode && activeView === 'settings') {
+              setActiveView('document');
+            } else {
+              openSettings();
+            }
           }}
           title="Settings"
-          className={`mode-btn${!taskMode && !pageMode && !crmMode && !formsMode && activeView === 'settings' ? ' mode-btn--on' : ''}`}
+          className={`mode-btn${!taskMode && !crmMode && activeView === 'settings' ? ' mode-btn--on' : ''}`}
         >
           <SettingsIcon size={15} />
         </button>
+      </div>
 
+      <div className="nav-section" style={{ justifyContent: 'flex-end', paddingBottom: 0, gap: 8 }}>
         <button
           id="nav-btn-theme"
           type="button"

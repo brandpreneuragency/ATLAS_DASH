@@ -3,7 +3,7 @@
 // (`src/index.css` + `src/styles/tokens.css`); this file only declares which
 // tokens are editable and what editor to use for each.
 
-export type TokenEditorType = 'color' | 'text' | 'font' | 'shadow';
+export type TokenEditorType = 'color' | 'text' | 'font';
 
 export interface TokenDescriptor {
   name: string;
@@ -96,17 +96,6 @@ export const THEME_TOKEN_CATEGORIES: TokenCategory[] = [
       { name: '--radius-xl', label: 'radius-xl', type: 'text' },
       { name: '--radius-2xl', label: 'radius-2xl', type: 'text' },
       { name: '--radius-full', label: 'radius-full', type: 'text' },
-    ],
-  },
-  {
-    id: 'shadow',
-    label: 'Shadows',
-    hint: 'Box-shadow expressions.',
-    tokens: [
-      { name: '--shadow-sm', label: 'shadow-sm', type: 'shadow' },
-      { name: '--shadow-lg', label: 'shadow-lg', type: 'shadow' },
-      { name: '--shadow-2xl', label: 'shadow-2xl', type: 'shadow' },
-      { name: '--shadow-subtask-card', label: 'shadow-subtask-card', type: 'shadow' },
     ],
   },
 ];

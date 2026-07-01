@@ -1,13 +1,13 @@
-import { ChevronUp, ChevronDown, Trash2, Plus } from 'lucide-react';
+import { ChevronUp, ChevronDown, Trash2, Plus, ChevronRight } from 'lucide-react';
 import type { LeadForm, LeadFormField, LeadFormStep } from '../../../../types/forms';
 import { getFieldIcon, getFieldLabel } from '../fieldTypes';
 import { useFormsStore } from '../../../../stores/formsStore';
+import { FieldDetailsPanel } from './FieldDetailsPanel';
 
 interface FormCanvasProps {
   form: LeadForm;
-  selectedFieldId: string | null;
-  onSelectField: (id: string | null) => void;
-  onOpenInspector: () => void;
+  expandedFieldId: string | null;
+  onToggleField: (id: string | null) => void;
 }
 
 const stepTitle = (step: LeadFormStep | undefined, idx: number): string =>
@@ -24,8 +24,6 @@ function groupByStep(
   steps.forEach((s) => byId.set(s.id, s));
   const orderedSteps = [...steps].sort((a, b) => a.order - b.order);
   const groups: Array<{ step: LeadFormStep | null; fields: LeadFormField[] }> = [];
-  // Fields whose stepId matches a known step go under that step.
-  // Fields with no stepId (or unknown stepId) form an implicit first group.
   const unassigned = sorted.filter((f) => !f.stepId || !byId.has(f.stepId));
   if (unassigned.length > 0) groups.push({ step: null, fields: unassigned });
   for (const step of orderedSteps) {
@@ -35,7 +33,7 @@ function groupByStep(
   return groups;
 }
 
-export function FormCanvas({ form, selectedFieldId, onSelectField, onOpenInspector }: FormCanvasProps) {
+export function FormCanvas({ form, expandedFieldId, onToggleField }: FormCanvasProps) {
   const reorderFields = useFormsStore((s) => s.reorderFields);
   const removeField = useFormsStore((s) => s.removeField);
 
@@ -54,12 +52,11 @@ export function FormCanvas({ form, selectedFieldId, onSelectField, onOpenInspect
 
   const handleRemove = (fieldId: string) => {
     void removeField(form.id, fieldId);
-    if (selectedFieldId === fieldId) onSelectField(null);
+    if (expandedFieldId === fieldId) onToggleField(null);
   };
 
-  const handleSelect = (fieldId: string) => {
-    onSelectField(fieldId);
-    onOpenInspector();
+  const handleToggle = (fieldId: string) => {
+    onToggleField(expandedFieldId === fieldId ? null : fieldId);
   };
 
   return (
@@ -88,77 +85,95 @@ export function FormCanvas({ form, selectedFieldId, onSelectField, onOpenInspect
                 )}
                 {group.fields.map((field) => {
                   const Icon = getFieldIcon(field.type);
-                  const isActive = field.id === selectedFieldId;
+                  const isExpanded = field.id === expandedFieldId;
                   const isDisabledInEmbed = Boolean(field.disabledInPublishedEmbed);
                   return (
                     <div
                       key={field.id}
-                      className={
-                        `forms-builder-field-card${isActive ? ' forms-builder-field-card--active' : ''}` +
-                        `${isDisabledInEmbed ? ' forms-builder-field-card--disabled' : ''}`
-                      }
-                      onClick={() => handleSelect(field.id)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleSelect(field.id);
-                        }
-                      }}
+                      className={`forms-builder-field-wrap${isExpanded ? ' forms-builder-field-wrap--expanded' : ''}`}
                     >
-                      <span className="forms-builder-field-card-icon">
-                        <Icon size={15} />
-                      </span>
-                      <div className="forms-builder-field-card-body">
-                        <span className="forms-builder-field-card-label">
-                          {field.label || '(untitled)'}
-                          {field.required ? (
-                            <span className="forms-builder-field-card-required" aria-label="required">*</span>
-                          ) : null}
+                      <div
+                        className={
+                          `forms-builder-field-card${isExpanded ? ' forms-builder-field-card--active' : ''}` +
+                          `${isDisabledInEmbed ? ' forms-builder-field-card--disabled' : ''}`
+                        }
+                        onClick={() => handleToggle(field.id)}
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={isExpanded}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleToggle(field.id);
+                          }
+                        }}
+                      >
+                        <span
+                          className={`forms-builder-field-card-chevron${isExpanded ? ' forms-builder-field-card-chevron--open' : ''}`}
+                          aria-hidden="true"
+                        >
+                          <ChevronRight size={14} />
                         </span>
-                        <span className="forms-builder-field-card-meta">
-                          <span>{getFieldLabel(field.type)}</span>
-                          <span className="forms-builder-field-card-name">name: {field.name}</span>
-                          {field.placeholder ? <span>placeholder: “{field.placeholder}”</span> : null}
-                          {isDisabledInEmbed ? <span>disabled in embed</span> : null}
+                        <span className="forms-builder-field-card-icon">
+                          <Icon size={15} />
                         </span>
+                        <div className="forms-builder-field-card-body">
+                          <span className="forms-builder-field-card-label">
+                            {field.label || '(untitled)'}
+                            {field.required ? (
+                              <span className="forms-builder-field-card-required" aria-label="required">*</span>
+                            ) : null}
+                          </span>
+                          <span className="forms-builder-field-card-meta">
+                            <span>{getFieldLabel(field.type)}</span>
+                            <span className="forms-builder-field-card-name">name: {field.name}</span>
+                            {field.placeholder ? <span>placeholder: “{field.placeholder}”</span> : null}
+                            {isDisabledInEmbed ? <span>disabled in embed</span> : null}
+                          </span>
+                        </div>
+                        <div className="forms-builder-field-card-actions">
+                          <button
+                            type="button"
+                            className="forms-builder-field-card-btn"
+                            title="Move up"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              move(field.id, -1);
+                            }}
+                          >
+                            <ChevronUp size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="forms-builder-field-card-btn"
+                            title="Move down"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              move(field.id, 1);
+                            }}
+                          >
+                            <ChevronDown size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="forms-builder-field-card-btn forms-builder-field-card-btn--danger"
+                            title="Remove field"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemove(field.id);
+                            }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
-                      <div className="forms-builder-field-card-actions">
-                        <button
-                          type="button"
-                          className="forms-builder-field-card-btn"
-                          title="Move up"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            move(field.id, -1);
-                          }}
-                        >
-                          <ChevronUp size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          className="forms-builder-field-card-btn"
-                          title="Move down"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            move(field.id, 1);
-                          }}
-                        >
-                          <ChevronDown size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          className="forms-builder-field-card-btn forms-builder-field-card-btn--danger"
-                          title="Remove field"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemove(field.id);
-                          }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                      {isExpanded && (
+                        <FieldDetailsPanel
+                          form={form}
+                          field={field}
+                          onRemove={() => onToggleField(null)}
+                        />
+                      )}
                     </div>
                   );
                 })}

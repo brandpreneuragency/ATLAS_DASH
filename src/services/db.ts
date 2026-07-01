@@ -161,7 +161,24 @@ class ZenEditorDB extends Dexie {
       projects: 'id, name',
       taskComments: 'id, taskId, createdAt',
       taskAIChangeBatches: 'id, taskId, createdAt, expiresAt',
-      chatThreads: 'id, mode, updatedAt, documentId, taskId',
+      chatThreads: 'id, mode, updatedAt, documentId, taskId, settingsTab',
+    });
+    // v11: add a `settingsTab` index so each Settings sub-tab can keep
+    // an independent thread list.
+    this.version(11).stores({
+      documents: 'id, title, updatedAt, order',
+      chatMessages: 'id, threadId, mode, agentId, timestamp, settingsTab',
+      agents: 'id, name, isDefault, scope',
+      providerConfigs: 'id, provider, isActive',
+      settings: 'key',
+      quickPrompts: 'id, createdAt, scope, groupId, order',
+      actionGroups: 'id, scope, order',
+      fileHandles: 'key',
+      tasks: 'id, title, updatedAt, order, projectId, status, parentId',
+      projects: 'id, name',
+      taskComments: 'id, taskId, createdAt',
+      taskAIChangeBatches: 'id, taskId, createdAt, expiresAt',
+      chatThreads: 'id, mode, updatedAt, documentId, taskId, settingsTab',
     });
   }
 }

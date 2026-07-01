@@ -84,7 +84,6 @@ function viewportStyle(mode: EmbedPreviewMode): CSSProperties {
     background: '#ffffff',
     borderRadius: 10,
     border: '1px solid rgba(15, 23, 42, 0.12)',
-    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06)',
     overflow: 'hidden',
     transition: 'width 200ms ease, min-height 200ms ease',
   };

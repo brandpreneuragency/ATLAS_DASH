@@ -1,4 +1,4 @@
-/* Settings document — sub-tab strip + shared section styling.
+/* Settings document â€” sub-tab strip + shared section styling.
    New styles only (no edits to index.css / tokens.css). Uses existing tokens. */
 
 .settings-document {
@@ -11,36 +11,12 @@
   overflow: hidden;
 }
 
-/* Fixed, non-closable sub-tab strip. */
-.settings-subtabs {
+.settings-document-body {
   display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--c-border-1);
-  background: var(--c-background-1);
-  flex-shrink: 0;
-}
-.settings-subtab {
-  appearance: none;
-  border: none;
-  background: transparent;
-  color: var(--c-text-2);
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  padding: 8px 14px;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  transition: background-color 0.12s, color 0.12s;
-}
-.settings-subtab:hover { background: var(--c-background-3); color: var(--c-text-1); }
-.settings-subtab--active {
-  color: var(--c-accent-center-panel);
-  background: var(--c-background-3);
-  font-weight: 600;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .settings-panels { height: 100%; min-height: 0; }
@@ -72,7 +48,7 @@
   gap: 8px;
   width: 100%;
   text-align: left;
-  padding: 8px 10px;
+  padding: 12px;
   border-radius: var(--radius-md);
   background: transparent;
   border: 1px solid transparent;
@@ -81,12 +57,42 @@
   font-size: var(--fs-sm);
 }
 .settings-list-item:hover { background: var(--c-background-3); }
-.settings-list-item--active {
-  background: var(--c-background-4);
-  border-color: var(--c-accent-center-panel);
+.settings-list-item--active,
+.settings-list-item--active:hover {
+  background: var(--c-background-2);
+  border-color: transparent;
+  border-left: none;
+  border-image: none;
 }
 .settings-list-item .settings-list-item-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .settings-list-item .settings-list-item-meta { font-size: var(--fs-xs); color: var(--c-text-3); }
+.settings-list-item--placeholder { padding: 8px 12px; color: var(--c-text-3); }
+
+/* Provider groups in the left rail. */
+.settings-provider-group { margin-top: 4px; }
+.settings-provider-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 10px 12px 4px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--c-text-3);
+}
+.settings-provider-group-count {
+  font-weight: 400;
+  font-size: var(--fs-xs);
+  color: var(--c-text-3);
+  opacity: 0.7;
+}
+.settings-provider-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 
 /* Scope toggle (writer/task) used by Actions + Agents. */
 .settings-scope-toggle {
@@ -219,7 +225,6 @@
   background: var(--c-background-1);
   border: 1px solid var(--c-border-1);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
   padding: 4px;
 }
 .settings-context-menu button {

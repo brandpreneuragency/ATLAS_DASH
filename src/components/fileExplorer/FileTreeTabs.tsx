@@ -35,7 +35,6 @@ export function FileTreeTabs() {
           onClick={openFolder}
           title={t('explorer.openFolder')}
           className="tbar-btn"
-          style={{ borderRadius: 0 }}
         >
           <Plus size={14} />
         </button>
@@ -62,10 +61,8 @@ export function FileTreeTabs() {
             height: '100%',
             border: 'none',
             borderRadius: 0,
-            background: 'transparent',
             color: 'var(--c-text-1)',
             fontSize: 'var(--fs-base)',
-            padding: 0,
             cursor: 'pointer',
           }}
           value={activeFolderId ?? ''}

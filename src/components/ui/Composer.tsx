@@ -32,7 +32,7 @@ export function ComposerCard({
   className?: string;
 }) {
   return (
-    <div id={id} className={cx('composer-card card flex flex-col', className)} style={{ boxShadow: 'none', height: 'fit-content', paddingTop: 0 }}>
+    <div id={id} className={cx('composer-card card flex flex-col', className)} style={{ height: 'fit-content', paddingTop: 0 }}>
       {children}
     </div>
   );

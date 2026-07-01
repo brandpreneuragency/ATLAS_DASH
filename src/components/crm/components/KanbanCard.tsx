@@ -1,5 +1,6 @@
-import { Building2, CalendarDays, GripVertical, User } from 'lucide-react';
-import type { CRMDeal, CRMDealStage } from '../../../types/crm';
+import { useState } from 'react';
+import { Building2, CalendarDays, GripVertical, Pencil, User } from 'lucide-react';
+import type { CRMDeal } from '../../../types/crm';
 import type { CRMContact, CRMCompany } from '../../../types/crm';
 import { TagChips } from './TagChips';
 
@@ -9,10 +10,8 @@ interface KanbanCardProps {
   contact?: CRMContact;
   /** Resolved company (used to show the company name). */
   company?: CRMCompany;
-  /** Stage the card currently sits in (used for the move menu). */
-  stageKeys: CRMDealStage[];
-  onMove?: (dealId: string, toStage: CRMDealStage) => void;
   onClick?: (dealId: string) => void;
+  onEdit?: (dealId: string) => void;
   isActive?: boolean;
 }
 
@@ -30,15 +29,29 @@ function formatDate(iso?: string): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-export function KanbanCard({ deal, contact, company, stageKeys, onMove, onClick, isActive }: KanbanCardProps) {
+export function KanbanCard({ deal, contact, company, onClick, onEdit, isActive }: KanbanCardProps) {
   const companyLabel = company?.name ?? deal.companyId ?? '—';
   const contactLabel = contact ? `${contact.firstName} ${contact.lastName}` : deal.contactId ?? '—';
-  const otherStages = stageKeys.filter((s) => s !== deal.stage);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', deal.id);
+    e.dataTransfer.setData('application/x-crm-deal', deal.id);
+    setIsDragging(true);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
 
   return (
     <div
-      className={`crm-kanban-card${isActive ? ' crm-kanban-card--active' : ''}`}
+      className={`crm-kanban-card${isActive ? ' crm-kanban-card--active' : ''}${isDragging ? ' crm-kanban-card--dragging' : ''}`}
       onClick={() => onClick?.(deal.id)}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      draggable
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
     >
@@ -47,25 +60,20 @@ export function KanbanCard({ deal, contact, company, stageKeys, onMove, onClick,
       </div>
       <div className="crm-kanban-card-header">
         <span className="crm-kanban-card-title">{deal.title}</span>
-        {onMove && (
-          <div className="crm-kanban-card-move">
-            <select
-              aria-label="Move deal to stage"
-              value={deal.stage}
-              onChange={(e) => {
-                e.stopPropagation();
-                onMove(deal.id, e.target.value as CRMDealStage);
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <option value={deal.stage}>{deal.stage}</option>
-              {otherStages.map((s) => (
-                <option key={s} value={s}>
-                  → {s}
-                </option>
-              ))}
-            </select>
-          </div>
+        {onEdit && (
+          <button
+            type="button"
+            className="crm-kanban-card-edit"
+            title="Edit lead"
+            aria-label="Edit lead"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(deal.id);
+            }}
+          >
+            <Pencil size={12} />
+          </button>
         )}
       </div>
       <div className="crm-kanban-card-value">{formatValue(deal.value, deal.currency)}</div>

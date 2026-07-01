@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Plus, FolderPlus, Trash2, GripVertical, Folder, FolderOpen } from 'lucide-react';
 import { useActionsStore } from '../../stores/actionsStore';
 import { SettingsPanels } from './SettingsPanels';
@@ -8,7 +9,13 @@ interface DragData { actionId: string }
 interface DropTarget { groupId: string | null; index: number }
 interface ContextMenu { x: number; y: number; actionId: string }
 
-export function ActionsSection() {
+interface ActionsSectionProps {
+  rightHeader?: ReactNode;
+  rightMain?: ReactNode;
+  rightFooter?: ReactNode;
+}
+
+export function ActionsSection({ rightHeader, rightMain, rightFooter }: ActionsSectionProps = {}) {
   const { scope, actions, groups, setScope, reload, saveAction, deleteAction, createGroup, renameGroup, deleteGroup, moveAction, reorderActions } = useActionsStore();
 
   useEffect(() => { void reload(); }, [reload, scope]);
@@ -168,6 +175,9 @@ export function ActionsSection() {
         leftMain={leftMain}
         centerHeader={<div className="settings-list-head"><h3>{selected ? 'Edit action' : 'Actions'}</h3></div>}
         centerMain={centerMain}
+        rightHeader={rightHeader}
+        rightMain={rightMain}
+        rightFooter={rightFooter}
       />
       {menu && (
         <div

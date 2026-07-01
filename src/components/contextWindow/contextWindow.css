@@ -77,7 +77,6 @@
   border: 1px solid var(--c-border-1);
   border-radius: 10px;
   background: color-mix(in srgb, var(--c-background-1) 94%, white 6%);
-  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -116,9 +115,8 @@
 
 .context-window-popover-card {
   border: 1px solid var(--c-border-1);
-  border-radius: 12px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--c-background-1) 94%, white 6%);
-  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 

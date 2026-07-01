@@ -84,7 +84,7 @@
   justify-content: center;
   width: var(--div-h-1);
   height: var(--div-h-1);
-  border-radius: 6px;
+  border-radius: 8px;
   border: none;
   background: transparent;
   color: var(--c-text-2);
@@ -92,7 +92,7 @@
   transition: background-color 0.15s, color 0.15s;
 }
 .file-viewer-close-btn:hover {
-  background: var(--c-background-4);
+  background: var(--c-background-2);
   color: var(--c-text-1);
 }
 
@@ -373,7 +373,7 @@
   transition: background-color 0.15s, color 0.15s;
 }
 :root .file-viewer-close-btn:hover {
-  background: var(--c-background-4);
+  background: var(--c-background-2);
   color: var(--c-text-1);
 }
 :root .file-viewer-content {

@@ -304,7 +304,6 @@ function CommentBubble({
           style={{
             border: '1px solid var(--c-background-2)',
             borderRadius: 8,
-            boxShadow: 'rgba(0, 0, 0, 0.05) 0px 0px 15px 0px',
           }}
         >
           {comment.text && (

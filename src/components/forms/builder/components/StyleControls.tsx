@@ -271,37 +271,6 @@ export function StyleControls({ form }: StyleControlsProps) {
         </div>
       </section>
 
-      {/* ---------- Shadows ---------- */}
-      <section className="forms-builder-style-group">
-        <h4 className="forms-builder-style-group-title">Shadows</h4>
-        <div className="forms-builder-style-row">
-          <label className="forms-builder-style-label" htmlFor="tabs-style-fieldShadow">
-            Field shadow
-          </label>
-          <input
-            id="tabs-style-fieldShadow"
-            className="forms-builder-style-input"
-            type="text"
-            value={s.fieldShadow ?? ''}
-            placeholder="0 1px 2px rgba(0,0,0,0.08)"
-            onChange={(e) => updateStyle('fieldShadow', e.target.value)}
-          />
-        </div>
-        <div className="forms-builder-style-row">
-          <label className="forms-builder-style-label" htmlFor="tabs-style-cardShadow">
-            Card shadow
-          </label>
-          <input
-            id="tabs-style-cardShadow"
-            className="forms-builder-style-input"
-            type="text"
-            value={s.cardShadow ?? ''}
-            placeholder="0 8px 24px rgba(0,0,0,0.12)"
-            onChange={(e) => updateStyle('cardShadow', e.target.value)}
-          />
-        </div>
-      </section>
-
       {/* ---------- Buttons ---------- */}
       <section className="forms-builder-style-group">
         <h4 className="forms-builder-style-group-title">Buttons</h4>

@@ -21,10 +21,14 @@ interface SelectionState {
 
 export type SidebarTab = 'chat' | 'actions' | 'characters' | 'models';
 
-/** Active sub-page within the CRM module (owned by uiStore so the shell can switch panels). */
-export type CRMPage = 'dashboard' | 'leads' | 'contacts' | 'companies' | 'pipeline' | 'activities' | 'settings';
+/** Active sub-page within the CRM module (owned by uiStore so the shell can switch panels).
+ *  'forms' hosts the merged Forms sub-module (list/builder/submissions/templates/settings),
+ *  whose exact page is tracked by `activeFormsPage`. */
+export type CRMPage = 'dashboard' | 'leads' | 'contacts' | 'companies' | 'pipeline' | 'activities' | 'forms' | 'settings';
 /** Active sub-page within the Forms module (owned by uiStore so the shell can switch panels). */
 export type FormsPage = 'dashboard' | 'list' | 'builder' | 'submissions' | 'templates' | 'settings';
+/** Active view within the Task module list panel (owned by uiStore so the shell header can switch views). */
+export type TaskPage = 'list' | 'calendar' | 'projects';
 
 /** Sub-tabs rendered inside the Settings document. Fixed and non-closable. */
 export type SettingsSubTab = 'models' | 'actions' | 'appearance' | 'agents';
@@ -65,20 +69,18 @@ interface UIStore {
   language: 'en' | 'tr';
 
   taskMode: boolean;
-  pageMode: boolean;
-  pagePanelOpen: boolean;
   activeTaskId: string | null;
   taskListOpen: boolean;
   subtasksOpen: boolean;
 
-  /** CRM module active — mutually exclusive with task/page/forms modes. */
+  /** CRM module active — mutually exclusive with task mode. Hosts the merged Forms sub-module via `activeCRMPage === 'forms'`. */
   crmMode: boolean;
-  /** Forms module active — mutually exclusive with task/page/crm modes. */
-  formsMode: boolean;
   /** Active sub-page within the CRM module. */
   activeCRMPage: CRMPage;
   /** Active sub-page within the Forms module. */
   activeFormsPage: FormsPage;
+  /** Active view within the Task module list panel. */
+  activeTaskPage: TaskPage;
 
   /** Which doc-mode tab is active (normal document vs the special Settings doc). */
   activeView: DocActiveView;
@@ -100,6 +102,8 @@ interface UIStore {
   fileViewerPreviousSidebarWidth: number;
 
   aiSidebarOpen: boolean;
+  /** When panels are swapped, the center panel sits on the right; this controls its visibility. */
+  centerPanelOpen: boolean;
   contextWindowOpen: boolean;
   contextWindowCollapsed: boolean;
 
@@ -127,12 +131,10 @@ interface UIStore {
   setExpandedPaths: (paths: string[]) => void;
   setSelectedTreePath: (path: string | null) => void;
   setTaskMode: (v: boolean) => void;
-  setPageMode: (v: boolean) => void;
-  setPagePanelOpen: (v: boolean) => void;
   setCrmMode: (v: boolean) => void;
-  setFormsMode: (v: boolean) => void;
   setActiveCRMPage: (p: CRMPage) => void;
   setActiveFormsPage: (p: FormsPage) => void;
+  setActiveTaskPage: (p: TaskPage) => void;
   setActiveView: (v: DocActiveView) => void;
   setActiveSettingsSubTab: (tab: SettingsSubTab) => void;
   /** Switch to the Settings document tab, optionally targeting a sub-tab. */
@@ -147,9 +149,39 @@ interface UIStore {
   closeFileViewer: () => void;
   setFileViewerFile: (file: FileViewerItem | null) => void;
   setAiSidebarOpen: (v: boolean) => void;
+  setCenterPanelOpen: (v: boolean) => void;
+  /** Toggle whatever panel(s) are on the right side of the main row (detail or center when swapped). */
+  toggleRightPanel: () => void;
   setContextWindowOpen: (v: boolean) => void;
   setContextWindowCollapsed: (v: boolean) => void;
   loadUISettings: () => Promise<void>;
+}
+
+function isMainRowSwapped(state: Pick<UIStore, 'panelsSwapped' | 'aiSidebarOpen' | 'fileViewerOpen' | 'crmMode' | 'taskMode' | 'activeView'>): boolean {
+  if (state.taskMode || state.crmMode) return false;
+
+  const settingsActive = state.activeView === 'settings';
+  const showSidebarPanel = !settingsActive && (state.aiSidebarOpen || state.fileViewerOpen);
+  return state.panelsSwapped && showSidebarPanel;
+}
+
+/** Panel swap (AI on left, editor on right) is doc-mode only. */
+export function selectCanSwapPanels(state: Pick<UIStore, 'crmMode' | 'taskMode'>): boolean {
+  return !state.taskMode && !state.crmMode;
+}
+
+export { isMainRowSwapped as selectIsMainRowSwapped };
+
+/** True when the panel occupying the right side of #main-row is visible. */
+export function selectIsRightPanelOpen(state: Pick<UIStore, 'panelsSwapped' | 'aiSidebarOpen' | 'fileViewerOpen' | 'centerPanelOpen' | 'crmMode' | 'taskMode' | 'activeView'>): boolean {
+  const crmOrForms = state.crmMode;
+  const settingsActive = !crmOrForms && !state.taskMode && state.activeView === 'settings';
+  if (settingsActive) return false;
+
+  if (isMainRowSwapped(state)) {
+    return state.centerPanelOpen;
+  }
+  return state.aiSidebarOpen || state.fileViewerOpen;
 }
 
 export const useUIStore = create<UIStore>((set, get) => ({
@@ -188,15 +220,13 @@ export const useUIStore = create<UIStore>((set, get) => ({
   editorFontSize: 12,
   language: 'en',
   taskMode: false,
-  pageMode: false,
-  pagePanelOpen: true,
   activeTaskId: null,
   taskListOpen: true,
   subtasksOpen: true,
   crmMode: false,
-  formsMode: false,
-  activeCRMPage: 'dashboard',
-  activeFormsPage: 'dashboard',
+  activeCRMPage: 'leads',
+  activeFormsPage: 'list',
+  activeTaskPage: 'list',
   activeView: 'document',
   activeSettingsSubTab: 'models',
   splitEditorWidth: 30,
@@ -211,6 +241,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
   fileViewerPreviousSidebarWidth: 33,
 
   aiSidebarOpen: true,
+  centerPanelOpen: true,
   contextWindowOpen: false,
   contextWindowCollapsed: true,
 
@@ -293,56 +324,36 @@ export const useUIStore = create<UIStore>((set, get) => ({
   setTaskMode: (v) => {
     // Entering/leaving a non-doc mode always returns to the document view
     // (the Settings doc only lives in pure doc mode).
-    set({ taskMode: v, pageMode: false, crmMode: false, formsMode: false, activeView: 'document' });
+    set({ taskMode: v, crmMode: false, activeView: 'document' });
     db.settings.put({ key: 'taskMode', value: v });
-    db.settings.put({ key: 'pageMode', value: false });
     db.settings.put({ key: 'crmMode', value: false });
-    db.settings.put({ key: 'formsMode', value: false });
-  },
-
-  setPageMode: (v) => {
-    set({
-      taskMode: false,
-      pageMode: v,
-      crmMode: false,
-      formsMode: false,
-      activeView: 'document',
-    });
-    db.settings.put({ key: 'taskMode', value: false });
-    db.settings.put({ key: 'pageMode', value: v });
-    db.settings.put({ key: 'crmMode', value: false });
-    db.settings.put({ key: 'formsMode', value: false });
-  },
-
-  setPagePanelOpen: (v) => {
-    set({ pagePanelOpen: v });
-    db.settings.put({ key: 'pagePanelOpen', value: v });
   },
 
   setCrmMode: (v) => {
-    set({ crmMode: v, taskMode: false, pageMode: false, formsMode: false, activeView: 'document' });
+    set({ crmMode: v, taskMode: false, activeView: 'document' });
     db.settings.put({ key: 'crmMode', value: v });
     db.settings.put({ key: 'taskMode', value: false });
-    db.settings.put({ key: 'pageMode', value: false });
-    db.settings.put({ key: 'formsMode', value: false });
-  },
-
-  setFormsMode: (v) => {
-    set({ formsMode: v, taskMode: false, pageMode: false, crmMode: false, activeView: 'document' });
-    db.settings.put({ key: 'formsMode', value: v });
-    db.settings.put({ key: 'taskMode', value: false });
-    db.settings.put({ key: 'pageMode', value: false });
-    db.settings.put({ key: 'crmMode', value: false });
   },
 
   setActiveCRMPage: (p) => {
-    set({ activeCRMPage: p });
-    db.settings.put({ key: 'activeCRMPage', value: p });
+    const legacyPages = new Set<CRMPage>(['contacts', 'companies', 'activities']);
+    const resolved: CRMPage = legacyPages.has(p) ? 'leads' : p;
+    void import('./crmStore').then(({ useCrmStore }) => {
+      useCrmStore.getState().setLeadsCenterView('lead');
+    });
+    set({ activeCRMPage: resolved });
+    db.settings.put({ key: 'activeCRMPage', value: resolved });
   },
 
   setActiveFormsPage: (p) => {
-    set({ activeFormsPage: p });
-    db.settings.put({ key: 'activeFormsPage', value: p });
+    const resolved = p === 'templates' ? 'list' : p;
+    set({ activeFormsPage: resolved });
+    db.settings.put({ key: 'activeFormsPage', value: resolved });
+  },
+
+  setActiveTaskPage: (p) => {
+    set({ activeTaskPage: p });
+    db.settings.put({ key: 'activeTaskPage', value: p });
   },
 
   setActiveView: (v) => set({ activeView: v }),
@@ -377,6 +388,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
   },
 
   setPanelsSwapped: (v: boolean) => {
+    if (!selectCanSwapPanels(get())) return;
     set({ panelsSwapped: v });
     db.settings.put({ key: 'panelsSwapped', value: v });
   },
@@ -417,6 +429,36 @@ export const useUIStore = create<UIStore>((set, get) => ({
     db.settings.put({ key: 'aiSidebarOpen', value: v });
   },
 
+  setCenterPanelOpen: (v) => {
+    set({ centerPanelOpen: v });
+    db.settings.put({ key: 'centerPanelOpen', value: v });
+  },
+
+  toggleRightPanel: () => {
+    const state = get();
+    const open = selectIsRightPanelOpen(state);
+    const swapped = isMainRowSwapped(state);
+
+    if (open) {
+      if (swapped) {
+        set({ centerPanelOpen: false });
+        db.settings.put({ key: 'centerPanelOpen', value: false });
+      } else {
+        if (state.fileViewerOpen) {
+          get().closeFileViewer();
+        }
+        set({ aiSidebarOpen: false });
+        db.settings.put({ key: 'aiSidebarOpen', value: false });
+      }
+    } else if (swapped) {
+      set({ centerPanelOpen: true });
+      db.settings.put({ key: 'centerPanelOpen', value: true });
+    } else {
+      set({ aiSidebarOpen: true });
+      db.settings.put({ key: 'aiSidebarOpen', value: true });
+    }
+  },
+
   setContextWindowOpen: (v) => {
     set({ contextWindowOpen: v });
   },
@@ -437,18 +479,19 @@ export const useUIStore = create<UIStore>((set, get) => ({
     const editorFontSize = await db.settings.get('editorFontSize');
     const language = await db.settings.get('language');
     const taskMode = await db.settings.get('taskMode');
-    const pageModeSetting = await db.settings.get('pageMode');
-    const pagePanelOpen = await db.settings.get('pagePanelOpen');
     const lastActiveTaskId = await db.settings.get('lastActiveTaskId');
     const taskListOpen = await db.settings.get('taskListOpen');
     const splitEditorWidth = await db.settings.get('splitEditorWidth');
     const panelsSwapped = await db.settings.get('panelsSwapped');
+    const aiSidebarOpen = await db.settings.get('aiSidebarOpen');
+    const centerPanelOpen = await db.settings.get('centerPanelOpen');
     const themeSetting = await db.settings.get('theme');
     const contextWindowCollapsed = await db.settings.get('contextWindowCollapsed');
     const crmModeSetting = await db.settings.get('crmMode');
     const formsModeSetting = await db.settings.get('formsMode');
     const activeCRMPageSetting = await db.settings.get('activeCRMPage');
     const activeFormsPageSetting = await db.settings.get('activeFormsPage');
+    const activeTaskPageSetting = await db.settings.get('activeTaskPage');
 
     const lang = (language?.value === 'tr' ? 'tr' : 'en') as 'en' | 'tr';
     i18n.changeLanguage(lang);
@@ -457,25 +500,41 @@ export const useUIStore = create<UIStore>((set, get) => ({
     const theme: Theme = isTheme(themeSetting?.value) ? themeSetting.value : DEFAULT_THEME;
     document.documentElement.setAttribute('data-theme', theme);
 
-    const pageMode = pageModeSetting ? Boolean(pageModeSetting.value) : false;
     const crmModeStored = crmModeSetting ? Boolean(crmModeSetting.value) : false;
     const formsModeStored = formsModeSetting ? Boolean(formsModeSetting.value) : false;
-    // Keep all four modes mutually exclusive on load. Existing precedence
-    // (pageMode wins over taskMode) is preserved; crm/forms slot in between.
-    const crmMode = !pageMode && crmModeStored;
-    const formsMode = !pageMode && !crmMode && formsModeStored;
-    const taskModeValue = !pageMode && !crmMode && !formsMode && (taskMode ? Boolean(taskMode.value) : false);
+    // Forms module was merged into CRM. Migrate a persisted standalone formsMode
+    // into CRM mode (activeCRMPage falls back to 'forms' below when migrated).
+    const crmMode = crmModeStored || formsModeStored;
+    const taskModeValue = !crmMode && (taskMode ? Boolean(taskMode.value) : false);
 
-    const CRM_PAGES: CRMPage[] = ['dashboard', 'leads', 'contacts', 'companies', 'pipeline', 'activities', 'settings'];
+    const CRM_PAGES: CRMPage[] = ['dashboard', 'leads', 'contacts', 'companies', 'pipeline', 'activities', 'forms', 'settings'];
     const FORMS_PAGES: FormsPage[] = ['dashboard', 'list', 'builder', 'submissions', 'templates', 'settings'];
-    const activeCRMPage: CRMPage =
-      activeCRMPageSetting && CRM_PAGES.includes(activeCRMPageSetting.value as CRMPage)
-        ? (activeCRMPageSetting.value as CRMPage)
-        : 'dashboard';
+    const storedCRMPage = activeCRMPageSetting?.value as CRMPage | undefined;
+    const migratedFromForms = formsModeStored && !crmModeStored;
+    const rawCRMPage: CRMPage = migratedFromForms
+      ? 'forms'
+      : storedCRMPage && CRM_PAGES.includes(storedCRMPage) && storedCRMPage !== 'dashboard'
+        ? storedCRMPage
+        : 'leads';
+    const legacyCRMPage = new Set<CRMPage>(['contacts', 'companies', 'activities']);
+    const activeCRMPage: CRMPage = legacyCRMPage.has(rawCRMPage) ? 'leads' : rawCRMPage;
+    if (legacyCRMPage.has(rawCRMPage)) {
+      void import('./crmStore').then(({ useCrmStore }) => {
+        useCrmStore.getState().setLeadsCenterView('lead');
+      });
+    }
+    const storedFormsPage = activeFormsPageSetting?.value as FormsPage | undefined;
+    const migratedFormsPage =
+      storedFormsPage === 'templates' ? 'list' : storedFormsPage;
     const activeFormsPage: FormsPage =
-      activeFormsPageSetting && FORMS_PAGES.includes(activeFormsPageSetting.value as FormsPage)
-        ? (activeFormsPageSetting.value as FormsPage)
-        : 'dashboard';
+      migratedFormsPage && FORMS_PAGES.includes(migratedFormsPage) && migratedFormsPage !== 'dashboard'
+        ? migratedFormsPage
+        : 'list';
+
+    const TASK_PAGES: TaskPage[] = ['list', 'calendar', 'projects'];
+    const storedTaskPage = activeTaskPageSetting?.value as TaskPage | undefined;
+    const activeTaskPage: TaskPage =
+      storedTaskPage && TASK_PAGES.includes(storedTaskPage) ? storedTaskPage : 'list';
 
     set({
       sidebarOpen: sidebarOpen ? Boolean(sidebarOpen.value) : true,
@@ -488,20 +547,19 @@ export const useUIStore = create<UIStore>((set, get) => ({
       editorFontSize: editorFontSize ? (Number(editorFontSize.value) as 12 | 14 | 16) : 12,
       language: lang,
       taskMode: taskModeValue,
-      pageMode,
-      pagePanelOpen: pagePanelOpen ? Boolean(pagePanelOpen.value) : true,
       activeTaskId: lastActiveTaskId ? String(lastActiveTaskId.value) : null,
       taskListOpen: taskListOpen ? Boolean(taskListOpen.value) : true,
       splitEditorWidth: splitEditorWidth ? Number(splitEditorWidth.value) : 30,
       panelsSwapped: panelsSwapped ? Boolean(panelsSwapped.value) : false,
       theme,
-      aiSidebarOpen: true,
+      aiSidebarOpen: aiSidebarOpen ? Boolean(aiSidebarOpen.value) : true,
+      centerPanelOpen: centerPanelOpen ? Boolean(centerPanelOpen.value) : true,
       contextWindowOpen: false,
       contextWindowCollapsed: contextWindowCollapsed ? Boolean(contextWindowCollapsed.value) : true,
       crmMode,
-      formsMode,
       activeCRMPage,
       activeFormsPage,
+      activeTaskPage,
     });
   },
 }));

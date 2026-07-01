@@ -42,7 +42,7 @@ export function FieldPalette({ formId, existingFields }: FieldPaletteProps) {
           })}
         </div>
         <p className="forms-builder-palette-hint">
-          Click a field to add it to the form. Configure it in the inspector on the right.
+          Click a field to add it to the form. Expand a field on the canvas to configure it.
         </p>
       </div>
     </div>
