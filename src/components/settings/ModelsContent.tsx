@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { X, RefreshCw, Globe, Eye, EyeOff, Plus, Layers, Database } from 'lucide-react';
+import { X, RefreshCw, Plus, Layers, Database } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../../stores/uiStore';
 import { useAIStore } from '../../stores/aiStore';
@@ -100,20 +100,18 @@ async function verifySavedProviderKey(
   throw new Error(`Could not verify the saved API key for ${providerName}.`);
 }
 
-/** Virtual provider ids for search providers in the left-rail list. */
-export const EXA_PROVIDER_ID = 'exa';
-export const TAVILY_PROVIDER_ID = 'tavily';
-
-export function isSearchProviderId(id: string | null | undefined): boolean {
-  return id === EXA_PROVIDER_ID || id === TAVILY_PROVIDER_ID;
-}
-
 /** Virtual group ids for placeholder provider groups (no backend yet). */
 export const EMBEDDINGS_GROUP_ID = 'embeddings';
 export const VECTOR_GROUP_ID = 'vector';
+export const IMAGE_GROUP_ID = 'imageModels';
 
 export function isPlaceholderGroupId(id: string | null | undefined): boolean {
-  return id === EMBEDDINGS_GROUP_ID || id === VECTOR_GROUP_ID;
+  return id === EMBEDDINGS_GROUP_ID || id === VECTOR_GROUP_ID || id === IMAGE_GROUP_ID;
+}
+
+/** Local helper — search providers are managed in the Tools tab, not here. */
+function isSearchProviderId(id: string | null | undefined): boolean {
+  return id === 'exa' || id === 'tavily';
 }
 
 interface ModelManagementContentProps {
@@ -160,12 +158,10 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     const firstConnected = providerConfigs.find((p) => p.status === 'connected');
     return new Set(firstConnected ? [firstConnected.id] : []);
   });
-  const [searchDraft, setSearchDraft] = useState({
+  const [searchDraft] = useState({
     exaKey: searchConfig.exaKey,
     tavilyKey: searchConfig.tavilyKey,
   });
-  const [showExaKey, setShowExaKey] = useState(false);
-  const [showTavilyKey, setShowTavilyKey] = useState(false);
 
   const [connectDrawerOpen, setConnectDrawerOpen] = useState(false);
   const [draftsReady, setDraftsReady] = useState(false);
@@ -663,73 +659,6 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     }
   };
 
-  const exaSection = (
-    <div className="col gap-3">
-      <div className="row gap-2" style={{ padding: '0 4px 8px' }}>
-        <Globe size={14} style={{ color: 'var(--c-accent-center-panel)' }} />
-        <span className="label-sm">{t('settings.exa')}</span>
-      </div>
-      <div className="col gap-3" style={{ padding: 12, borderRadius: 12 }}>
-        <p className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>
-          {t('settings.exaKeyHint')}
-        </p>
-        <div className="col gap-1">
-          <div className="label-sm">{t('settings.exaKey')}</div>
-          <div className="row gap-2">
-            <input
-              type={showExaKey ? 'text' : 'password'}
-              value={searchDraft.exaKey}
-              onChange={(e) => { setSearchDraft((s) => ({ ...s, exaKey: e.target.value })); }}
-              placeholder="exa_..."
-              className="ctrl ctrl--mono flex-1"
-              style={{ fontSize: 'var(--fs-xs)', backgroundColor: 'rgba(194, 194, 194, 0)' }}
-            />
-            <button type="button" onClick={() => setShowExaKey((v) => !v)} className="btn-icon">
-              {showExaKey ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const tavilySection = (
-    <div className="col gap-3">
-      <div className="row gap-2" style={{ padding: '0 4px 8px' }}>
-        <Globe size={14} style={{ color: 'var(--c-accent-center-panel)' }} />
-        <span className="label-sm">{t('settings.tavily')}</span>
-      </div>
-      <div className="col gap-3" style={{ padding: 12, borderRadius: 12 }}>
-        <p className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>
-          {t('settings.tavilyKeyHint')}
-        </p>
-        <div className="col gap-1">
-          <div className="label-sm">{t('settings.tavilyKey')}</div>
-          <div className="row gap-2">
-            <input
-              type={showTavilyKey ? 'text' : 'password'}
-              value={searchDraft.tavilyKey}
-              onChange={(e) => { setSearchDraft((s) => ({ ...s, tavilyKey: e.target.value })); }}
-              placeholder="tvly-..."
-              className="ctrl ctrl--mono flex-1"
-              style={{ fontSize: 'var(--fs-xs)', backgroundColor: 'rgba(194, 194, 194, 0)' }}
-            />
-            <button type="button" onClick={() => setShowTavilyKey((v) => !v)} className="btn-icon">
-              {showTavilyKey ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const searchProviderSection =
-    focusProviderId === EXA_PROVIDER_ID
-      ? exaSection
-      : focusProviderId === TAVILY_PROVIDER_ID
-        ? tavilySection
-        : null;
-
   const placeholderGroupSection =
     focusProviderId === EMBEDDINGS_GROUP_ID
       ? renderComingSoonSection({
@@ -766,7 +695,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
           </button>
         </div>
         <div className="model-provider-body flex-1 col gap-2" style={{ padding: '0px 12px 16px 12px', overflowY: 'auto' }}>
-          {placeholderGroupSection ?? searchProviderSection ?? providerAccordionList}
+          {placeholderGroupSection ?? providerAccordionList}
         </div>
 
         <ModalFooter
@@ -836,7 +765,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
         </div>
 
         <div className="model-provider-body flex-1 col gap-2" style={{ padding: '16px 20px' }}>
-          {placeholderGroupSection ?? searchProviderSection ?? providerAccordionList}
+          {placeholderGroupSection ?? providerAccordionList}
         </div>
 
         <ModalFooter

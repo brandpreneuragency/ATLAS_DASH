@@ -68,6 +68,15 @@
 .settings-list-item .settings-list-item-meta { font-size: var(--fs-xs); color: var(--c-text-3); }
 .settings-list-item--placeholder { padding: 8px 12px; color: var(--c-text-3); }
 .settings-list-item--placeholder[style*="cursor: default"] { cursor: default !important; }
+.settings-list-item--empty {
+  display: block;
+  padding: 8px 12px;
+  font-size: var(--fs-xs);
+  font-style: italic;
+  color: var(--c-text-3);
+  cursor: default;
+  user-select: none;
+}
 
 /* Provider groups in the left rail. */
 .settings-provider-group { margin-top: 4px; }
