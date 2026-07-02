@@ -14,6 +14,12 @@ import type { AIProviderConfig, ModelItem, ProviderImportPhase } from '../../typ
 import { ProviderDetailPanel } from './modelProviders/ProviderDetailPanel';
 import { ConnectProviderDrawer } from '../modals/modelProvider/ConnectProviderDrawer';
 import { ModalFooter } from '../modals/modelProvider/ModalFooter';
+import {
+  EMBEDDINGS_GROUP_ID,
+  IMAGE_GROUP_ID,
+  VECTOR_GROUP_ID,
+  isPlaceholderGroupId,
+} from './modelProviderGroups';
 
 function providerApiKeyName(providerId: string): string {
   return `providerApiKey_${providerId}`;
@@ -89,15 +95,6 @@ async function verifySavedProviderKey(
   }
 
   throw new Error(`Could not verify the saved API key for ${providerName}.`);
-}
-
-/** Virtual group ids for placeholder provider groups (no backend yet). */
-export const EMBEDDINGS_GROUP_ID = 'embeddings';
-export const VECTOR_GROUP_ID = 'vector';
-export const IMAGE_GROUP_ID = 'imageModels';
-
-export function isPlaceholderGroupId(id: string | null | undefined): boolean {
-  return id === EMBEDDINGS_GROUP_ID || id === VECTOR_GROUP_ID || id === IMAGE_GROUP_ID;
 }
 
 interface ModelManagementContentProps {

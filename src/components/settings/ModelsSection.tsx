@@ -4,12 +4,12 @@ import { Plus, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAIStore } from '../../stores/aiStore';
 import { SettingsPanels } from './SettingsPanels';
+import { ModelManagementContent } from './ModelsContent';
 import {
-  ModelManagementContent,
   EMBEDDINGS_GROUP_ID,
-  VECTOR_GROUP_ID,
   IMAGE_GROUP_ID,
-} from './ModelsContent';
+  VECTOR_GROUP_ID,
+} from './modelProviderGroups';
 
 interface ListItem {
   id: string;
