@@ -43,10 +43,12 @@ function renderComingSoonSection({
   icon,
   title,
   hint,
+  t,
 }: {
   icon: ReactNode;
   title: string;
   hint: string;
+  t: (key: string) => string;
 }) {
   return (
     <div className="col gap-3">
@@ -54,19 +56,8 @@ function renderComingSoonSection({
         {icon}
         <span className="label-sm">{title}</span>
       </div>
-      <div
-        className="col"
-        style={{
-          padding: 24,
-          borderRadius: 12,
-          border: '1px dashed var(--c-border-2)',
-          background: 'var(--c-background-1)',
-          alignItems: 'center',
-          textAlign: 'center',
-          gap: 8,
-        }}
-      >
-        <span className="label-sm" style={{ color: 'var(--c-text-2)' }}>Coming soon</span>
+      <div className="col settings-coming-soon-card">
+        <span className="label-sm">{t('settings.comingSoon')}</span>
         <p className="subtle" style={{ fontSize: 'var(--fs-sm)', maxWidth: 420, margin: 0 }}>
           {hint}
         </p>
@@ -315,7 +306,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     if (!isOpen || !draftsReady || !hasNonCredentialChanges) return;
     const timer = setTimeout(() => {
       void handleSave({ includeKeys: false }).catch((err) => {
-        const message = err instanceof Error ? err.message : 'Failed to save model settings.';
+        const message = err instanceof Error ? err.message : t('settings.failedToSaveModelSettings');
         useUIStore.getState().showToast(message, 'error');
       });
     }, 250);
@@ -329,6 +320,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     draftHiddenModels,
     draftKeys,
     handleSave,
+    t,
   ]);
 
   const handleClose = useCallback(async () => {
@@ -340,13 +332,13 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
       await saveQueueRef.current;
     } catch (err) {
       closingRef.current = false;
-      const message = err instanceof Error ? err.message : 'Failed to save model settings.';
+      const message = err instanceof Error ? err.message : t('settings.failedToSaveModelSettings');
       useUIStore.getState().showToast(message, 'error');
       return;
     }
     if (onClose) onClose();
     else setActiveModal(null);
-  }, [draftsReady, hasNonCredentialChanges, handleSave, onClose, setActiveModal]);
+  }, [draftsReady, hasNonCredentialChanges, handleSave, onClose, setActiveModal, t]);
 
   const handleManualSave = useCallback(async () => {
     setManualSaving(true);
@@ -354,14 +346,14 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     try {
       await handleSave({ includeKeys: true });
       setManualSaved(true);
-      useUIStore.getState().showToast('Model settings saved.', 'info');
+      useUIStore.getState().showToast(t('settings.modelSettingsSaved'), 'info');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save model settings.';
+      const message = err instanceof Error ? err.message : t('settings.failedToSaveModelSettings');
       useUIStore.getState().showToast(message, 'error');
     } finally {
       setManualSaving(false);
     }
-  }, [handleSave]);
+  }, [handleSave, t]);
 
   const latestPersistRef = useRef(persistDrafts);
   const shouldPersistOnUnmountRef = useRef(false);
@@ -485,7 +477,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
         }));
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Connection test failed.';
+      const message = err instanceof Error ? err.message : t('models.testFailed');
       setTestConnectionState((prev) => ({
         ...prev,
         [providerId]: { phase: 'error', message },
@@ -531,7 +523,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
         }));
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Sync failed.';
+      const message = err instanceof Error ? err.message : t('models.syncFailed');
       setSyncState((prev) => ({
         ...prev,
         [providerId]: { phase: 'error', message },
@@ -574,19 +566,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
       }}
     />
   ) : (
-    <div
-      className="col"
-      style={{
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '48px 16px',
-        textAlign: 'center',
-        border: '1px solid var(--c-border-1)',
-        borderRadius: 14,
-        background: 'var(--c-background-1)',
-        height: '100%',
-      }}
-    >
+    <div className="col settings-empty-provider">
       <p className="med" style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-text-1)', marginBottom: 4 }}>
         {t('models.noCustomProviders')}
       </p>
@@ -626,18 +606,21 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
           icon: <Layers size={14} style={{ color: 'var(--c-accent-center-panel)' }} />,
           title: t('settings.groupEmbeddings'),
           hint: t('settings.embeddingsHint'),
+          t,
         })
       : focusProviderId === VECTOR_GROUP_ID
         ? renderComingSoonSection({
             icon: <Database size={14} style={{ color: 'var(--c-accent-center-panel)' }} />,
             title: t('settings.groupVector'),
             hint: t('settings.vectorHint'),
+            t,
           })
         : focusProviderId === IMAGE_GROUP_ID
           ? renderComingSoonSection({
               icon: <Image size={14} style={{ color: 'var(--c-accent-center-panel)' }} />,
               title: t('settings.groupImageModels'),
               hint: t('settings.comingSoon'),
+              t,
             })
           : null;
 
@@ -645,23 +628,22 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     return (
       <div
         ref={modalRef}
-        className="flex-col h-full w-full"
+        className="flex-col h-full w-full settings-models-inline"
         id="model-management-inline"
-        style={{ background: 'var(--c-background-1)', overflow: 'hidden', display: 'flex', borderRadius: 8 }}
       >
-        <div className="settings-models-toolbar row gap-2" style={{ padding: '8px 12px', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="settings-models-toolbar row gap-2 settings-models-inline-toolbar">
           <span className="subtle" style={{ fontSize: 'var(--fs-xs)' }}>{t('models.subtitle')}</span>
           <button
             type="button"
             onClick={handleRefresh}
-            aria-label="Refresh provider status"
+            aria-label={t('settings.refreshProviderStatus')}
             className="btn-icon"
-            title="Refresh provider status"
+            title={t('settings.refreshProviderStatus')}
           >
             <RefreshCw size={14} />
           </button>
         </div>
-        <div className="model-provider-body flex-1 col gap-2" style={{ padding: '0px 12px 16px 12px', overflowY: 'auto' }}>
+        <div className="model-provider-body flex-1 col gap-2 settings-models-inline-body">
           {placeholderGroupSection ?? providerDetailPanel}
         </div>
 
@@ -712,9 +694,8 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
             <button
               type="button"
               onClick={handleRefresh}
-              aria-label="Refresh provider status"
-              className="modal-close"
-              style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              aria-label={t('settings.refreshProviderStatus')}
+              className="modal-close settings-modal-icon-btn"
             >
               <RefreshCw size={16} />
             </button>
@@ -723,15 +704,14 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
               type="button"
               onClick={handleClose}
               aria-label={t('models.close')}
-              className="modal-close"
-              style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              className="modal-close settings-modal-icon-btn"
             >
               <X size={18} />
             </button>
           </div>
         </div>
 
-        <div className="model-provider-body flex-1 col gap-2" style={{ padding: '16px 20px' }}>
+        <div className="model-provider-body flex-1 col gap-2 settings-models-inline-body--modal">
           {placeholderGroupSection ?? providerDetailPanel}
         </div>
 

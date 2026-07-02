@@ -72,7 +72,7 @@ export function ProviderDetailPanel({
   return (
     <div className="provider-detail-panel col gap-0" style={{ height: '100%' }}>
       {/* Header */}
-      <div className="provider-detail-header" style={{ padding: '12px 16px', borderBottom: '1px solid var(--c-border-1)' }}>
+      <div className="provider-detail-header settings-provider-detail-head">
         <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <div className="row gap-3 min-w-0">
             <span className="semibold" style={{ fontSize: 'var(--fs-base)', color: 'var(--c-text-1)' }}>
@@ -81,11 +81,11 @@ export function ProviderDetailPanel({
             <ProviderStatusBadge status={status} />
           </div>
           <div className="row gap-2 shrink-0">
-            <span className="subtle" style={{ fontSize: 'var(--fs-xs)' }}>
+            <span className="subtle settings-provider-detail-head-meta">
               {t('models.modelCount', { count: modelCount })}
             </span>
             {lastImportedLabel && (
-              <span className="subtle" style={{ fontSize: 'var(--fs-xs)' }}>
+              <span className="subtle settings-provider-detail-head-meta">
                 · {t('models.lastImportedAt', { time: lastImportedLabel })}
               </span>
             )}

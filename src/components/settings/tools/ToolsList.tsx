@@ -38,14 +38,7 @@ export function ToolsList({ focusToolId, onSelectTool }: ToolsListProps) {
 
   const renderDot = (connected: boolean) => (
     <span
-      className="settings-list-item-meta"
-      style={{
-        width: 8,
-        height: 8,
-        borderRadius: 9999,
-        flexShrink: 0,
-        background: connected ? 'var(--c-success)' : 'var(--c-text-3)',
-      }}
+      className={`settings-status-dot ${connected ? 'settings-status-dot--connected' : 'settings-status-dot--disconnected'}`}
       aria-hidden
     />
   );

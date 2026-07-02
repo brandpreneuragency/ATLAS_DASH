@@ -321,3 +321,328 @@
 .provider-model-row:hover {
   background: var(--c-background-3);
 }
+
+/* Status dot used in provider/tool lists. */
+.settings-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+.settings-status-dot--connected { background: var(--c-success); }
+.settings-status-dot--disconnected { background: var(--c-text-3); }
+
+/* "Coming soon" placeholder card. */
+.settings-coming-soon-card {
+  padding: 24px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--c-border-2);
+  background: var(--c-background-1);
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+.settings-coming-soon-card .label-sm { color: var(--c-text-2); }
+
+/* Empty-state provider panel (no provider selected). */
+.settings-empty-provider {
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  text-align: center;
+  border: 1px solid var(--c-border-1);
+  border-radius: 14px;
+  background: var(--c-background-1);
+  height: 100%;
+}
+
+/* Feedback / status-strip boxes (success / error). */
+.settings-feedback-success,
+.settings-feedback-error {
+  font-size: var(--fs-sm);
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+}
+.settings-feedback-success {
+  color: var(--c-success);
+  background: rgba(34, 197, 94, 0.05);
+}
+.settings-feedback-error {
+  color: var(--c-danger, #dc2626);
+  background: rgba(220, 38, 38, 0.05);
+}
+
+/* Connection status strip inside accordion/detail. */
+.settings-connection-strip {
+  padding: 8px 12px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Modal icon-button sizing (refresh / close). */
+.settings-modal-icon-btn {
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Model-management inline wrapper. */
+.settings-models-inline {
+  background: var(--c-background-1);
+  overflow: hidden;
+  display: flex;
+  border-radius: var(--radius-md);
+}
+.settings-models-inline-toolbar {
+  padding: 8px 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+.settings-models-inline-body {
+  padding: 0 12px 16px;
+  overflow-y: auto;
+}
+.settings-models-inline-body--modal {
+  padding: 16px 20px;
+}
+
+/* Model table. */
+.settings-model-table-header {
+  padding: 6px 12px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-3);
+  border-bottom: 1px solid var(--c-border-1);
+  gap: 8px;
+}
+.settings-model-table-row {
+  padding: 8px 12px;
+  justify-content: space-between;
+  cursor: default;
+  outline: none;
+  border-radius: var(--radius-md);
+  gap: 8px;
+  border-bottom: 1px solid var(--c-border-1);
+}
+.settings-model-name {
+  flex: 2;
+  font-size: var(--fs-sm);
+  color: var(--c-text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settings-model-id {
+  flex: 2;
+  font-size: var(--fs-xs);
+  color: var(--c-text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+}
+.settings-model-caps {
+  flex: 2;
+  font-size: var(--fs-xs);
+  color: var(--c-text-2);
+}
+.settings-model-source {
+  flex: 1;
+  font-size: var(--fs-xs);
+}
+.settings-model-source--custom { color: var(--c-accent-center-panel); }
+.settings-model-source--synced { color: var(--c-text-3); }
+.settings-model-toggle-cell {
+  width: 48px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Search input used in model table. */
+.settings-search-input-wrap {
+  align-items: center;
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-md);
+  padding: 0 8px;
+}
+.settings-search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--fs-sm);
+  padding: 8px 0;
+  color: var(--c-text-1);
+}
+
+/* Filter bar for model tabs. */
+.settings-filter-bar { flex-wrap: wrap; }
+.settings-filter-btn {
+  font-size: var(--fs-xs);
+  padding: 3px 8px;
+  height: auto;
+}
+.settings-filter-btn--active { opacity: 1; }
+.settings-filter-btn--inactive { opacity: 0.7; }
+
+/* Defaults task row. */
+.settings-defaults-row {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-border-1);
+  background: var(--c-background-1);
+  align-items: center;
+}
+.settings-defaults-label {
+  font-size: var(--fs-sm);
+  min-width: 140px;
+  color: var(--c-text-1);
+}
+.settings-defaults-select {
+  flex: 1;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--c-border-1);
+  background: var(--c-background-0);
+  color: var(--c-text-1);
+  font-size: var(--fs-xs);
+}
+
+/* Usage table. */
+.settings-usage-card {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-border-1);
+  background: var(--c-background-1);
+  align-items: center;
+}
+.settings-usage-table {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-border-1);
+  overflow: hidden;
+}
+.settings-usage-table-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--c-border-1);
+  background: var(--c-background-1);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-2);
+}
+.settings-usage-table-row {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--c-border-1);
+  font-size: var(--fs-sm);
+  color: var(--c-text-2);
+}
+.settings-usage-cell { flex: 1; }
+.settings-usage-cell--right { flex: 1; text-align: right; }
+
+/* Provider info card (advanced tab). */
+.settings-provider-info-card {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-border-1);
+  background: var(--c-background-1);
+}
+.settings-provider-info-row {
+  justify-content: space-between;
+}
+.settings-provider-info-value {
+  font-size: var(--fs-xs);
+  color: var(--c-text-1);
+}
+.settings-provider-info-value--mono {
+  font-family: ui-monospace, monospace;
+}
+
+/* Future feature card (advanced tab). */
+.settings-future-card {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--c-border-2);
+  background: var(--c-background-1);
+  opacity: 0.7;
+}
+
+/* Danger zone card. */
+.settings-danger-zone-card {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-danger, #dc2626);
+  background: rgba(220, 38, 38, 0.03);
+}
+
+/* Provider detail header. */
+.settings-provider-detail-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--c-border-1);
+}
+.settings-provider-detail-head-meta {
+  font-size: var(--fs-xs);
+}
+
+/* Toggle switch for search tools. */
+.settings-toggle {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.settings-toggle--on { background: var(--c-success); }
+.settings-toggle--off { background: var(--c-border-2); }
+.settings-toggle-knob {
+  position: absolute;
+  top: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.15s;
+}
+.settings-toggle-knob--on { left: 18px; }
+.settings-toggle-knob--off { left: 2px; }
+
+/* Provider info card in connection tab. */
+.settings-connection-info {
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--c-background-4);
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Read-only input (provider name). */
+.settings-input-readonly {
+  font-size: var(--fs-xs);
+  opacity: 0.7;
+  cursor: default;
+}
+
+/* Action button sizing used by test/sync buttons. */
+.settings-action-btn {
+  width: auto;
+  min-width: var(--div-h-1);
+  height: var(--div-h-1);
+  padding: 0 12px;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.settings-action-btn--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* No-models empty padding. */
+.settings-models-empty {
+  padding: 24px 12px;
+  font-size: var(--fs-sm);
+  text-align: center;
+}

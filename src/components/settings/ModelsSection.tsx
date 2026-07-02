@@ -47,14 +47,7 @@ export function ModelsSection({ rightHeader, rightMain, rightFooter }: ModelsSec
 
   const renderDot = (connected: boolean) => (
     <span
-      className="settings-list-item-meta"
-      style={{
-        width: 8,
-        height: 8,
-        borderRadius: 9999,
-        flexShrink: 0,
-        background: connected ? 'var(--c-success)' : 'var(--c-text-3)',
-      }}
+      className={`settings-status-dot ${connected ? 'settings-status-dot--connected' : 'settings-status-dot--disconnected'}`}
       aria-hidden
     />
   );
@@ -113,7 +106,7 @@ export function ModelsSection({ rightHeader, rightMain, rightFooter }: ModelsSec
 
   const centerHeader = (
     <div className="settings-list-head">
-      <h3>{focusedLabel ?? 'Models'}</h3>
+      <h3>{focusedLabel ?? t('settings.modelsSection')}</h3>
     </div>
   );
 
@@ -124,7 +117,7 @@ export function ModelsSection({ rightHeader, rightMain, rightFooter }: ModelsSec
           <h3>{t('settings.aiProviders')}</h3>
           <button
             className="btn-icon"
-            title="Refresh provider status"
+            title={t('settings.refreshProviderStatus')}
             onClick={() => void useAIStore.getState().refreshAllProviderStatuses()}
           >
             <RefreshCw size={14} />

@@ -67,8 +67,7 @@ export function ProviderConnectionTab({
           type="text"
           value={provider.name}
           readOnly
-          className="ctrl ctrl--mono ctrl--flat w-full"
-          style={{ fontSize: 'var(--fs-xs)', opacity: 0.7, cursor: 'default' }}
+          className="ctrl ctrl--mono ctrl--flat w-full settings-input-readonly"
         />
       </div>
 
@@ -111,16 +110,7 @@ export function ProviderConnectionTab({
       </div>
 
       {/* Connection status */}
-      <div
-        className="row gap-2"
-        style={{
-          padding: '8px 12px',
-          borderRadius: 8,
-          background: 'var(--c-background-4)',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
+      <div className="row gap-2 settings-connection-info">
         <span className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>
           {t('models.tabConnection')}
         </span>
@@ -141,34 +131,13 @@ export function ProviderConnectionTab({
 
       {/* Test connection feedback */}
       {testConnectionState.phase === 'success' && (
-        <div
-          className="row-xs"
-          style={{
-            fontSize: 'var(--fs-sm)',
-            color: '#15803d',
-            gap: 6,
-            padding: '6px 10px',
-            borderRadius: 8,
-            background: 'rgba(34,197,94,0.05)',
-          }}
-        >
+        <div className="row-xs settings-feedback-success">
           <Check size={12} />
           <span>{t('models.testSuccess')}</span>
         </div>
       )}
       {testConnectionState.phase === 'error' && (
-        <div
-          className="row-xs"
-          role="alert"
-          style={{
-            fontSize: 'var(--fs-sm)',
-            color: 'var(--c-danger, #dc2626)',
-            gap: 6,
-            padding: '6px 10px',
-            borderRadius: 8,
-            background: 'rgba(220,38,38,0.05)',
-          }}
-        >
+        <div className="row-xs settings-feedback-error" role="alert">
           <AlertCircle size={12} />
           <span>{testConnectionState.message}</span>
         </div>
@@ -176,34 +145,13 @@ export function ProviderConnectionTab({
 
       {/* Sync models feedback */}
       {syncState.phase === 'success' && (
-        <div
-          className="row-xs"
-          style={{
-            fontSize: 'var(--fs-sm)',
-            color: '#15803d',
-            gap: 6,
-            padding: '6px 10px',
-            borderRadius: 8,
-            background: 'rgba(34,197,94,0.05)',
-          }}
-        >
+        <div className="row-xs settings-feedback-success">
           <Check size={12} />
           <span>{t('models.syncSuccess')}</span>
         </div>
       )}
       {syncState.phase === 'error' && (
-        <div
-          className="row-xs"
-          role="alert"
-          style={{
-            fontSize: 'var(--fs-sm)',
-            color: 'var(--c-danger, #dc2626)',
-            gap: 6,
-            padding: '6px 10px',
-            borderRadius: 8,
-            background: 'rgba(220,38,38,0.05)',
-          }}
-        >
+        <div className="row-xs settings-feedback-error" role="alert">
           <AlertCircle size={12} />
           <span>{syncState.message}</span>
         </div>
@@ -231,20 +179,9 @@ export function ProviderConnectionTab({
           type="button"
           onClick={onTestConnection}
           disabled={!canTest}
-          className="btn-send"
+          className={`btn-send settings-action-btn${canTest ? '' : ' settings-action-btn--disabled'}`}
           title={t('models.testConnection')}
           aria-label={t('models.testConnection')}
-          style={{
-            width: 'auto',
-            minWidth: 'var(--div-h-1)',
-            height: 'var(--div-h-1)',
-            padding: '0 12px',
-            gap: 6,
-            fontSize: 'var(--fs-xs)',
-            fontWeight: 600,
-            opacity: canTest ? 1 : 0.4,
-            cursor: canTest ? 'pointer' : 'not-allowed',
-          }}
         >
           {isTesting ? <Loader2 size={14} className="spin" /> : <Play size={14} />}
           <span>{isTesting ? t('models.testingConnection') : t('models.testConnection')}</span>
@@ -253,20 +190,9 @@ export function ProviderConnectionTab({
           type="button"
           onClick={onSyncModels}
           disabled={!canSync}
-          className="btn-send"
+          className={`btn-send settings-action-btn${canSync ? '' : ' settings-action-btn--disabled'}`}
           title={t('models.syncModels')}
           aria-label={t('models.syncModels')}
-          style={{
-            width: 'auto',
-            minWidth: 'var(--div-h-1)',
-            height: 'var(--div-h-1)',
-            padding: '0 12px',
-            gap: 6,
-            fontSize: 'var(--fs-xs)',
-            fontWeight: 600,
-            opacity: canSync ? 1 : 0.4,
-            cursor: canSync ? 'pointer' : 'not-allowed',
-          }}
         >
           {isSyncing ? <Loader2 size={14} className="spin" /> : <Download size={14} />}
           <span>{isSyncing ? t('models.syncingModels') : t('models.syncModels')}</span>

@@ -145,31 +145,10 @@ export function SearchToolDetail({ providerId }: SearchToolDetailProps) {
           <button
             type="button"
             onClick={handleToggleEnabled}
-            style={{
-              position: 'relative',
-              width: 36,
-              height: 20,
-              borderRadius: 10,
-              background: isEnabled ? 'var(--c-success)' : 'var(--c-border-2)',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'background 0.15s',
-              flexShrink: 0,
-            }}
+            className={`settings-toggle ${isEnabled ? 'settings-toggle--on' : 'settings-toggle--off'}`}
             aria-label={isEnabled ? t('settings.disable') : t('settings.enable')}
           >
-            <span
-              style={{
-                position: 'absolute',
-                top: 2,
-                left: isEnabled ? 18 : 2,
-                width: 16,
-                height: 16,
-                borderRadius: '50%',
-                background: '#fff',
-                transition: 'left 0.15s',
-              }}
-            />
+            <span className={`settings-toggle-knob ${isEnabled ? 'settings-toggle-knob--on' : 'settings-toggle-knob--off'}`} />
           </button>
         </div>
       </div>

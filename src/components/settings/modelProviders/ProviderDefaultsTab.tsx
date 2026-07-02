@@ -69,19 +69,9 @@ export function ProviderDefaultsTab() {
           return (
             <div
               key={key}
-              className="row gap-2"
-              style={{
-                padding: '10px 12px',
-                borderRadius: 8,
-                border: '1px solid var(--c-border-1)',
-                background: 'var(--c-background-1)',
-                alignItems: 'center',
-              }}
+              className="row gap-2 settings-defaults-row"
             >
-              <span
-                className="med"
-                style={{ fontSize: 'var(--fs-sm)', minWidth: 140, color: 'var(--c-text-1)' }}
-              >
+              <span className="med settings-defaults-label">
                 {t(i18nKey)}
               </span>
 
@@ -98,15 +88,7 @@ export function ProviderDefaultsTab() {
                   const firstModel = provider?.models?.find((m) => m.enabled)?.id ?? '';
                   setTaskDefault(key, providerId, firstModel);
                 }}
-                style={{
-                  flex: 1,
-                  padding: '4px 8px',
-                  borderRadius: 6,
-                  border: '1px solid var(--c-border-1)',
-                  background: 'var(--c-background-0)',
-                  color: 'var(--c-text-1)',
-                  fontSize: 'var(--fs-xs)',
-                }}
+                className="settings-defaults-select"
               >
                 <option value="">{t('models.defaultsNoProvider')}</option>
                 {connectedProviders.map((p) => (
@@ -125,16 +107,8 @@ export function ProviderDefaultsTab() {
                     setTaskDefault(key, current.providerId, e.target.value);
                   }
                 }}
-                style={{
-                  flex: 1,
-                  padding: '4px 8px',
-                  borderRadius: 6,
-                  border: '1px solid var(--c-border-1)',
-                  background: 'var(--c-background-0)',
-                  color: 'var(--c-text-1)',
-                  fontSize: 'var(--fs-xs)',
-                  opacity: current?.providerId ? 1 : 0.5,
-                }}
+                className="settings-defaults-select"
+                style={{ opacity: current?.providerId ? 1 : 0.5 }}
               >
                 <option value="">{current?.providerId ? t('models.defaultsNoProvider') : '—'}</option>
                 {availableModels.map((m) => (

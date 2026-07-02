@@ -78,39 +78,23 @@ export function ProviderModelsTab({
     <div className="col gap-2" style={{ padding: '16px 0' }}>
       {/* Search and sync */}
       <div className="row gap-2" style={{ alignItems: 'center' }}>
-        <div className="row gap-2 flex-1" style={{ alignItems: 'center', border: '1px solid var(--c-border-1)', borderRadius: 8, padding: '0 8px' }}>
+        <div className="row gap-2 flex-1 settings-search-input-wrap">
           <Search size={14} style={{ color: 'var(--c-text-3)', flexShrink: 0 }} />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('models.searchModels')}
-            className="flex-1"
-            style={{
-              border: 'none',
-              outline: 'none',
-              background: 'transparent',
-              fontSize: 'var(--fs-sm)',
-              padding: '8px 0',
-              color: 'var(--c-text-1)',
-            }}
+            className="flex-1 settings-search-input"
           />
         </div>
         {onSyncModels && (
           <button
             type="button"
             onClick={onSyncModels}
-            className="btn-send"
+            className="btn-send settings-action-btn"
             title={t('models.syncModels')}
             aria-label={t('models.syncModels')}
-            style={{
-              width: 'auto',
-              height: 'var(--div-h-1)',
-              padding: '0 10px',
-              gap: 4,
-              fontSize: 'var(--fs-xs)',
-              fontWeight: 600,
-            }}
           >
             <Download size={12} />
             <span>{t('models.syncModels')}</span>
@@ -122,19 +106,13 @@ export function ProviderModelsTab({
       </div>
 
       {/* Filters */}
-      <div className="row gap-1" style={{ flexWrap: 'wrap' }}>
+      <div className="row gap-1 settings-filter-bar">
         {FILTER_BUTTONS.map((filter) => (
           <button
             key={filter.id}
             type="button"
             onClick={() => setActiveFilter(filter.id)}
-            className={activeFilter === filter.id ? 'btn-brand' : 'btn-xs'}
-            style={{
-              fontSize: 'var(--fs-xs)',
-              padding: '3px 8px',
-              height: 'auto',
-              opacity: activeFilter === filter.id ? 1 : 0.7,
-            }}
+            className={activeFilter === filter.id ? 'btn-brand settings-filter-btn settings-filter-btn--active' : 'btn-xs settings-filter-btn settings-filter-btn--inactive'}
           >
             {t(filter.labelKey)}
           </button>
@@ -144,26 +122,13 @@ export function ProviderModelsTab({
       {/* Model table */}
       <div className="col gap-1">
         {filteredModels.length === 0 ? (
-          <div
-            className="subtle"
-            style={{ padding: '24px 12px', fontSize: 'var(--fs-sm)', textAlign: 'center' }}
-          >
+          <div className="subtle settings-models-empty">
             {models.length === 0 ? t('models.noModelsAvailable') : t('models.noSearchResults')}
           </div>
         ) : (
           <>
             {/* Table header */}
-            <div
-              className="row"
-              style={{
-                padding: '6px 12px',
-                fontSize: 'var(--fs-xs)',
-                fontWeight: 600,
-                color: 'var(--c-text-3)',
-                borderBottom: '1px solid var(--c-border-1)',
-                gap: 8,
-              }}
-            >
+            <div className="row settings-model-table-header">
               <span style={{ flex: 2 }}>{t('models.colModelName')}</span>
               <span style={{ flex: 2 }}>{t('models.colModelId')}</span>
               <span style={{ flex: 2 }}>{t('models.colCapabilities')}</span>
@@ -186,35 +151,26 @@ export function ProviderModelsTab({
                 <div
                   key={model.id}
                   ref={(el) => { rowRefs.current[model.id] = el; }}
-                  className="row provider-model-row"
-                  style={{
-                    padding: '8px 12px',
-                    justifyContent: 'space-between',
-                    cursor: 'default',
-                    outline: 'none',
-                    borderRadius: 8,
-                    gap: 8,
-                    borderBottom: '1px solid var(--c-border-1)',
-                  }}
+                  className="row provider-model-row settings-model-table-row"
                   tabIndex={0}
                   onMouseEnter={() => handleMouseEnter(model)}
                   onMouseLeave={() => setHoveredModel(null)}
                   onFocus={() => handleMouseEnter(model)}
                   onBlur={() => setHoveredModel(null)}
                 >
-                  <span style={{ flex: 2, fontSize: 'var(--fs-sm)', color: 'var(--c-text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span className="settings-model-name">
                     {model.name}
                   </span>
-                  <span style={{ flex: 2, fontSize: 'var(--fs-xs)', color: 'var(--c-text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>
+                  <span className="settings-model-id">
                     {model.id}
                   </span>
-                  <span style={{ flex: 2, fontSize: 'var(--fs-xs)', color: 'var(--c-text-2)' }}>
+                  <span className="settings-model-caps">
                     {capItems.length > 0 ? capItems.join(', ') : t('models.capUnknown')}
                   </span>
-                  <span style={{ flex: 1, fontSize: 'var(--fs-xs)', color: model.custom ? 'var(--c-accent-center-panel)' : 'var(--c-text-3)' }}>
+                  <span className={`settings-model-source ${model.custom ? 'settings-model-source--custom' : 'settings-model-source--synced'}`}>
                     {model.custom ? t('models.sourceCustom') : t('models.sourceSynced')}
                   </span>
-                  <span style={{ width: 48, display: 'flex', justifyContent: 'center' }}>
+                  <span className="settings-model-toggle-cell">
                     <ModelSwitch
                       checked={enabled}
                       onChange={(checked) => onToggleModel(provider.id, model.id, checked)}

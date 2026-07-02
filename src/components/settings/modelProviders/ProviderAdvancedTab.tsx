@@ -25,22 +25,14 @@ export function ProviderAdvancedTab({ provider, onDeleteProvider, onSaveBaseUrl 
   return (
     <div className="col gap-3" style={{ padding: '16px 0' }}>
       {/* Provider info */}
-      <div
-        className="col gap-2"
-        style={{
-          padding: 16,
-          borderRadius: 12,
-          border: '1px solid var(--c-border-1)',
-          background: 'var(--c-background-1)',
-        }}
-      >
-        <div className="row" style={{ justifyContent: 'space-between' }}>
+      <div className="col gap-2 settings-provider-info-card">
+        <div className="row settings-provider-info-row">
           <span className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>{t('models.advancedProviderId')}</span>
-          <span className="med" style={{ fontSize: 'var(--fs-xs)', fontFamily: 'ui-monospace, monospace', color: 'var(--c-text-1)' }}>
+          <span className="med settings-provider-info-value settings-provider-info-value--mono">
             {provider.id}
           </span>
         </div>
-        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="row settings-provider-info-row" style={{ alignItems: 'center' }}>
           <span className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>{t('models.advancedBaseUrl')}</span>
           <input
             type="text"
@@ -80,32 +72,23 @@ export function ProviderAdvancedTab({ provider, onDeleteProvider, onSaveBaseUrl 
             </button>
           </div>
         )}
-        <div className="row" style={{ justifyContent: 'space-between' }}>
+        <div className="row settings-provider-info-row">
           <span className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>{t('models.advancedProviderType')}</span>
-          <span className="med" style={{ fontSize: 'var(--fs-xs)', color: 'var(--c-text-1)' }}>
+          <span className="med settings-provider-info-value">
             {provider.provider}
           </span>
         </div>
       </div>
 
       {/* Future items */}
-      <div
-        className="col gap-2"
-        style={{
-          padding: 16,
-          borderRadius: 12,
-          border: '1px dashed var(--c-border-2)',
-          background: 'var(--c-background-1)',
-          opacity: 0.7,
-        }}
-      >
-        <div className="row" style={{ justifyContent: 'space-between' }}>
+      <div className="col gap-2 settings-future-card">
+        <div className="row settings-provider-info-row">
           <span className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>{t('models.advancedRequestTimeout')}</span>
           <span className="med" style={{ fontSize: 'var(--fs-xs)', color: 'var(--c-text-2)' }}>
             {t('models.advancedRequestTimeoutFuture')}
           </span>
         </div>
-        <div className="row" style={{ justifyContent: 'space-between' }}>
+        <div className="row settings-provider-info-row">
           <span className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>{t('models.advancedCustomHeaders')}</span>
           <span className="med" style={{ fontSize: 'var(--fs-xs)', color: 'var(--c-text-2)' }}>
             {t('models.advancedCustomHeadersFuture')}
@@ -116,15 +99,7 @@ export function ProviderAdvancedTab({ provider, onDeleteProvider, onSaveBaseUrl 
       {/* Danger zone */}
       <div className="col gap-2">
         <div className="label-sm" style={{ color: 'var(--c-danger, #dc2626)' }}>{t('models.dangerZone')}</div>
-        <div
-          className="col gap-2"
-          style={{
-            padding: 16,
-            borderRadius: 12,
-            border: '1px solid var(--c-danger, #dc2626)',
-            background: 'rgba(220, 38, 38, 0.03)',
-          }}
-        >
+        <div className="col gap-2 settings-danger-zone-card">
           <p className="subtle" style={{ fontSize: 'var(--fs-sm)', margin: 0 }}>
             {t('models.dangerZoneProviderHint')}
           </p>
