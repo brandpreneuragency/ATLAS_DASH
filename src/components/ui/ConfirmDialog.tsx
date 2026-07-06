@@ -21,7 +21,7 @@ export function ConfirmDialog({ message, onConfirm, onCancel, onSave, confirmLab
             type="button"
             onClick={onCancel}
             className="btn-xs"
-            style={{ border: '1px solid var(--c-border-1)' }}
+            style={{ background: 'var(--c-background-2)', border: '1px solid var(--c-border-1)' }}
           >
             {t('confirm.cancel')}
           </button>
@@ -30,7 +30,7 @@ export function ConfirmDialog({ message, onConfirm, onCancel, onSave, confirmLab
             type="button"
             onClick={onConfirm}
             className="btn-xs semibold"
-            style={{ background: 'var(--c-background-5)', color: 'var(--c-text-1)', border: 'none' }}
+            style={{ background: 'var(--c-background-3)', color: 'var(--c-text-1)', border: 'none' }}
           >
             {resolvedConfirmLabel}
           </button>

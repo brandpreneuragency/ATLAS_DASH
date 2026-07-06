@@ -112,7 +112,17 @@ export function EditorWorkspace({ onEditorReady }: EditorWorkspaceProps) {
             ref={editorScrollRef}
             className="panel-body ai-scroll flex-1 overflow-y-a"
             style={{
-              padding: '0 60px',
+              padding: '6px 60px',
+            }}
+            onClick={(e) => {
+              if (!localEditor) return;
+              // If the click target is the scroll container itself (empty area below text),
+              // focus the editor and place cursor at the end of the content
+              const editorDom = localEditor.view.dom;
+              if (!editorDom.contains(e.target as Node)) {
+                e.preventDefault();
+                localEditor.commands.focus('end');
+              }
             }}
           >
             <div style={{ margin: '0 auto', padding: 0 }}>

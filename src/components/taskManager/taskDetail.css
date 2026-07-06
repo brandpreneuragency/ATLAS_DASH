@@ -27,30 +27,22 @@
   color: rgba(17, 17, 17, 0);
   display: flex;
   flex-direction: column;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-height: 0;
-  height: fit-content;
-}
-
-/* Scrollable subtask list: capped to show ~4 rows, then scrolls vertically.
-   4 rows (16px) + 3 gaps (10px) + small buffer for the title's overflow. */
-.tdp-subtasks-scroll {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-height: 0;
-  max-height: calc(4 * 16px + 3 * 10px + 6px);
-  overflow-y: auto;
 }
 
 .tdp-meta-controls {
-  gap: 6px;
-  width: 100%;
+  gap: 0px;
+  width: fit-content;
   height: fit-content;
   margin-bottom: 6px;
-  padding: 0;
+  padding-top: 6px;
+  padding-bottom: 6px;
   background-color: transparent;
 }
+
+/* tdp-meta-controls is now rendered inside .subtasks-toggle-bar
+   (second grid row). The padding is handled by the toggle bar itself. */
 
 .tdp-meta-field {
   position: relative;
@@ -58,20 +50,22 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  height: 24px;
-  border: 1px solid var(--c-border-1);
+  height: 20px;
+  border: none;
   border-radius: 8px;
+  background-color: var(--c-background-2);
 }
 
 .tdp-meta-field-btn {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 6px;
-  width: 100%;
+  width: fit-content;
   height: 100%;
   min-height: 0;
-  padding: 0 12px;
-  background: transparent;
+  padding: 6px 12px;
+  background-color: var(--c-background-2);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -83,9 +77,15 @@
   opacity: 0.6;
 }
 
+.tdp-meta-field-btn svg {
+  width: 12px;
+  height: 12px;
+  color: var(--c-text-1);
+}
+
 .tdp-meta-field-label {
   font-size: var(--fs-base);
-  color: currentColor;
+  color: var(--c-text-1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -93,8 +93,8 @@
 }
 
 .subtask-status-btn {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
   min-width: 0;
   min-height: 0;
   border-radius: 50%;
@@ -112,27 +112,16 @@
   transition: background-color 0.15s, border-color 0.15s;
 }
 .subtask-status-btn--completed {
-  border: none;
-  background: var(--c-accent-2);
+  border: 1px solid var(--c-border-1);
+  background: var(--c-background-3);
 }
 .subtask-status-btn svg {
   width: 10px;
   height: 10px;
 }
 .subtask-status-btn--active {
-  background: var(--c-text-2);
-  border: none;
-}
-.subtask-status-add-indicator {
-  width: 6px;
-  height: 6px;
-  margin-top: 0;
-  margin-bottom: 0;
-  line-height: 0;
-  border-radius: 50%;
-  border: 1.5px solid var(--c-background-4);
-  background-color: var(--c-border-2);
-  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--c-text-2);
 }
 .subtask-title {
   height: 20px;
@@ -152,10 +141,74 @@
   cursor: text;
   border-radius: 4px;
   transition: background-color 0.15s;
-  color: var(--c-text-3);
+  color: var(--c-text-1);
 }
 .subtask-title:hover {
   background: var(--c-hover, rgba(0, 0, 0, 0.04));
+}
+
+.subtask-due-date-field {
+  position: relative;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.subtask-due-date-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  width: fit-content;
+  min-width: 0;
+  height: 16px;
+  padding: 0 2px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--c-text-3);
+  font-size: var(--fs-xs);
+  line-height: 1;
+}
+
+.subtask-due-date-btn svg {
+  width: 10px;
+  height: 10px;
+}
+
+.subtask-due-date-btn:hover {
+  color: var(--c-text-2);
+}
+
+.subtask-due-date-btn--active {
+  color: var(--c-text-3);
+}
+
+.subtask-due-date-btn--active:hover {
+  color: var(--c-text-2);
+}
+
+.subtask-due-date-btn--completed,
+.subtask-due-date-btn--completed .subtask-due-date-label {
+  color: var(--c-border-2);
+}
+
+.subtask-due-date-btn--completed:hover,
+.subtask-due-date-btn--completed:hover .subtask-due-date-label {
+  color: var(--c-border-2);
+}
+
+.subtask-due-date-label {
+  width: fit-content;
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+
+.subtask-due-date-drop {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 140px;
+  margin-top: 2px;
+  z-index: 1000;
 }
 #tdc-subtasks-toggle {
   background: none;
@@ -200,7 +253,7 @@
   flex: 0 0 auto;
   min-height: 0;
   height: fit-content;
-  width: 100%;
+  width: fit-content;
   padding: 0 12px 12px 12px;
   background: transparent;
   border-bottom: none;
@@ -226,9 +279,9 @@
 #task-comment-card .composer-input {
   border: none;
   background-color: rgba(255, 255, 255, 0);
-  padding: 12px 12px;
+  padding: 18px 18px 0;
   height: fit-content;
-  min-height: 44px;
+  min-height: 42px;
   line-height: var(--line-normal);
   /* Native resize handle is replaced by a custom top-right handle. */
   resize: none;
@@ -242,7 +295,7 @@
   right: 0;
   width: 16px;
   height: 14px;
-  margin: 6px;
+  margin: 6px 6px 6px 12px;
   cursor: ns-resize;
   display: flex;
   align-items: center;
@@ -266,15 +319,36 @@
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-rows: 1fr;
   height: fit-content;
-  width: 100%;
+  width: fit-content;
   padding: 0 6px 6px;
   border: none;
   border-top: none;
   border-image: none;
   background: unset;
 }
+#task-comment-card .comment-attachment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0px;
+}
+#task-comment-card .comment-attachment-chip {
+  background: var(--c-background-4);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: var(--fs-xs);
+}
+#task-comment-card .comment-attachment-chip button {
+  color: var(--c-text-2);
+}
+#task-comment-card .comment-attachment-progress {
+  align-self: center;
+  font-size: var(--fs-sm);
+}
+#task-comment-card .comment-file-input {
+  display: none;
+}
 #task-comment-card .task-comment-bottom-row > div:last-child {
-  width: 100%;
+  width: fit-content;
 }
 #task-comment-card .task-comment-bottom-col {
   position: relative;
@@ -293,17 +367,17 @@
   padding-bottom: 0;
 }
 #task-comment-card .task-comment-bottom-col--send {
-  width: 100%;
+  width: fit-content;
   justify-content: flex-end;
   padding-right: 0;
 }
 #task-comment-thread {
   background: transparent;
-  padding-top: 14px;
-  padding-bottom: 14px;
+  padding-top: 12px;
+  padding-bottom: 12px;
   padding-left: 24px;
-  padding-right: 24px;
-  width: 100%;
+  padding-right: 12px;
+  width: fit-content;
   justify-content: flex-start;
   align-items: flex-start;
   text-align: left;
@@ -312,9 +386,9 @@
 .comment-bubble {
   display: grid;
   gap: 0;
-  background: var(--c-background-1);
+  background: var(--c-background-2);
   border-radius: 8px;
-  border: 1px solid var(--c-border-1);
+  border: none;
   margin-top: 3px;
   margin-bottom: 3px;
   padding: 0;
@@ -329,9 +403,9 @@
 }
 .comment-bubble p.txt-xs {
   margin: 0;
-  width: 100%;
+  width: fit-content;
   line-height: var(--line-normal);
-  padding: 6px 12px;
+  padding: 12px;
   vertical-align: middle;
 }
 .comment-thread {
@@ -366,8 +440,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding-left: 2px;
-  padding-right: 2px;
+  padding-left: 0;
+  padding-right: 0;
 }
 #task-comment-thread .comment-meta {
   font-size: var(--fs-xs);
@@ -474,8 +548,8 @@
   display: none;
 }
 :root .subtask-status-btn {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
   min-width: 0;
   min-height: 0;
   border-radius: 50%;
@@ -493,27 +567,16 @@
   transition: background-color 0.15s, border-color 0.15s;
 }
 :root .subtask-status-btn--completed {
-  border: none;
-  background: var(--c-accent-2);
+  border: 1px solid var(--c-border-1);
+  background: var(--c-background-3);
 }
 :root .subtask-status-btn svg {
   width: 10px;
   height: 10px;
 }
 :root .subtask-status-btn--active {
-  background: var(--c-text-2);
-  border: none;
-}
-:root .subtask-status-add-indicator {
-  width: 6px;
-  height: 6px;
-  margin-top: 0;
-  margin-bottom: 0;
-  line-height: 0;
-  border-radius: 50%;
-  border: 1.5px solid var(--c-background-4);
-  background-color: var(--c-border-2);
-  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--c-text-2);
 }
 :root #tdc-subtasks-toggle {
   background: none;
@@ -557,7 +620,7 @@
   flex: 0 0 auto;
   min-height: 0;
   height: fit-content;
-  width: 100%;
+  width: fit-content;
   padding: 0 12px 12px 12px;
   background: transparent;
   border-bottom: none;
@@ -572,11 +635,11 @@
 }
 :root #task-comment-thread {
   background: transparent;
-  padding-top: 14px;
-  padding-bottom: 14px;
+  padding-top: 12px;
+  padding-bottom: 12px;
   padding-left: 24px;
-  padding-right: 24px;
-  width: 100%;
+  padding-right: 12px;
+  width: fit-content;
   justify-content: flex-start;
   align-items: flex-start;
   text-align: left;
@@ -592,7 +655,7 @@
 :root .comment-bubble {
   display: grid;
   gap: 0;
-  background: var(--c-background-1);
+  background: var(--c-background-2);
   border-radius: 8px;
   margin-top: 3px;
   margin-bottom: 3px;
@@ -600,7 +663,7 @@
   width: fit-content;
   height: fit-content;
   flex-wrap: wrap;
-  border: 1px solid var(--c-border-1);
+  border: none;
   box-sizing: border-box;
   vertical-align: middle;
   word-break: break-word;
@@ -609,9 +672,9 @@
 }
 :root .comment-bubble p.txt-xs {
   margin: 0;
-  width: 100%;
+  width: fit-content;
   line-height: var(--line-normal);
-  padding: 6px 12px;
+  padding: 12px;
   vertical-align: middle;
 }
 :root .comment-thread {
@@ -646,8 +709,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding-left: 2px;
-  padding-right: 2px;
+  padding-left: 0;
+  padding-right: 0;
 }
 :root .media-thumb {
   display: block;

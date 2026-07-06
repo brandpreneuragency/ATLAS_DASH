@@ -27,7 +27,6 @@ export function TaskMetadataControls() {
 
   const effectiveId = activeTaskId ?? storeActiveId;
   const activeTask = tasks.find((t) => t.id === effectiveId) ?? null;
-  const accentColor = 'var(--c-accent-2)';
   const activeProject = activeTask ? projects.find((p) => p.id === activeTask.projectId) ?? null : null;
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -66,7 +65,7 @@ export function TaskMetadataControls() {
           onClick={() => setShowDatePicker(!showDatePicker)}
           title={activeTask?.date ? `Due: ${activeTask.date}` : 'Set due date'}
           disabled={!activeTask}
-          style={{ color: activeTask?.date ? accentColor : 'var(--c-text-2)' }}
+          style={{ color: activeTask?.date ? 'var(--c-text-1)' : 'var(--c-text-2)' }}
         >
           <Calendar size={12} />
           <span className="tdp-meta-field-label">
@@ -96,9 +95,9 @@ export function TaskMetadataControls() {
           onClick={() => setShowProjectPicker(!showProjectPicker)}
           title={activeTask?.projectId ? 'Change project' : 'Set project'}
           disabled={!activeTask}
-          style={{ color: activeTask?.projectId ? accentColor : 'var(--c-text-2)' }}
+          style={{ color: activeTask?.projectId ? 'var(--c-text-1)' : 'var(--c-text-2)' }}
         >
-          <Folder size={14} />
+          <Folder size={12} />
           <span className="tdp-meta-field-label">
             {activeProject ? activeProject.name : 'No project'}
           </span>

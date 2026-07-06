@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type React from 'react';
 import {
   FilePlus, FolderPlus, X,
@@ -45,6 +45,7 @@ export function FileExplorerPanel() {
   } = useFileSystemStore();
   const { openFileFromTree } = useDocumentStore();
   const { expandedPaths, setExpandedPaths, setSelectedTreePath, fileExplorerOpen } = useUIStore();
+  const activeFolderId = useFileSystemStore((s) => s.activeFolderId);
   const nativeAvailable = folderCapability === 'available';
 
   // inline input at root level (new file / new folder)
@@ -67,10 +68,36 @@ export function FileExplorerPanel() {
     }
   }, [rootInput]);
 
+  // Track the folder ID that was active when the search query was entered.
+  // This lets us distinguish "user is typing in search" from "rootNode changed
+  // because the user switched root folders" so we don't trigger a full subtree
+  // load on every folder switch.
+  const searchFolderIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (searchActive) {
+      searchFolderIdRef.current = activeFolderId;
+    }
+  }, [searchActive, activeFolderId]);
+
+  // Clear search when switching root folders – the old query is meaningless
+  // in the new folder and would otherwise trigger ensureSubtreeLoaded on the
+  // entire new tree (potentially thousands of readDir calls).
+  useEffect(() => {
+    if (searchActive && searchFolderIdRef.current !== activeFolderId) {
+      setSearchQuery('');
+      setSearchDropdownOpen(false);
+      searchFolderIdRef.current = activeFolderId;
+    }
+  }, [activeFolderId, searchActive]);
+
   useEffect(() => {
     if (!searchActive || !searchIndexing || !rootNode) return;
+    // Only trigger the expensive full-subtree load when the search query
+    // actually changed (not when rootNode changed due to a folder switch).
+    if (searchFolderIdRef.current !== activeFolderId) return;
     void ensureSubtreeLoaded(rootNode.fullPath).catch(() => undefined);
-  }, [ensureSubtreeLoaded, rootNode, searchActive, searchIndexing]);
+  }, [ensureSubtreeLoaded, rootNode, searchActive, searchIndexing, activeFolderId]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -82,17 +109,36 @@ export function FileExplorerPanel() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // --- Stable polling refs ---
+  // The poll must NOT re-create the interval on every rootNode / expandedPaths
+  // change.  Previously the effect listed both as dependencies, which meant:
+  //   • refreshDir() updates rootNode → effect re-runs → interval reset
+  //   • user expands/collapses a folder → expandedPaths changes → interval reset
+  //   • switching root folders → rootNode changes → interval reset
+  // Using refs keeps a single long-lived interval that always reads the latest
+  // values without tearing down / recreating the timer.
+  const rootPathRef = useRef<string | null>(null);
+  const expandedPathsRef = useRef<string[]>(expandedPaths);
+
+  useEffect(() => { rootPathRef.current = rootNode?.fullPath ?? null; }, [rootNode]);
+  useEffect(() => { expandedPathsRef.current = expandedPaths; }, [expandedPaths]);
+
+  const stablePoll = useCallback(async () => {
+    const rootPath = rootPathRef.current;
+    if (!rootPath) return;
+    await refreshDir(rootPath);
+    const paths = expandedPathsRef.current;
+    if (paths.length > 0) {
+      await Promise.all(paths.map((p) => refreshDir(p)));
+    }
+  }, [refreshDir]);
+
   // Poll-based external-change detection while panel is visible
   useEffect(() => {
     if (!fileExplorerOpen || !rootNode) return;
-    const id = setInterval(async () => {
-      await refreshDir(rootNode.fullPath);
-      for (const dirPath of expandedPaths) {
-        await refreshDir(dirPath);
-      }
-    }, POLL_INTERVAL_MS);
+    const id = setInterval(stablePoll, POLL_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [fileExplorerOpen, rootNode, expandedPaths, refreshDir]);
+  }, [fileExplorerOpen, rootNode, stablePoll]);
 
   const startRootNew = (mode: 'new-file' | 'new-folder') => {
     if (!rootNode) return;
@@ -242,7 +288,7 @@ export function FileExplorerPanel() {
                   </div>
                 )}
                 {!searchActive && (
-                  <div className="subtle" style={{ padding: '8px 12px', fontSize: 'var(--fs-xs)' }}>
+                  <div className="subtle" style={{ padding: '8px 12px', fontSize: 'var(--fs-sm)' }}>
                     {t('explorer.searchPlaceholder')}
                   </div>
                 )}
@@ -253,7 +299,7 @@ export function FileExplorerPanel() {
       </div>
 
       {/* Body */}
-      <div className="panel-body ai-scroll flex-1 overflow-y-a" style={{ minHeight: 0, padding: 8 }}>
+      <div className="panel-body ai-scroll flex-1 overflow-y-a" style={{ minHeight: 0, padding: '8px 0' }}>
         {error && (
           <p style={{ fontSize: 'var(--fs-xs)', color: '#EF4444', marginBottom: 8, lineHeight: 1.375 }}>{error}</p>
         )}
@@ -281,7 +327,7 @@ export function FileExplorerPanel() {
         )}
 
         {rootNode?.children && (
-          <ul id="filetree-list" className="ai-scroll" style={{
+          <ul id="filetree-list" style={{
             display: 'flex', flexDirection: 'column', gap: 1,
             listStyle: 'none', padding: 0, margin: 0,
           }}>

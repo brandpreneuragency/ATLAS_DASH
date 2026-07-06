@@ -14,6 +14,7 @@ export type CommentCreateInput = {
   sender?: string;
   text?: string;
   replyTo?: TaskComment['replyTo'];
+  createdAt?: number;
 };
 
 export interface AddCommentOptions {
@@ -97,8 +98,8 @@ export const useTaskCommentStore = create<TaskCommentStore>((set, get) => ({
   },
 
   addComment: async (taskId, input, file, options) => {
-    const id = nanoid(8);
-    const now = Date.now();
+    const id = input.id ?? nanoid(8);
+    const now = input.createdAt ?? Date.now();
     
     // Handle file attachment for local-first
     let attachmentDataUrl: string | undefined = undefined;
@@ -209,7 +210,10 @@ export const useTaskCommentStore = create<TaskCommentStore>((set, get) => ({
     set((s) => ({ commentsByTask: { ...s.commentsByTask, [taskId]: [] } }));
   },
 
-  getComments: (taskId) => get().commentsByTask[taskId] ?? [],
+  getComments: (taskId) =>
+    (get().commentsByTask[taskId] ?? [])
+      .slice()
+      .sort((a, b) => a.createdAt - b.createdAt),
 }));
 
 /**

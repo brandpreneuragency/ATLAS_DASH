@@ -64,7 +64,7 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
         <div
           id="file-tree-panel"
           className="task-list-panel relative shrink-0 overflow-h flex-col h-full min-w-0"
-          style={{ width: `clamp(260px, ${fileExplorerWidth}vw, 420px)`, paddingLeft: 10, paddingRight: 10 }}
+          style={{ width: `clamp(260px, ${fileExplorerWidth}vw, 420px)`, paddingLeft: 6, paddingRight: 6 }}
         >
           {leftPanel}
         </div>
@@ -73,7 +73,7 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
         <div
           id="task-list-column"
           className="task-list-panel relative shrink-0 overflow-h flex-col h-full"
-          style={{ width: `clamp(260px, ${fileExplorerWidth}vw, 420px)`, paddingTop: '0px', paddingBottom: '0px', backgroundColor: 'var(--c-background-1)' }}
+          style={{ width: `clamp(260px, ${fileExplorerWidth}vw, 420px)`, paddingTop: '0px', paddingBottom: '0px', backgroundColor: 'var(--c-background-2)' }}
         >
           {taskListPanel}
         </div>
@@ -125,7 +125,7 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
 
               {showCenterPanel && (
               <div id="center-panel" className="panel flex-1 h-full overflow-h flex-col min-w-0" style={{ minWidth: 140 }}>
-                {subtasksBar}
+                {subtasksBar && <div className='subtasks-bar-wrapper' style={{ paddingTop: '12px', paddingBottom: '12px', paddingLeft: '12px', paddingRight: '12px' }}>{subtasksBar}</div>}
                 <div id="center-panel-body" className="panel-body flex-1 min-h-0 overflow-h">
                   {editor}
                 </div>
@@ -136,7 +136,7 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
             <>
               {showCenterPanel && (
               <div id="center-panel" className="panel flex-1 h-full overflow-h flex-col min-w-0" style={{ minWidth: 140 }}>
-                {subtasksBar}
+                {subtasksBar && <div className='subtasks-bar-wrapper' style={{ paddingTop: '12px', paddingBottom: '12px', paddingLeft: '12px', paddingRight: '12px' }}>{subtasksBar}</div>}
                 <div id="center-panel-body" className="panel-body flex-1 min-h-0 overflow-h">
                   {editor}
                 </div>

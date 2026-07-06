@@ -1,4 +1,5 @@
-import { Plus, Monitor } from 'lucide-react';
+import { Plus, Monitor, ChevronDown } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFileSystemStore } from '../../stores/fileSystemStore';
 
@@ -55,30 +56,7 @@ export function FileTreeTabs() {
         </span>
       )}
       {nativeAvailable ? (
-        <select
-          className="flex-1 min-w-0"
-          style={{
-            height: '100%',
-            border: 'none',
-            borderRadius: 0,
-            color: 'var(--c-text-1)',
-            fontSize: 'var(--fs-base)',
-            cursor: 'pointer',
-          }}
-          value={activeFolderId ?? ''}
-          onChange={(e) => {
-            if (e.target.value) setActiveFolderId(e.target.value);
-          }}
-        >
-          {connectedFolders.length === 0 && (
-            <option value="">{t('explorer.noFoldersConnected')}</option>
-          )}
-          {connectedFolders.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.rootNode?.name ?? 'Unnamed'}
-            </option>
-          ))}
-        </select>
+        <FolderDropdown />
       ) : (
         <span
           style={{
@@ -92,6 +70,131 @@ export function FileTreeTabs() {
         >
           {t('explorer.desktopRequired')}
         </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Custom dropdown for the active folder selector.
+ *
+ * Replaces the native <select> so the open menu can be styled
+ * (padding, border, active-item background). Native <select>
+ * popups are rendered by the OS and ignore most CSS.
+ */
+function FolderDropdown() {
+  const { t } = useTranslation();
+  const { connectedFolders, activeFolderId, setActiveFolderId } = useFileSystemStore();
+  const [open, setOpen] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState<number>(-1);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const activeFolder = connectedFolders.find((f) => f.id === activeFolderId);
+  const displayText = activeFolder?.rootNode?.name ?? t('explorer.noFoldersConnected');
+  const hasItems = connectedFolders.length > 0;
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const onMouseDown = (e: MouseEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, [open]);
+
+  // Reset highlight when opening
+  useEffect(() => {
+    if (open) {
+      const idx = connectedFolders.findIndex((f) => f.id === activeFolderId);
+      setHighlightIndex(idx >= 0 ? idx : 0);
+    }
+  }, [open, activeFolderId, connectedFolders]);
+
+  const select = (id: string) => {
+    setActiveFolderId(id);
+    setOpen(false);
+    triggerRef.current?.focus();
+  };
+
+  const onTriggerKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setOpen(true);
+    }
+  };
+
+  const onMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setOpen(false);
+      triggerRef.current?.focus();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightIndex((i) => (i + 1) % Math.max(connectedFolders.length, 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightIndex((i) =>
+        i <= 0 ? Math.max(connectedFolders.length - 1, 0) : i - 1,
+      );
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      const folder = connectedFolders[highlightIndex];
+      if (folder) select(folder.id);
+    }
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className={`folder-dropdown ${open ? 'is-open' : ''}`}
+    >
+      <button
+        ref={triggerRef}
+        type="button"
+        className="folder-dropdown-trigger"
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={onTriggerKeyDown}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className="folder-dropdown-label">{displayText}</span>
+        <ChevronDown size={14} className="folder-dropdown-chevron" />
+      </button>
+      {open && (
+        <div
+          className="folder-dropdown-menu"
+          role={hasItems ? 'listbox' : undefined}
+          tabIndex={hasItems ? -1 : undefined}
+          onKeyDown={hasItems ? onMenuKeyDown : undefined}
+        >
+          {!hasItems && (
+            <div className="folder-dropdown-item is-empty">
+              {t('explorer.noFoldersConnected')}
+            </div>
+          )}
+          {connectedFolders.map((f, i) => {
+            const isActive = f.id === activeFolderId;
+            const isHighlighted = i === highlightIndex;
+            return (
+              <div
+                key={f.id}
+                role="option"
+                aria-selected={isActive}
+                className={`folder-dropdown-item ${isActive ? 'is-active' : ''} ${
+                  isHighlighted ? 'is-highlighted' : ''
+                }`}
+                onMouseEnter={() => setHighlightIndex(i)}
+                onClick={() => select(f.id)}
+              >
+                {f.rootNode?.name ?? 'Unnamed'}
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

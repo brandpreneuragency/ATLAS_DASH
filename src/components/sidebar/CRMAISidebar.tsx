@@ -598,7 +598,7 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
                   : 'Select an item to get CRM Agent suggestions…'
               }
               rows={1}
-              style={{ height: '44px', paddingTop: '12px', paddingBottom: '12px' }}
+              style={{ height: 'fit-content', padding: '18px 18px 0' }}
               aria-label="CRM Agent prompt"
             />
 

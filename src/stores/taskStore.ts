@@ -51,7 +51,7 @@ interface TaskStore {
   getDeletedTasks: () => Task[];
   fetchDeletedTasks: () => Promise<Task[]>;
   getLastSubtaskDate: (parentId: string) => number | null;
-  createSubtask: (parentId: string, title: string, sourceChatMessageId?: string) => Promise<Task | null>;
+  createSubtask: (parentId: string, title: string, sourceChatMessageId?: string, date?: string) => Promise<Task | null>;
   /**
    * Regenerate INDEX.md on disk for the Tauri desktop bundle.
    * Kept for compatibility; actual implementation in fs-adapter.
@@ -503,7 +503,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     return Math.max(...subs.map((s) => s.createdAt));
   },
 
-  createSubtask: async (parentId, title, sourceChatMessageId) => {
+  createSubtask: async (parentId, title, sourceChatMessageId, date) => {
     const parent = get().tasks.find((t) => t.id === parentId);
     if (!parent) {
       showError(new Error('Parent task not found'), 'Parent task not found');
@@ -517,7 +517,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       content: '',
       status: 'in_progress',
       importance: 'medium',
-      date: parent.date,
+      date: date ?? parent.date,
       projectId: parent.projectId,
       assignees: [],
       createdAt: now,

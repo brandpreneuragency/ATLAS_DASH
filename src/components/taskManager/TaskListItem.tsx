@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react';
 import type { Task } from '../../types';
 import { useProjectStore } from '../../stores/projectStore';
 import { useLongPress } from '../../hooks/useLongPress';
-import { Folder, Calendar } from 'lucide-react';
 import { TaskContextMenu } from './TaskContextMenu';
 
 interface TaskListItemProps {
@@ -11,7 +10,7 @@ interface TaskListItemProps {
   onClick: () => void;
 }
 
-const metaStyle = { color: 'var(--c-text-2)', fontSize: 'var(--fs-xs)' } as const;
+const metaStyle = { color: 'var(--c-text-2)', fontSize: 'var(--fs-sm)' } as const;
 
 export function TaskListItem({ task, isActive, onClick }: TaskListItemProps) {
   const { getProjectById } = useProjectStore();
@@ -50,16 +49,12 @@ export function TaskListItem({ task, isActive, onClick }: TaskListItemProps) {
         <div className="row-xs justify-between">
           <div className="flex items-center gap-1 min-w-0">
             {project ? (
-              <>
-                <Folder size={10} className="subtle shrink-0" style={metaStyle} />
-                <span className="meta trunc" style={metaStyle}>{project.name}</span>
-              </>
+              <span className="meta trunc" style={metaStyle}>{project.name}</span>
             ) : (
               <span className="meta" style={metaStyle}>Uncategorized</span>
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Calendar size={10} className="subtle" style={metaStyle} />
             <span className="meta" style={metaStyle}>{dateLabel}</span>
           </div>
         </div>

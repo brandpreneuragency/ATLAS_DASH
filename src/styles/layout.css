@@ -529,19 +529,17 @@ body {
   container-name: comment-composer;
 }
 
-/* Subtasks bar in the task detail: it is an OPTIONAL header
- * (only when `subtasksOpen`). Its height is dynamic (32px to 40%
- * of the panel). Size to content; scroll when exceeding max-height. */
+/* Subtasks bar in the task detail: it is shown in place of the
+ * comment thread when `subtasksOpen` is true. Fill the panel and
+ * scroll when the list of subtasks exceeds the available space. */
 #task-detail-panel > .tdp-subtasks-bar {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-height: 0;
-  height: fit-content;
-  max-height: 40%;
   overflow-y: auto;
   background-color: transparent;
   border-bottom: none;
-  padding-left: 15px;
-  padding-right: 15px;
+  padding-left: 12px;
+  padding-right: 12px;
   margin-left: 0;
   margin-right: 0;
 }
@@ -645,7 +643,7 @@ body {
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
-  padding: 0 60px;
+  padding: 6px 60px;
 }
 
 /* ---- Empty-state body wrappers ----

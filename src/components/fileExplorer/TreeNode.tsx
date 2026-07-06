@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   ChevronRight, ChevronDown, Folder, FolderOpen, File,
   MoreHorizontal, FilePlus, FolderPlus, Pencil, Trash2,
@@ -25,16 +25,6 @@ interface InlineInput {
   mode: 'rename' | 'new-file' | 'new-folder';
 }
 
-function useClickOutside(ref: React.RefObject<HTMLElement | null>, cb: () => void) {
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) cb();
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [ref, cb]);
-}
-
 export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
   const { t } = useTranslation();
   const { expandedPaths, toggleExpandedPath, setExpandedPaths, setSelectedTreePath, selectedTreePath } = useUIStore();
@@ -50,9 +40,36 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
   const [isDragOver, setIsDragOver] = useState(false);
 
   const contextRef = useRef<HTMLDivElement>(null);
+  const kebabRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useClickOutside(contextRef, () => setContextMenu(null));
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (contextRef.current?.contains(target)) return;
+      if (kebabRef.current?.contains(target)) return;
+      closeContextMenu();
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeContextMenu();
+    };
+
+    const id = window.setTimeout(() => {
+      document.addEventListener('pointerdown', onPointerDown, true);
+      document.addEventListener('keydown', onKeyDown);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(id);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [contextMenu, closeContextMenu]);
 
   useEffect(() => {
     if (inlineInput && inputRef.current) {
@@ -231,12 +248,25 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
         style={{
           '--tree-depth': depth,
           ...(depth === 0 && node.kind === 'directory' ? {} : { minHeight: 32 }),
-          borderRadius: 0,
+          ...(depth === 0
+            ? {
+                borderRadius: 8,
+                paddingLeft: 0,
+                paddingRight: 0,
+                paddingTop: 6,
+                paddingBottom: 6,
+              }
+            : {
+                borderRadius: 0,
+                padding: 0,
+              }),
+          backgroundColor:
+            selectedTreePath === node.path || (node.kind === 'directory' && expanded)
+              ? 'var(--c-background-2)'
+              : 'transparent',
           fontSize: 'var(--fs-xs)',
           color: 'var(--c-text-1)',
           cursor: 'default',
-          padding: 0,
-          borderBottom: depth === 0 ? '1px solid var(--c-border-1)' : undefined,
           ...(isDragOver ? { outline: '2px solid var(--c-accent-center-panel)', outlineOffset: -2 } : {}),
         } as React.CSSProperties}
         draggable
@@ -252,6 +282,7 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
         {/* Row content */}
         <div className="row-xs" style={{
           height: 32,
+          paddingLeft: 6,
         }}
           onClick={handleClick}
           onAuxClick={(e) => { if (node.kind === 'file') { e.preventDefault(); openFileFromTree(node, true); } }}
@@ -262,14 +293,14 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
                 {expanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
               </span>
               {expanded
-                ? <FolderOpen size={13} className="shrink-0" style={{ color: selectedTreePath === node.path ? 'var(--c-accent-center-panel)' : 'var(--c-text-2)' }} />
-                : <Folder size={13} className="shrink-0" style={{ color: selectedTreePath === node.path ? 'var(--c-accent-center-panel)' : 'var(--c-text-2)' }} />
+                ? <FolderOpen size={13} className="shrink-0" style={{ color: selectedTreePath === node.path ? 'var(--c-accent-1)' : 'var(--c-text-2)' }} />
+                : <Folder size={13} className="shrink-0" style={{ color: selectedTreePath === node.path ? 'var(--c-accent-1)' : 'var(--c-text-2)' }} />
               }
             </>
           ) : (
             <>
               <span className="shrink-0" style={{ width: 14 }} />
-              <File size={13} className="shrink-0" style={{ color: selectedTreePath === node.path ? 'var(--c-accent-center-panel)' : 'var(--c-text-2)' }} />
+              <File size={13} className="shrink-0" style={{ color: selectedTreePath === node.path ? 'var(--c-accent-1)' : 'var(--c-text-2)' }} />
             </>
           )}
 
@@ -290,7 +321,7 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
             <span className="trunc flex-1 min-w-0" style={{
               marginLeft: 4,
               fontWeight: 500,
-              color: selectedTreePath === node.path ? 'var(--c-accent-center-panel)' : 'var(--c-text-2)'
+              color: selectedTreePath === node.path ? 'var(--c-accent-1)' : 'var(--c-text-2)'
             }}>{node.name}</span>
           )}
 
@@ -322,10 +353,18 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
                 </>
               )}
               <button
+                ref={kebabRef}
                 type="button"
                 className="btn-icon"
                 style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)', marginRight: 4 }}
-                onClick={(e) => { e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY }); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (contextMenu) {
+                    closeContextMenu();
+                  } else {
+                    setContextMenu({ x: e.clientX, y: e.clientY });
+                  }
+                }}
                 title="Options"
                 aria-label="Options"
               >
@@ -337,7 +376,7 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
 
         {/* Nested children container */}
         {node.kind === 'directory' && expanded && (
-          <ul className="tree-children" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          <ul className="tree-children" style={{ listStyle: 'none', paddingLeft: 6, paddingRight: 6, margin: 0 }}>
             {/* Inline new-file / new-folder input */}
             {inlineInput && inlineInput.mode !== 'rename' && (
               <li

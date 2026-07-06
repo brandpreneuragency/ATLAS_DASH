@@ -85,7 +85,7 @@ button.task-item {
   margin-bottom: 2px;
 }
 button.task-item:hover {
-  background: var(--c-background-2);
+  background: var(--c-background-1);
 }
 #task-list-panel {
   background: unset;
@@ -104,7 +104,7 @@ button.task-item:hover {
 #task-list-content{
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 6px;
   padding-top: 12px;
   padding-bottom: 0;
   padding-left: 18px;
@@ -112,7 +112,7 @@ button.task-item:hover {
   width: 100%;
   min-height: 0;
   height: 100%;
-  background-color: var(--c-background-1);
+  background-color: rgba(233, 233, 233, 0);
   border-radius: 0px;
   border: none;
   outline: none;
@@ -120,6 +120,10 @@ button.task-item:hover {
 #task-list-content button .meta,
 #task-list-content button .subtle {
   color: var(--c-text-2);
+}
+#task-list-content button .subtle svg.lucide {
+  width: 10px;
+  height: 10px;
 }
 #task-list-content button .meta {
   font-size: var(--fs-sm);
@@ -135,7 +139,7 @@ button.task-item:hover {
   overflow: visible;
 }
 #task-quick-create-footer {
-  background-color: var(--c-background-1);
+  background-color: rgba(233, 233, 233, 0);
   border: none;
   padding-top: 12px;
 }
@@ -199,7 +203,7 @@ button.task-item:hover {
   min-width: 0;
   height: fit-content;
   width: fit-content;
-  padding: 6px 10px;
+  padding: 6px 9px;
   gap: 6px;
   background: transparent;
   border-radius: 8px;
@@ -216,7 +220,7 @@ button.task-item:hover {
   color: var(--c-text-2);
 }
 #task-quick-create .task-quick-create-dropup-btn:not([data-active='true']):hover {
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 #task-quick-create .task-quick-create-dropup-btn .task-quick-create-dropup-icon {
   flex-shrink: 0;
@@ -228,7 +232,7 @@ button.task-item:hover {
   min-width: 0;
 }
 #task-quick-create .task-quick-create-dropup-btn:hover {
-  background: var(--c-background-2);
+  background: transparent;
 }
 #tqc-project-dropdown button.drop-item {
   background-color: var(--c-background-1);
@@ -236,13 +240,10 @@ button.task-item:hover {
 #tqc-project-dropdown button.drop-item:hover {
   background-color: var(--c-background-2);
 }
-#task-quick-create .task-quick-create-dropup-btn[data-active='true']:hover .task-quick-create-dropup-label,
-#task-quick-create .task-quick-create-dropup-btn[data-active='true']:hover .task-quick-create-dropup-chevron {
-  color: inherit;
-}
-#task-quick-create .task-quick-create-dropup-btn:not([data-active='true']):hover .task-quick-create-dropup-label,
-#task-quick-create .task-quick-create-dropup-btn:not([data-active='true']):hover .task-quick-create-dropup-chevron {
-  color: var(--c-accent-center-panel);
+#task-quick-create .task-quick-create-dropup-btn:hover .task-quick-create-dropup-label,
+#task-quick-create .task-quick-create-dropup-btn:hover .task-quick-create-dropup-chevron,
+#task-quick-create .task-quick-create-dropup-btn:hover .task-quick-create-dropup-icon {
+  color: var(--c-accent-1);
 }
 #task-quick-create .task-quick-create-dropup-btn:focus-visible {
   outline: 1px solid var(--c-accent-center-panel);
@@ -272,17 +273,17 @@ button.task-item:hover {
 #tqc-text-input {
   display: block;
   width: 100%;
-  height: 100%;
-  min-height: 32px;
+  height: fit-content;
+  min-height: 42px;
   line-height: var(--line-normal);
   vertical-align: middle;
   background-color: rgba(255, 255, 255, 0);
   border: none;
   outline: none;
-  padding-left: 12px;
-  padding-right: 12px;
-  padding-top: 12px;
-  padding-bottom: 12px;
+  padding-left: 18px;
+  padding-right: 18px;
+  padding-top: 18px;
+  padding-bottom: 0;
   resize: none;
   overflow: hidden;
   white-space: pre-wrap;
@@ -324,7 +325,7 @@ button.task-item:hover {
   align-items: center;
   height: fit-content;
   min-height: 0;
-  padding: 0 0;
+  padding: 0 6px 6px;
   gap: 0;
   overflow: visible;
 }
@@ -348,18 +349,16 @@ button.task-item:hover {
 }
 #chat-input-card .chat-input-bottom-col--tools {
   display: flex;
-  gap: 2px;
+  gap: 4px;
   padding: 0 0 0 6px;
   min-width: 0;
   overflow: visible;
 }
 #chat-input-card .chat-input-bottom-col--send {
   width: 100%;
-  justify-content: flex-end;
-  align-items: flex-end;
-  padding-top: 0;
-  padding-left: 6px;
-  padding-right: 6px;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
   overflow: visible;
 }
 #chat-input-card .chat-input-dropup-btn {
@@ -440,15 +439,12 @@ button.task-item:hover {
 #chat-input {
   border: none;
   outline: none;
-  min-height: 39px;
+  min-height: 42px;
   display: flex;
   flex-wrap: nowrap;
-  height: 39px;
-  vertical-align: bottom;
-  padding-top: 12px;
-  padding-bottom: 12px;
-  padding-left: 12px;
-  padding-right: 12px;
+  height: fit-content;
+  vertical-align: middle;
+  padding: 18px 18px 0;
   line-height: var(--line-normal);
   justify-content: center;
   align-items: center;
@@ -691,7 +687,7 @@ button.task-item:hover {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 3px;
+  gap: 6px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   justify-content: flex-start;
@@ -704,26 +700,185 @@ button.task-item:hover {
   transition: background-color 0.12s;
 }
 .task-item .meta {
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   color: var(--c-text-2);
 }
 .task-item--on {
-  background: var(--c-background-2);
+  background: var(--c-background-1);
   border: none;
   border-image: none;
 }
 .task-item:hover {
-  background: var(--c-background-2);
+  background: var(--c-background-1);
 }
 .task-title {
-  font-size: var(--fs-sm);
+  font-size: var(--fs-base);
   font-weight: 600;
-  color: var(--c-text-1);
+  color: var(--c-text-3);
   text-align: left;
   white-space: normal;
   overflow-wrap: break-word;
   min-width: 0;
   line-height: 1.3;
+}
+
+/* Subtask quick-create footer (duplicate of task quick-create footer) */
+#subtask-quick-create {
+  background-color: var(--c-background-2);
+  border-radius: 8px;
+  padding: 0;
+  border: none;
+  opacity: 1;
+  margin-bottom: 0;
+  container-type: inline-size;
+  overflow: visible;
+}
+#subtask-quick-create-footer {
+  background-color: rgba(233, 233, 233, 0);
+  border: none;
+  padding-top: 12px;
+}
+#subtask-quick-create .composer-card {
+  background: unset;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  justify-content: flex-start;
+  align-items: stretch;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  padding: 0;
+  overflow: visible;
+}
+#subtask-quick-create .composer-row {
+  width: 100%;
+  height: fit-content;
+  min-height: auto;
+  padding: 0 0px;
+  border: none;
+  outline: none;
+  background: unset;
+}
+#subtask-quick-create .composer-row:nth-child(2) {
+  width: 100%;
+  height: fit-content;
+  padding-bottom: 0px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: 1fr;
+  align-items: center;
+}
+#subtask-quick-create .composer-row.task-quick-create-bottom-row {
+  gap: 0;
+  height: fit-content;
+  min-height: 36px;
+  padding: 0 6px 6px;
+}
+#subtask-quick-create .task-quick-create-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 0;
+  width: 100%;
+  height: fit-content;
+}
+#subtask-quick-create .task-quick-create-send {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: fit-content;
+  width: 100%;
+  padding: 0;
+}
+#subtask-quick-create .task-quick-create-dropup-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: fit-content;
+  width: fit-content;
+  padding: 6px 9px;
+  gap: 6px;
+  background: transparent;
+  border-radius: 8px;
+  font-size: var(--fs-base);
+  text-align: left;
+}
+#subtask-quick-create .task-quick-create-dropup-btn[data-kind='date'][data-active='true'] {
+  color: var(--c-accent-2);
+}
+#subtask-quick-create .task-quick-create-dropup-btn[data-active='false'] {
+  color: var(--c-text-2);
+}
+#subtask-quick-create .task-quick-create-dropup-btn:not([data-active='true']):hover {
+  color: var(--c-accent-1);
+}
+#subtask-quick-create .task-quick-create-dropup-btn .task-quick-create-dropup-icon {
+  flex-shrink: 0;
+}
+#subtask-quick-create .task-quick-create-dropup-btn .task-quick-create-dropup-chevron {
+  flex-shrink: 0;
+}
+#subtask-quick-create .task-quick-create-dropup-btn .task-quick-create-dropup-label {
+  min-width: 0;
+}
+#subtask-quick-create .task-quick-create-dropup-btn:hover {
+  background: transparent;
+}
+#subtask-quick-create .task-quick-create-dropup-btn:hover .task-quick-create-dropup-label,
+#subtask-quick-create .task-quick-create-dropup-btn:hover .task-quick-create-dropup-chevron,
+#subtask-quick-create .task-quick-create-dropup-btn:hover .task-quick-create-dropup-icon {
+  color: var(--c-accent-1);
+}
+#subtask-quick-create .task-quick-create-dropup-btn:focus-visible {
+  outline: 1px solid var(--c-accent-center-panel);
+  outline-offset: 1px;
+}
+#subtask-quick-create .task-quick-create-dropup-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+#subtask-quick-create .task-quick-create-dropup-btn:disabled:hover {
+  background: transparent;
+}
+#subtask-quick-create .task-quick-create-dropup-btn:disabled .task-quick-create-dropup-label,
+#subtask-quick-create .task-quick-create-dropup-btn:disabled .task-quick-create-dropup-chevron {
+  color: inherit;
+}
+#subtask-quick-create .composer-input,
+#stqc-text-input {
+  display: block;
+  width: 100%;
+  height: fit-content;
+  min-height: 42px;
+  line-height: var(--line-normal);
+  vertical-align: middle;
+  background-color: rgba(255, 255, 255, 0);
+  border: none;
+  outline: none;
+  padding-left: 18px;
+  padding-right: 18px;
+  padding-top: 18px;
+  padding-bottom: 0;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+#stqc-date-dropdown button.drop-item:hover {
+  background-color: var(--c-background-2);
+}
+@container (max-width: 300px) {
+  #subtask-quick-create .task-quick-create-dropup-btn {
+    width: 32px;
+    padding: 6px;
+  }
+  #subtask-quick-create .task-quick-create-dropup-label,
+  #subtask-quick-create .task-quick-create-dropup-chevron {
+    display: none;
+  }
 }
 
 
@@ -858,10 +1013,10 @@ button.task-item:hover {
   transition: background-color 0.12s;
 }
 :root button.task-item:hover {
-  background: var(--c-background-2);
+  background: var(--c-background-1);
 }
 :root button.task-item--on {
-  background: var(--c-background-2);
+  background: var(--c-background-1);
   border: none;
   border-image: none;
   outline: none;
@@ -883,7 +1038,7 @@ button.task-item:hover {
 :root #task-list-content {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 6px;
   padding-top: 12px;
   padding-bottom: 0;
   padding-left: 18px;
@@ -891,7 +1046,7 @@ button.task-item:hover {
   width: 100%;
   min-height: 0;
   height: 100%;
-  background-color: var(--c-background-1);
+  background-color: rgba(233, 233, 233, 0);
   border-radius: 0px;
   border: none;
   outline: none;
@@ -899,6 +1054,10 @@ button.task-item:hover {
 :root #task-list-content button .meta,
 :root #task-list-content button .subtle {
   color: var(--c-text-2);
+}
+:root #task-list-content button .subtle svg.lucide {
+  width: 10px;
+  height: 10px;
 }
 :root #task-list-content button .meta {
   font-size: var(--fs-sm);
@@ -914,7 +1073,7 @@ button.task-item:hover {
   overflow: visible;
 }
 :root #task-quick-create-footer {
-  background-color: var(--c-background-1);
+  background-color: rgba(233, 233, 233, 0);
   border: none;
   padding-top: 12px;
 }
@@ -982,7 +1141,7 @@ button.task-item:hover {
   min-width: 0;
   height: fit-content;
   width: fit-content;
-  padding: 6px 10px;
+  padding: 6px 9px;
   gap: 6px;
   background: transparent;
   border-radius: 8px;
@@ -999,7 +1158,7 @@ button.task-item:hover {
   color: var(--c-text-2);
 }
 :root #task-quick-create .task-quick-create-dropup-btn:not([data-active='true']):hover {
-  color: var(--c-accent-center-panel);
+  color: var(--c-accent-1);
 }
 :root #task-quick-create .task-quick-create-dropup-btn .task-quick-create-dropup-icon {
   flex-shrink: 0;
@@ -1011,7 +1170,7 @@ button.task-item:hover {
   min-width: 0;
 }
 :root #task-quick-create .task-quick-create-dropup-btn:hover {
-  background: var(--c-background-2);
+  background: transparent;
 }
 :root #tqc-project-dropdown button.drop-item {
   background-color: var(--c-background-1);
@@ -1019,13 +1178,10 @@ button.task-item:hover {
 :root #tqc-project-dropdown button.drop-item:hover {
   background-color: var(--c-background-2);
 }
-:root #task-quick-create .task-quick-create-dropup-btn[data-active='true']:hover .task-quick-create-dropup-label,
-:root #task-quick-create .task-quick-create-dropup-btn[data-active='true']:hover .task-quick-create-dropup-chevron {
-  color: inherit;
-}
-:root #task-quick-create .task-quick-create-dropup-btn:not([data-active='true']):hover .task-quick-create-dropup-label,
-:root #task-quick-create .task-quick-create-dropup-btn:not([data-active='true']):hover .task-quick-create-dropup-chevron {
-  color: var(--c-accent-center-panel);
+:root #task-quick-create .task-quick-create-dropup-btn:hover .task-quick-create-dropup-label,
+:root #task-quick-create .task-quick-create-dropup-btn:hover .task-quick-create-dropup-chevron,
+:root #task-quick-create .task-quick-create-dropup-btn:hover .task-quick-create-dropup-icon {
+  color: var(--c-accent-1);
 }
 :root #task-quick-create .task-quick-create-dropup-btn:focus-visible {
   outline: 1px solid var(--c-accent-center-panel);
@@ -1055,17 +1211,17 @@ button.task-item:hover {
 :root #tqc-text-input {
   display: block;
   width: 100%;
-  height: 100%;
-  min-height: 32px;
+  height: fit-content;
+  min-height: 42px;
   line-height: var(--line-normal);
   vertical-align: middle;
   background-color: rgba(255, 255, 255, 0);
   border: none;
   outline: none;
-  padding-left: 12px;
-  padding-right: 12px;
-  padding-top: 12px;
-  padding-bottom: 12px;
+  padding-left: 18px;
+  padding-right: 18px;
+  padding-top: 18px;
+  padding-bottom: 0;
   resize: none;
   overflow: hidden;
   white-space: pre-wrap;
@@ -1317,7 +1473,7 @@ button.task-item:hover {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 3px;
+  gap: 6px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   justify-content: flex-start;
@@ -1330,21 +1486,21 @@ button.task-item:hover {
   transition: background-color 0.12s;
 }
 :root .task-item .meta {
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   color: var(--c-text-2);
 }
 :root .task-item--on {
-  background: var(--c-background-2);
+  background: var(--c-background-1);
   border: none;
   border-image: none;
 }
 :root .task-item:hover {
-  background: var(--c-background-2);
+  background: var(--c-background-1);
 }
 :root .task-title {
-  font-size: var(--fs-sm);
+  font-size: var(--fs-base);
   font-weight: 600;
-  color: var(--c-text-1);
+  color: var(--c-text-3);
   text-align: left;
   white-space: normal;
   overflow-wrap: break-word;

@@ -14,12 +14,16 @@ import FontFamily from '@tiptap/extension-font-family';
 import { Extension } from '@tiptap/core';
 import { UndoRedo } from '@tiptap/extensions/undo-redo';
 import { Fragment, Slice } from '@tiptap/pm/model';
-import { EditorState } from '@tiptap/pm/state';
+import type { EditorState } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { InlineTextPreset } from './InlineTextPreset';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { useUIStore } from '../../stores/uiStore';
 import type { Editor } from '@tiptap/react';
+
+// Cache full ProseMirror editor states per document so undo/redo history,
+// selection, and scroll position survive tab switches in the same session.
+const editorStateCache = new Map<string, EditorState>();
 
 // History extension with NO built-in keyboard shortcuts.
 // We handle undo/redo ourselves via EditorShortcuts below so we can
@@ -156,6 +160,7 @@ interface TipTapEditorProps {
 
 export function TipTapEditor({ documentId, initialContent, onEditorReady, editable = true, title, onTitleChange }: TipTapEditorProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const previousDocumentIdRef = useRef<string | null>(null);
   const setSelectedText = useUIStore((s) => s.setSelectedText);
   const { editorFontFamily, editorFontSize } = useUIStore((s) => s);
 
@@ -230,28 +235,43 @@ export function TipTapEditor({ documentId, initialContent, onEditorReady, editab
     }
   }, [editor, editorFontFamily, editorFontSize]);
 
-  // Load content when document changes
+  // Load content when document changes, preserving full editor state (including
+  // undo/redo history) per document for the lifetime of the session.
   useEffect(() => {
     if (!editor) return;
     try {
-      const parsed = initialContent ? JSON.parse(initialContent) : null;
-      if (parsed) {
-        editor.commands.setContent(parsed);
-      } else {
-        editor.commands.clearContent();
+      const prevId = previousDocumentIdRef.current;
+      if (prevId && prevId !== documentId) {
+        editorStateCache.set(prevId, editor.state);
       }
-      // Clear undo/redo history so it's scoped to this document, not global
-      const { state, view } = editor;
-      view.updateState(
-        EditorState.create({
-          doc: state.doc,
-          plugins: state.plugins,
-        })
-      );
+
+      const cached = documentId ? editorStateCache.get(documentId) : undefined;
+      if (cached) {
+        editor.view.updateState(cached);
+      } else {
+        const parsed = initialContent ? JSON.parse(initialContent) : null;
+        if (parsed) {
+          editor.commands.setContent(parsed);
+        } else {
+          editor.commands.clearContent();
+        }
+      }
+      previousDocumentIdRef.current = documentId;
     } catch {
       editor.commands.clearContent();
     }
   }, [editor, documentId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save the current document's editor state when the editor unmounts (e.g.
+  // switching to Settings/CRM/Task mode) so undo/redo survives those trips too.
+  useEffect(() => {
+    return () => {
+      const currentId = previousDocumentIdRef.current;
+      if (currentId && editor) {
+        editorStateCache.set(currentId, editor.state);
+      }
+    };
+  }, [editor]);
 
   useAutoSave(editor ?? null, documentId);
 

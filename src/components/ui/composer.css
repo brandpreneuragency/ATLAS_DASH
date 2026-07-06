@@ -1,0 +1,7 @@
+/* Shared composer typography — imported with Composer.tsx so every
+   composer footer (chat, comments, quick-create) uses --fs-base even when
+   panel-specific CSS (e.g. aiSidebar.css) is not loaded. */
+.composer-input {
+  font-size: var(--fs-base);
+  color: var(--c-text-1);
+}

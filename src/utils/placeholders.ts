@@ -28,6 +28,10 @@ const PLACEHOLDERS = {
     default: 'Add another subtask...',
     cyberpunk: '> Add another subtask...',
   },
+  addSubtaskFooter: {
+    default: 'Add a subtask...',
+    cyberpunk: '> Add a subtask...',
+  },
   find: {
     default: 'Find',
     cyberpunk: '> Find',

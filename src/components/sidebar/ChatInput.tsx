@@ -336,7 +336,7 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
           onKeyDown={handleKeyDown}
           placeholder={queryAIPlaceholder || t('chat.askPlaceholder', { name: activeAgent.name })}
           rows={1}
-          style={{ height: '44px', paddingTop: '12px', paddingBottom: '12px' }}
+          style={{ height: 'fit-content', padding: '18px 18px 0' }}
         />
 
         <ComposerRow className="chat-input-bottom-row">

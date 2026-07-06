@@ -1,3 +1,4 @@
+import './composer.css';
 import { forwardRef } from 'react';
 import type { ButtonHTMLAttributes, CSSProperties, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
 import { ArrowUp } from 'lucide-react';

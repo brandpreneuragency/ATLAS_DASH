@@ -127,7 +127,7 @@
 .file-viewer-actions {
   display: flex;
   justify-content: center;
-  padding: 12px 16px 16px;
+  padding: 12px 16px 12px;
   border-top: 1px solid var(--c-border-1);
   background: var(--c-background-2);
   flex-shrink: 0;
@@ -406,7 +406,7 @@
 :root .file-viewer-actions {
   display: flex;
   justify-content: center;
-  padding: 12px 16px 16px;
+  padding: 12px 16px 12px;
   border-top: 1px solid var(--c-border-1);
   background: var(--c-background-2);
   flex-shrink: 0;

@@ -301,10 +301,6 @@ function CommentBubble({
             onOpenMenu(comment, { x: e.clientX, y: e.clientY });
           }}
           className="comment-bubble select-none c-ptr"
-          style={{
-            border: '1px solid var(--c-background-2)',
-            borderRadius: 8,
-          }}
         >
           {comment.text && (
             <p className="txt-xs" style={{whiteSpace:'pre-wrap',color:'var(--c-text-1)'}}>{comment.text}</p>

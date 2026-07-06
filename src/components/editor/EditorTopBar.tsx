@@ -13,11 +13,17 @@ interface FindState {
   index: number;
 }
 
+interface DocSearchState {
+  query: string;
+  replaceText: string;
+}
+
 export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [replaceText, setReplaceText] = useState('');
   const [findState, setFindState] = useState<FindState>({ matches: [], index: 0 });
+  const [searchStateByDoc, setSearchStateByDoc] = useState<Record<string, DocSearchState>>({});
   const findInputRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
 
@@ -70,13 +76,22 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
 
   useEffect(() => {
     if (searchOpen) {
+      const saved = activeDoc ? searchStateByDoc[activeDoc.id] : undefined;
+      const q = saved?.query ?? '';
+      setQuery(q);
+      setReplaceText(saved?.replaceText ?? '');
+      setFindState({ matches: computeMatches(q), index: 0 });
       setTimeout(() => findInputRef.current?.focus(), 0);
     } else {
-      setQuery('');
-      setReplaceText('');
+      if (activeDoc) {
+        setSearchStateByDoc((prev) => ({
+          ...prev,
+          [activeDoc.id]: { query, replaceText },
+        }));
+      }
       setFindState({ matches: [], index: 0 });
     }
-  }, [searchOpen]);
+  }, [searchOpen, activeDoc?.id]);
 
   const computeMatches = (q: string): number[] => {
     if (!editor || !q) return [];
@@ -262,49 +277,53 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
                   }
                 }}
               />
-              <span className="meta editor-topbar-search-count">
-                {query
-                  ? findState.matches.length === 0
-                    ? '0/0'
-                    : `${findState.index + 1}/${findState.matches.length}`
-                  : ''}
-              </span>
-              <button
-                type="button"
-                className="tbar-btn"
-                onClick={goPrev}
-                disabled={findState.matches.length === 0}
-                title="Previous match"
-              >
-                <ChevronUp size={13} />
-              </button>
-              <button
-                type="button"
-                className="tbar-btn"
-                onClick={goNext}
-                disabled={findState.matches.length === 0}
-                title="Next match"
-              >
-                <ChevronDown size={13} />
-              </button>
-              <button
-                type="button"
-                className="tbar-btn"
-                onClick={replaceOne}
-                disabled={findState.matches.length === 0}
-                title="Replace current"
-              >
-                <Replace size={13} />
-              </button>
-              <button
-                type="button"
-                className="tbar-btn"
-                onClick={replaceAll}
-                disabled={findState.matches.length === 0}
-                title="Replace all"
-              >
-                <ReplaceAll size={13} />
-              </button>
+              <div className="editor-topbar-search-footer">
+                <span className="meta editor-topbar-search-count">
+                  {query
+                    ? findState.matches.length === 0
+                      ? '0/0'
+                      : `${findState.index + 1}/${findState.matches.length}`
+                    : ''}
+                </span>
+                <div className="editor-topbar-search-actions">
+                  <button
+                    type="button"
+                    className="tbar-btn"
+                    onClick={goPrev}
+                    disabled={findState.matches.length === 0}
+                    title="Previous match"
+                  >
+                    <ChevronUp size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className="tbar-btn"
+                    onClick={goNext}
+                    disabled={findState.matches.length === 0}
+                    title="Next match"
+                  >
+                    <ChevronDown size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className="tbar-btn"
+                    onClick={replaceOne}
+                    disabled={findState.matches.length === 0}
+                    title="Replace current"
+                  >
+                    <Replace size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className="tbar-btn"
+                    onClick={replaceAll}
+                    disabled={findState.matches.length === 0}
+                    title="Replace all"
+                  >
+                    <ReplaceAll size={13} />
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

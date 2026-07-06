@@ -32,7 +32,7 @@ interface TaskCommentInputProps {
 
 export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentInputProps) {
   const [text, setText] = useState('');
-  const [attachment, setAttachment] = useState<{ name: string; size: number; file: File } | null>(null);
+  const [attachments, setAttachments] = useState<{ name: string; size: number; file: File }[]>([]);
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(0);
   const { addComment } = useTaskCommentStore();
@@ -49,7 +49,7 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
     ta.style.height = 'auto';
     const max = maxHeightVw();
     const base = Math.max(ta.scrollHeight, userHeightRef.current || 0);
-    ta.style.height = `${Math.min(Math.max(base, 44), max)}px`;
+    ta.style.height = `${Math.min(Math.max(base, 42), max)}px`;
   }, [activeTaskId]);
 
   const handleInput = () => {
@@ -58,7 +58,7 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
     ta.style.height = 'auto';
     const max = maxHeightVw();
     const base = Math.max(ta.scrollHeight, userHeightRef.current || 0);
-    ta.style.height = `${Math.min(Math.max(base, 44), max)}px`;
+    ta.style.height = `${Math.min(Math.max(base, 42), max)}px`;
   };
 
   const handleResizeStart = (e: React.MouseEvent) => {
@@ -71,7 +71,7 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
 
     const onMove = (ev: MouseEvent) => {
       // Dragging the handle up (negative delta) grows the box upward.
-      const next = Math.min(Math.max(startHeight - (ev.clientY - startY), 44), max);
+      const next = Math.min(Math.max(startHeight - (ev.clientY - startY), 42), max);
       userHeightRef.current = next;
       ta.style.height = `${next}px`;
     };
@@ -84,16 +84,23 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setAttachment({ name: file.name, size: file.size, file });
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setAttachments((prev) => [
+      ...prev,
+      ...files.map((file) => ({ name: file.name, size: file.size, file })),
+    ]);
     e.target.value = '';
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSend = async () => {
     if (!activeTaskId || sending) return;
     const trimmed = text.trim();
-    if (!trimmed && !attachment) return;
+    if (!trimmed && attachments.length === 0) return;
 
     const replyData = replyToComment
       ? {
@@ -105,40 +112,88 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
 
     setSending(true);
     setProgress(0);
+
+    const totalItems = (trimmed ? 1 : 0) + attachments.length;
+    let completedItems = 0;
+    const baseTime = Date.now();
+    let failedAttachments: typeof attachments = [];
+    let sentAny = false;
+
     try {
-      const result = await addComment(
-        activeTaskId,
-        {
-          text: trimmed,
-          sender: 'You',
-          replyTo: replyData,
-        },
-        attachment?.file,
-        attachment
-          ? {
-              onProgress: (loaded, total) => {
-                if (total > 0) setProgress(loaded / total);
-              },
-            }
-          : undefined,
-      );
-      if (result.comment) {
+      if (trimmed) {
+        const textResult = await addComment(
+          activeTaskId,
+          {
+            text: trimmed,
+            sender: 'You',
+            replyTo: replyData,
+            createdAt: baseTime,
+          },
+          undefined,
+          {
+            onProgress: (loaded, total) => {
+              if (total > 0) {
+                setProgress((completedItems + loaded / total) / totalItems);
+              }
+            },
+          },
+        );
+        if (!textResult.comment) {
+          failedAttachments = attachments;
+          return;
+        }
+        sentAny = true;
+        completedItems += 1;
+      }
+
+      for (let i = 0; i < attachments.length; i++) {
+        const result = await addComment(
+          activeTaskId,
+          {
+            text: '',
+            sender: 'You',
+            replyTo: replyData,
+            createdAt: baseTime + completedItems,
+          },
+          attachments[i].file,
+          {
+            onProgress: (loaded, total) => {
+              if (total > 0) {
+                setProgress((completedItems + loaded / total) / totalItems);
+              }
+            },
+          },
+        );
+        if (!result.comment) {
+          failedAttachments = attachments.slice(i);
+          return;
+        }
+        sentAny = true;
+        completedItems += 1;
+      }
+
+      failedAttachments = [];
+      if (sentAny) {
         // Bump the parent task's updatedAt to reflect new activity.
         void updateTask(activeTaskId, {});
-        setText('');
-        setAttachment(null);
-        setProgress(0);
-        if (textareaRef.current) {
-          textareaRef.current.style.height = 'auto';
-        }
-        onClearReply?.();
-      } else {
-        // Error toast was already shown by the store; keep the input
-        // intact so the user can retry.
-        setProgress(0);
       }
     } finally {
       setSending(false);
+      setProgress(0);
+      // Clear only the parts that were successfully sent; keep any failed
+      // attachments (and the text if nothing was sent) so the user can retry.
+      if (sentAny) {
+        setText('');
+        setAttachments(failedAttachments);
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+        }
+        if (failedAttachments.length === 0) {
+          onClearReply?.();
+        }
+      } else {
+        setAttachments(failedAttachments);
+      }
     }
   };
 
@@ -151,8 +206,8 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
 
   if (!activeTaskId) return null;
 
-  const sendDisabled = sending || (!text.trim() && !attachment);
-  const showProgress = sending && attachment && progress > 0 && progress < 1;
+  const sendDisabled = sending || (!text.trim() && attachments.length === 0);
+  const showProgress = sending && attachments.length > 0 && progress > 0 && progress < 1;
 
   return (
     <ComposerRoot id="task-comment-input" className="composer-root--clear">
@@ -188,22 +243,27 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
           </div>
         )}
 
-        {attachment && (
-          <div className="px-3 pt-3 pb-1">
-            <span className="row-xs" style={{ background: 'var(--c-background-4)', borderRadius: 6, padding: '4px 8px', fontSize: 'var(--fs-xs)' }}>
-              <Paperclip size={10} />
-              {attachment.name} ({formatSize(attachment.size)})
-              {!sending && (
-                <button onClick={() => setAttachment(null)} style={{ color: 'var(--c-text-2)' }} title="Remove attachment">
-                  <X size={10} />
-                </button>
-              )}
-              {sending && showProgress && (
-                <span className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>
-                  {Math.round(progress * 100)}%
-                </span>
-              )}
-            </span>
+        {attachments.length > 0 && (
+          <div className="px-3 pt-3 pb-1 comment-attachment-list">
+            {attachments.map((att, index) => (
+              <span
+                key={`${att.name}-${index}`}
+                className="row-xs comment-attachment-chip"
+              >
+                <Paperclip size={10} />
+                {att.name} ({formatSize(att.size)})
+                {!sending && (
+                  <button onClick={() => removeAttachment(index)} title="Remove attachment">
+                    <X size={10} />
+                  </button>
+                )}
+              </span>
+            ))}
+            {showProgress && (
+              <span className="subtle comment-attachment-progress">
+                {Math.round(progress * 100)}%
+              </span>
+            )}
           </div>
         )}
 
@@ -235,7 +295,9 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
             <input
               ref={fileInputRef}
               type="file"
-              style={{ display: 'none' }}
+              multiple
+              title="Attach files"
+              className="comment-file-input"
               onChange={handleFileSelect}
             />
           </ComposerLeft>

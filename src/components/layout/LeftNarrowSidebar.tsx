@@ -31,7 +31,7 @@ export function LeftNarrowSidebar() {
 
   return (
     <div id="nav-bar" className="nav-bar">
-      <div className="nav-section" style={{ paddingTop: 2, paddingBottom: 2, gap: 0, borderTop: 'none' }}>
+      <div className="nav-section" style={{ paddingTop: 0, paddingBottom: 0, gap: 0, borderTop: 'none' }}>
         <button
           id="nav-btn-toggle-panel"
           type="button"

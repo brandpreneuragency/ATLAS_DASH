@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import './taskList.css';
 import { useTaskStore } from '../../stores/taskStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -41,6 +41,18 @@ export function TaskListPanel() {
   const [prefillText, setPrefillText] = useState<string | null>(null);
   const [assignedDate, setAssignedDate] = useState<string | null>(null);
   const [assignedProject, setAssignedProject] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const clockLabel = now
+    .toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    .toUpperCase()
+    + ' · '
+    + now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
   const filteredTasks = useMemo(() => {
     return tasks.filter((t) => !t.parentId);
@@ -81,7 +93,7 @@ export function TaskListPanel() {
 
   return (
     <div id="task-list-panel" className="panel flex-col h-full overflow-hidden" style={{ marginLeft: '0px', marginRight: '0px' }}>
-      <div id="task-list-main-wrapper" className="panel-body" style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column', borderRadius: '0px', backgroundColor: 'var(--c-background-1)', border: 'none' }}>
+      <div id="task-list-main-wrapper" className="panel-body" style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column', borderRadius: '0px', backgroundColor: 'var(--c-background-2)', border: 'none' }}>
         {activeTab === 'list' && (
           <div
             id="task-list-content"
@@ -91,13 +103,40 @@ export function TaskListPanel() {
               flexDirection: 'column',
               flex: 1,
               height: '100%',
+              gap: '6px',
               paddingLeft: '18px',
               paddingRight: '12px',
-              paddingTop: '12px',
+              paddingTop: '18px',
               paddingBottom: '0px',
               verticalAlign: 'middle',
             }}
           >
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                verticalAlign: 'middle',
+                fontSize: 'var(--fs-xs)',
+                fontWeight: 600,
+                color: 'var(--c-text-3)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                textAlign: 'center',
+                height: '20px',
+                backgroundColor: 'var(--c-background-3)',
+                paddingTop: '6px',
+                paddingBottom: '6px',
+                paddingLeft: '0px',
+                paddingRight: '0px',
+                marginTop: '0px',
+                marginBottom: '6px',
+                borderRadius: '8px',
+              }}
+            >
+              {clockLabel}
+            </div>
             {filteredTasks.length === 0 && (
               <div className="flex-col items-center justify-center py-12 text-center" style={{ padding: '6px 16px', verticalAlign: 'middle' }}>
                 <p className="txt-xs subtle">No tasks yet</p>
