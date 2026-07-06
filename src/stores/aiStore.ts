@@ -3,7 +3,7 @@
 // API keys stored securely in Tauri keychain via secureStorage.ts.
 
 import { create } from 'zustand';
-import type { Agent, AIProviderConfig, ModelItem, ProviderStatus, SearchConfig, SearchProvider } from '../types';
+import type { Agent, AIProviderConfig, ModelItem, ProviderStatus, SearchConfig, SearchProvider, TaskModelDefault, TaskModelDefaultKey } from '../types';
 import { db } from '../services/db';
 import { secureStorage } from '../services/secureStorage';
 import {
@@ -67,18 +67,37 @@ function generateProviderId(): string {
   return `provider-${Date.now()}-${providerIdCounter}`;
 }
 
-function deriveStatus(hasKey: boolean, _isCustom: boolean, hasBaseUrl: boolean): ProviderStatus {
-  if (!hasBaseUrl || !hasKey) return 'not_connected';
-  return 'not_connected';
+function deriveProviderStatus(input: {
+  hasBaseUrl: boolean;
+  hasKey: boolean;
+  modelCount: number;
+  selectedModel?: string;
+  lastError?: string;
+  currentStatus?: ProviderStatus;
+}): ProviderStatus {
+  if (input.lastError) return 'connection_failed';
+  if (!input.hasBaseUrl) return 'needs_setup';
+  if (!input.hasKey) return 'needs_key';
+  if (input.modelCount <= 0) return 'sync_needed';
+  if (!input.selectedModel) return 'sync_needed';
+  return 'connected';
 }
 
 function refreshStatus(
   hasKey: boolean,
   hasBaseUrl: boolean,
+  modelCount: number,
+  selectedModel: string,
   currentStatus?: ProviderStatus,
 ): ProviderStatus {
-  if (!hasBaseUrl || !hasKey) return 'not_connected';
-  return currentStatus === 'connected' ? 'connected' : 'not_connected';
+  if (currentStatus === 'connection_failed') return 'connection_failed';
+  return deriveProviderStatus({
+    hasBaseUrl,
+    hasKey,
+    modelCount,
+    selectedModel,
+    currentStatus,
+  });
 }
 
 async function hasSecureKey(providerId: string): Promise<boolean> {
@@ -103,6 +122,7 @@ interface AIStore {
   appManagementProviderId: string | null;
   isLoaded: boolean;
   hiddenModels: string[]; // "configId:modelId" strings
+  taskModelDefaults: TaskModelDefault[];
 
   loadAISettings: () => Promise<void>;
   saveAgent: (agent: Agent) => Promise<void>;
@@ -139,6 +159,10 @@ interface AIStore {
   getEnabledModels: (providerId: string) => ModelItem[];
   getAllEnabledModels: () => { provider: AIProviderConfig; model: ModelItem }[];
 
+  getTaskDefault: (taskKey: TaskModelDefaultKey) => TaskModelDefault | undefined;
+  setTaskDefault: (taskKey: TaskModelDefaultKey, providerId: string, modelId: string) => Promise<void>;
+  removeTaskDefault: (taskKey: TaskModelDefaultKey) => Promise<void>;
+
   searchConfig: SearchConfig;
   saveSearchConfig: (config: SearchConfig) => Promise<void>;
   systemInstructions: string;
@@ -154,6 +178,7 @@ export const useAIStore = create<AIStore>((set, get) => ({
   appManagementProviderId: null,
   isLoaded: false,
   hiddenModels: [],
+  taskModelDefaults: [],
   searchConfig: defaultSearchConfig(),
   systemInstructions: '',
 
@@ -220,7 +245,16 @@ export const useAIStore = create<AIStore>((set, get) => ({
           const hasKey = config.apiKey
             ? Boolean(config.apiKey)
             : await hasSecureKey(config.id);
-          config.status = refreshStatus(hasKey, Boolean(config.baseUrl), config.status);
+          const modelCount = (config.models ?? []).filter(
+            (m) => !hiddenModels.includes(`${config.id}:${m.id}`),
+          ).length;
+          config.status = refreshStatus(
+            hasKey,
+            Boolean(config.baseUrl),
+            modelCount,
+            config.selectedModel,
+            config.status,
+          );
         })
       );
 
@@ -240,6 +274,56 @@ export const useAIStore = create<AIStore>((set, get) => ({
       const appManagementProviderId =
         (settings['appManagementProviderId'] as string | null | undefined) ?? null;
 
+      // Load task model defaults from settings
+      let taskModelDefaults: TaskModelDefault[] = [];
+      const defaultsRaw = settings['modelDefaults'];
+      if (typeof defaultsRaw === 'string' && defaultsRaw.length > 0) {
+        try {
+          const parsed = JSON.parse(defaultsRaw);
+          if (Array.isArray(parsed)) {
+            taskModelDefaults = parsed.filter(
+              (d: unknown): d is TaskModelDefault =>
+                typeof d === 'object' && d !== null &&
+                'taskKey' in d && 'providerId' in d && 'modelId' in d &&
+                typeof (d as Record<string, unknown>).taskKey === 'string' &&
+                typeof (d as Record<string, unknown>).providerId === 'string' &&
+                typeof (d as Record<string, unknown>).modelId === 'string',
+            );
+          }
+        } catch {
+          taskModelDefaults = [];
+        }
+      }
+
+      // Migration: if no defaults exist yet, seed from existing active provider settings
+      if (taskModelDefaults.length === 0) {
+        const migrated: TaskModelDefault[] = [];
+        if (activeProviderId) {
+          const activeConfig = providerConfigs.find((p) => p.id === activeProviderId);
+          if (activeConfig?.selectedModel) {
+            migrated.push({
+              taskKey: 'general_chat',
+              providerId: activeProviderId,
+              modelId: activeConfig.selectedModel,
+            });
+          }
+        }
+        if (appManagementProviderId && appManagementProviderId !== activeProviderId) {
+          const mgmtConfig = providerConfigs.find((p) => p.id === appManagementProviderId);
+          if (mgmtConfig?.selectedModel) {
+            migrated.push({
+              taskKey: 'app_management',
+              providerId: appManagementProviderId,
+              modelId: mgmtConfig.selectedModel,
+            });
+          }
+        }
+        if (migrated.length > 0) {
+          taskModelDefaults = migrated;
+          await db.settings.put({ key: 'modelDefaults', value: JSON.stringify(migrated) }).catch(() => undefined);
+        }
+      }
+
       set({
         agents,
         providerConfigs,
@@ -249,6 +333,7 @@ export const useAIStore = create<AIStore>((set, get) => ({
         appManagementProviderId,
         isLoaded: true,
         hiddenModels,
+        taskModelDefaults,
         searchConfig: {
           exaKey: String(settings['exaKey'] ?? ''),
           tavilyKey: String(settings['tavilyKey'] ?? ''),
@@ -390,7 +475,11 @@ export const useAIStore = create<AIStore>((set, get) => ({
       isActive: true,
       baseUrl: trimmedBaseUrl,
       customModels: [],
-      status: deriveStatus(Boolean(trimmedKey), false, Boolean(trimmedBaseUrl)),
+      status: deriveProviderStatus({
+        hasBaseUrl: Boolean(trimmedBaseUrl),
+        hasKey: Boolean(trimmedKey),
+        modelCount: 0,
+      }),
       models: [],
     };
     try {
@@ -514,7 +603,16 @@ export const useAIStore = create<AIStore>((set, get) => ({
     if (!config) return;
 
     const hasKey = await hasSecureKey(id);
-    const nextStatus = refreshStatus(hasKey, Boolean(config.baseUrl), config.status);
+    const modelCount = (config.models ?? []).filter(
+      (m) => !get().isModelHidden(id, m.id),
+    ).length;
+    const nextStatus = refreshStatus(
+      hasKey,
+      Boolean(config.baseUrl),
+      modelCount,
+      config.selectedModel,
+      config.status,
+    );
 
     set((state) => ({
       providerConfigs: state.providerConfigs.map((p) =>
@@ -524,13 +622,22 @@ export const useAIStore = create<AIStore>((set, get) => ({
   },
 
   refreshAllProviderStatuses: async () => {
-    const { providerConfigs } = get();
+    const { providerConfigs, hiddenModels } = get();
     const updates = await Promise.all(
       providerConfigs.map(async (config) => {
         const hasKey = await hasSecureKey(config.id);
+        const modelCount = (config.models ?? []).filter(
+          (m) => !hiddenModels.includes(`${config.id}:${m.id}`),
+        ).length;
         return {
           id: config.id,
-          status: refreshStatus(hasKey, Boolean(config.baseUrl), config.status),
+          status: refreshStatus(
+            hasKey,
+            Boolean(config.baseUrl),
+            modelCount,
+            config.selectedModel,
+            config.status,
+          ),
         };
       })
     );
@@ -732,7 +839,12 @@ export const useAIStore = create<AIStore>((set, get) => ({
         models,
         selectedModel: nextSelected,
         lastImportedAt: Date.now(),
-        status: persisted.status,
+        status: deriveProviderStatus({
+          hasBaseUrl: Boolean(trimmedBaseUrl),
+          hasKey: Boolean(trimmedKey),
+          modelCount: models.length,
+          selectedModel: nextSelected,
+        }),
       };
       await db.providerConfigs.put(nextConfig);
       set((state) => ({
@@ -750,13 +862,13 @@ export const useAIStore = create<AIStore>((set, get) => ({
       return { ok: true };
     } catch (err) {
       if (err instanceof ProviderImportError) {
-        // Persist a "not_connected" status so the UI reflects the failure
+        // Persist a "connection_failed" status so the UI reflects the failure
         // even when the saved baseUrl/key are still present.
         const currentAfter = get().providerConfigs.find((p) => p.id === id);
         if (currentAfter) {
           const failed: AIProviderConfig = {
             ...currentAfter,
-            status: 'not_connected',
+            status: 'connection_failed',
           };
           await db.providerConfigs.put(failed).catch(() => undefined);
           set((state) => ({
@@ -808,6 +920,32 @@ export const useAIStore = create<AIStore>((set, get) => ({
       await db.settings.put({ key: 'systemInstructions', value: text });
     } catch (err) {
       showError(err, 'Failed to save system instructions.');
+    }
+  },
+
+  getTaskDefault: (taskKey) => {
+    return get().taskModelDefaults.find((d) => d.taskKey === taskKey);
+  },
+
+  setTaskDefault: async (taskKey, providerId, modelId) => {
+    const defaults = get().taskModelDefaults.filter((d) => d.taskKey !== taskKey);
+    const next: TaskModelDefault = { taskKey, providerId, modelId };
+    const updated = [...defaults, next];
+    set({ taskModelDefaults: updated });
+    try {
+      await db.settings.put({ key: 'modelDefaults', value: JSON.stringify(updated) });
+    } catch (err) {
+      showError(err, 'Failed to save task default.');
+    }
+  },
+
+  removeTaskDefault: async (taskKey) => {
+    const updated = get().taskModelDefaults.filter((d) => d.taskKey !== taskKey);
+    set({ taskModelDefaults: updated });
+    try {
+      await db.settings.put({ key: 'modelDefaults', value: JSON.stringify(updated) });
+    } catch (err) {
+      showError(err, 'Failed to remove task default.');
     }
   },
 }));

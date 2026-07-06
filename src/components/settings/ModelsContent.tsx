@@ -5,15 +5,21 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { ReactNode } from 'react';
-import { X, RefreshCw, Globe, Eye, EyeOff, Plus, Layers, Database } from 'lucide-react';
+import { X, RefreshCw, Plus, Layers, Database, Image } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../../stores/uiStore';
 import { useAIStore } from '../../stores/aiStore';
 import { secureStorage } from '../../services/secureStorage';
 import type { AIProviderConfig, ModelItem, ProviderImportPhase } from '../../types';
-import { ProviderAccordionItem } from '../modals/modelProvider/ProviderAccordionItem';
+import { ProviderDetailPanel } from './modelProviders/ProviderDetailPanel';
 import { ConnectProviderDrawer } from '../modals/modelProvider/ConnectProviderDrawer';
 import { ModalFooter } from '../modals/modelProvider/ModalFooter';
+import {
+  EMBEDDINGS_GROUP_ID,
+  IMAGE_GROUP_ID,
+  VECTOR_GROUP_ID,
+  isPlaceholderGroupId,
+} from './modelProviderGroups';
 
 function providerApiKeyName(providerId: string): string {
   return `providerApiKey_${providerId}`;
@@ -43,10 +49,12 @@ function renderComingSoonSection({
   icon,
   title,
   hint,
+  t,
 }: {
   icon: ReactNode;
   title: string;
   hint: string;
+  t: (key: string) => string;
 }) {
   return (
     <div className="col gap-3">
@@ -54,19 +62,8 @@ function renderComingSoonSection({
         {icon}
         <span className="label-sm">{title}</span>
       </div>
-      <div
-        className="col"
-        style={{
-          padding: 24,
-          borderRadius: 12,
-          border: '1px dashed var(--c-border-2)',
-          background: 'var(--c-background-1)',
-          alignItems: 'center',
-          textAlign: 'center',
-          gap: 8,
-        }}
-      >
-        <span className="label-sm" style={{ color: 'var(--c-text-2)' }}>Coming soon</span>
+      <div className="col settings-coming-soon-card">
+        <span className="label-sm">{t('settings.comingSoon')}</span>
         <p className="subtle" style={{ fontSize: 'var(--fs-sm)', maxWidth: 420, margin: 0 }}>
           {hint}
         </p>
@@ -100,22 +97,6 @@ async function verifySavedProviderKey(
   throw new Error(`Could not verify the saved API key for ${providerName}.`);
 }
 
-/** Virtual provider ids for search providers in the left-rail list. */
-export const EXA_PROVIDER_ID = 'exa';
-export const TAVILY_PROVIDER_ID = 'tavily';
-
-export function isSearchProviderId(id: string | null | undefined): boolean {
-  return id === EXA_PROVIDER_ID || id === TAVILY_PROVIDER_ID;
-}
-
-/** Virtual group ids for placeholder provider groups (no backend yet). */
-export const EMBEDDINGS_GROUP_ID = 'embeddings';
-export const VECTOR_GROUP_ID = 'vector';
-
-export function isPlaceholderGroupId(id: string | null | undefined): boolean {
-  return id === EMBEDDINGS_GROUP_ID || id === VECTOR_GROUP_ID;
-}
-
 interface ModelManagementContentProps {
   isInline?: boolean;
   onClose?: () => void;
@@ -129,8 +110,6 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
   const {
     providerConfigs,
     hiddenModels,
-    searchConfig,
-    saveSearchConfig,
     saveProviderConfig,
     setHiddenModels,
   } = useAIStore();
@@ -154,29 +133,15 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     for (const p of providerConfigs) out[p.id] = p.baseUrl ?? '';
     return out;
   });
-  const [importState, setImportState] = useState<Record<string, { phase: ProviderImportPhase; message?: string }>>({});
+  const [importState] = useState<Record<string, { phase: ProviderImportPhase; message?: string }>>({});
   const [connectionState, setConnectionState] = useState<Record<string, { phase: 'idle' | 'connecting' | 'error'; message?: string }>>({});
-  const [expandedIds, setExpandedIds] = useState(() => {
-    const firstConnected = providerConfigs.find((p) => p.status === 'connected');
-    return new Set(firstConnected ? [firstConnected.id] : []);
-  });
-  const [searchDraft, setSearchDraft] = useState({
-    exaKey: searchConfig.exaKey,
-    tavilyKey: searchConfig.tavilyKey,
-  });
-  const [showExaKey, setShowExaKey] = useState(false);
-  const [showTavilyKey, setShowTavilyKey] = useState(false);
+  const [testConnectionState, setTestConnectionState] = useState<Record<string, { phase: 'idle' | 'testing' | 'success' | 'error'; message?: string }>>({});
+  const [syncState, setSyncState] = useState<Record<string, { phase: 'idle' | 'syncing' | 'success' | 'error'; message?: string }>>({});
 
   const [connectDrawerOpen, setConnectDrawerOpen] = useState(false);
   const [draftsReady, setDraftsReady] = useState(false);
   const [manualSaving, setManualSaving] = useState(false);
   const [manualSaved, setManualSaved] = useState(false);
-
-  // Expand the provider requested by the left-rail list (master-detail focus).
-  useEffect(() => {
-    if (!focusProviderId || isSearchProviderId(focusProviderId) || isPlaceholderGroupId(focusProviderId)) return;
-    setExpandedIds(new Set([focusProviderId]));
-  }, [focusProviderId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -267,10 +232,8 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     return false;
   })();
   const hiddenChanged = JSON.stringify(draftHiddenModels) !== JSON.stringify(hiddenModels);
-  const searchChanged =
-    searchDraft.exaKey !== searchConfig.exaKey || searchDraft.tavilyKey !== searchConfig.tavilyKey;
   const keysChanged = JSON.stringify(draftKeys) !== JSON.stringify(initialDraftKeys);
-  const hasNonCredentialChanges = providersChanged || baseUrlsChanged || hiddenChanged || searchChanged;
+  const hasNonCredentialChanges = providersChanged || baseUrlsChanged || hiddenChanged;
   const hasChanges = hasNonCredentialChanges || keysChanged;
 
   const persistDrafts = useCallback(async ({ includeKeys = false }: PersistDraftOptions = {}) => {
@@ -298,11 +261,6 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     }
 
     setHiddenModels(draftHiddenModels);
-    await saveSearchConfig({
-      ...searchConfig,
-      exaKey: searchDraft.exaKey.trim(),
-      tavilyKey: searchDraft.tavilyKey.trim(),
-    });
     if (includeKeys) {
       await useAIStore.getState().refreshAllProviderStatuses();
     }
@@ -323,11 +281,8 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     initialDraftKeys,
     draftBaseUrls,
     draftHiddenModels,
-    searchDraft,
-    searchConfig,
     saveProviderConfig,
     setHiddenModels,
-    saveSearchConfig,
   ]);
 
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
@@ -348,7 +303,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     if (!isOpen || !draftsReady || !hasNonCredentialChanges) return;
     const timer = setTimeout(() => {
       void handleSave({ includeKeys: false }).catch((err) => {
-        const message = err instanceof Error ? err.message : 'Failed to save model settings.';
+        const message = err instanceof Error ? err.message : t('settings.failedToSaveModelSettings');
         useUIStore.getState().showToast(message, 'error');
       });
     }, 250);
@@ -361,8 +316,8 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     draftBaseUrls,
     draftHiddenModels,
     draftKeys,
-    searchDraft,
     handleSave,
+    t,
   ]);
 
   const handleClose = useCallback(async () => {
@@ -374,13 +329,13 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
       await saveQueueRef.current;
     } catch (err) {
       closingRef.current = false;
-      const message = err instanceof Error ? err.message : 'Failed to save model settings.';
+      const message = err instanceof Error ? err.message : t('settings.failedToSaveModelSettings');
       useUIStore.getState().showToast(message, 'error');
       return;
     }
     if (onClose) onClose();
     else setActiveModal(null);
-  }, [draftsReady, hasNonCredentialChanges, handleSave, onClose, setActiveModal]);
+  }, [draftsReady, hasNonCredentialChanges, handleSave, onClose, setActiveModal, t]);
 
   const handleManualSave = useCallback(async () => {
     setManualSaving(true);
@@ -388,14 +343,14 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     try {
       await handleSave({ includeKeys: true });
       setManualSaved(true);
-      useUIStore.getState().showToast('Model settings saved.', 'info');
+      useUIStore.getState().showToast(t('settings.modelSettingsSaved'), 'info');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save model settings.';
+      const message = err instanceof Error ? err.message : t('settings.failedToSaveModelSettings');
       useUIStore.getState().showToast(message, 'error');
     } finally {
       setManualSaving(false);
     }
-  }, [handleSave]);
+  }, [handleSave, t]);
 
   const latestPersistRef = useRef(persistDrafts);
   const shouldPersistOnUnmountRef = useRef(false);
@@ -422,13 +377,6 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
   }, [isOpen, isInline, handleClose]);
 
   if (!isOpen) return null;
-
-  const toggleExpand = (id: string) => {
-    setExpandedIds((prev) => {
-      if (prev.has(id)) return new Set<string>();
-      return new Set([id]);
-    });
-  };
 
   const toggleModel = (providerId: string, modelId: string, enabled: boolean) => {
     const key = modelKey(providerId, modelId);
@@ -490,93 +438,94 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     setConnectionState((prev) => ({ ...prev, [providerId]: { phase: 'idle' } }));
   };
 
-  const handleConnect = async (providerId: string) => {
+  const handleTestConnection = async (providerId: string) => {
     const baseUrl = draftBaseUrls[providerId] ?? '';
     const apiKey = draftKeys[providerId] ?? '';
-    setConnectionState((prev) => ({ ...prev, [providerId]: { phase: 'connecting' } }));
+    setTestConnectionState((prev) => ({ ...prev, [providerId]: { phase: 'testing' } }));
 
     try {
-      if (draftsReady && hasNonCredentialChanges) {
-        await handleSave({ includeKeys: false });
+      const result = await useAIStore
+        .getState()
+        .importProviderModels(providerId, baseUrl, apiKey);
+
+      if (result.ok) {
+        setTestConnectionState((prev) => ({ ...prev, [providerId]: { phase: 'success' } }));
+        const updated = useAIStore
+          .getState()
+          .providerConfigs.find((p) => p.id === providerId);
+        if (updated) {
+          setDraftProviders((prev) =>
+            prev.map((p) => (p.id === providerId ? updated : p))
+          );
+        }
+        setTimeout(() => {
+          setTestConnectionState((prev) => {
+            const current = prev[providerId];
+            if (current?.phase === 'success') {
+              return { ...prev, [providerId]: { phase: 'idle' } };
+            }
+            return prev;
+          });
+        }, 2000);
+      } else {
+        setTestConnectionState((prev) => ({
+          ...prev,
+          [providerId]: { phase: 'error', message: result.error },
+        }));
       }
-      await saveQueueRef.current;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save model settings.';
-      setConnectionState((prev) => ({
+      const message = err instanceof Error ? err.message : t('models.testFailed');
+      setTestConnectionState((prev) => ({
         ...prev,
         [providerId]: { phase: 'error', message },
       }));
-      useUIStore.getState().showToast(message, 'error');
-      return;
     }
-
-    const result = await useAIStore.getState().connectProvider(providerId, baseUrl, apiKey);
-    if (!result.ok) {
-      setConnectionState((prev) => ({
-        ...prev,
-        [providerId]: { phase: 'error', message: result.error },
-      }));
-      useUIStore.getState().showToast(result.error, 'error');
-      return;
-    }
-
-    const connected = useAIStore
-      .getState()
-      .providerConfigs.find((provider) => provider.id === providerId);
-    if (connected) {
-      setDraftProviders((prev) =>
-        prev.map((provider) => (provider.id === providerId ? connected : provider))
-      );
-      setDraftBaseUrls((prev) => ({ ...prev, [providerId]: connected.baseUrl }));
-      setInitialDraftBaseUrls((prev) => ({ ...prev, [providerId]: connected.baseUrl }));
-      setInitialDraftKeys((prev) => ({ ...prev, [providerId]: apiKey.trim() }));
-    }
-    setConnectionState((prev) => ({ ...prev, [providerId]: { phase: 'idle' } }));
-    useUIStore.getState().showToast(t('models.providerConnected'), 'info');
   };
 
-  const handleImport = async (providerId: string) => {
+  const handleSyncModels = async (providerId: string) => {
     const baseUrl = draftBaseUrls[providerId] ?? '';
     const apiKey = draftKeys[providerId] ?? '';
+    setSyncState((prev) => ({ ...prev, [providerId]: { phase: 'syncing' } }));
 
-    setImportState((prev) => ({ ...prev, [providerId]: { phase: 'importing' } }));
-    const result = await useAIStore
-      .getState()
-      .importProviderModels(providerId, baseUrl, apiKey);
-
-    if (result.ok) {
-      setImportState((prev) => ({
-        ...prev,
-        [providerId]: { phase: 'success' },
-      }));
-      const updated = useAIStore
+    try {
+      const result = await useAIStore
         .getState()
-        .providerConfigs.find((p) => p.id === providerId);
-      if (updated) {
-        setDraftProviders((prev) =>
-          prev.map((p) => (p.id === providerId ? updated : p))
-        );
-        setDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
-        setInitialDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
-      }
-      useUIStore.getState().showToast(t('models.imported'), 'info');
-      setTimeout(() => {
-        setImportState((prev) => {
-          const current = prev[providerId];
-          if (current?.phase === 'success') {
-            return { ...prev, [providerId]: { phase: 'idle' } };
-          }
-          return prev;
-        });
-      }, 2000);
-      return;
-    }
+        .importProviderModels(providerId, baseUrl, apiKey);
 
-    setImportState((prev) => ({
-      ...prev,
-      [providerId]: { phase: 'error', message: result.error },
-    }));
-    useUIStore.getState().showToast(result.error, 'error');
+      if (result.ok) {
+        setSyncState((prev) => ({ ...prev, [providerId]: { phase: 'success' } }));
+        const updated = useAIStore
+          .getState()
+          .providerConfigs.find((p) => p.id === providerId);
+        if (updated) {
+          setDraftProviders((prev) =>
+            prev.map((p) => (p.id === providerId ? updated : p))
+          );
+          setDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
+          setInitialDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
+        }
+        setTimeout(() => {
+          setSyncState((prev) => {
+            const current = prev[providerId];
+            if (current?.phase === 'success') {
+              return { ...prev, [providerId]: { phase: 'idle' } };
+            }
+            return prev;
+          });
+        }, 2000);
+      } else {
+        setSyncState((prev) => ({
+          ...prev,
+          [providerId]: { phase: 'error', message: result.error },
+        }));
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('models.syncFailed');
+      setSyncState((prev) => ({
+        ...prev,
+        [providerId]: { phase: 'error', message },
+      }));
+    }
   };
 
   const handleRefresh = async () => {
@@ -584,58 +533,43 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
   };
 
   const focusedProviders =
-    focusProviderId && !isSearchProviderId(focusProviderId) && !isPlaceholderGroupId(focusProviderId)
+    focusProviderId && !isPlaceholderGroupId(focusProviderId)
       ? draftProviders.filter((p) => p.id === focusProviderId)
       : draftProviders;
 
-  const providerAccordionList = (
-    <>
-      {focusedProviders.length > 0 && (
-        <div className="provider-accordion-list">
-          {focusedProviders.map((provider) => (
-            <ProviderAccordionItem
-              key={provider.id}
-              provider={provider}
-              expanded={expandedIds.has(provider.id)}
-              hiddenModels={draftHiddenModels}
-              draftKey={draftKeys[provider.id] ?? ''}
-              draftBaseUrl={draftBaseUrls[provider.id] ?? provider.baseUrl}
-              importState={importState[provider.id] ?? { phase: 'idle' }}
-              connectionState={connectionState[provider.id] ?? { phase: 'idle' }}
-              onToggleExpand={() => toggleExpand(provider.id)}
-              onToggleModel={toggleModel}
-              onAddCustomModel={addCustomModel}
-              onDraftKeyChange={(v) => handleDraftKeyChange(provider.id, v)}
-              onDraftBaseUrlChange={(v) => handleDraftBaseUrlChange(provider.id, v)}
-              onImport={() => handleImport(provider.id)}
-              onConnect={() => handleConnect(provider.id)}
-            />
-          ))}
-        </div>
-      )}
+  const selectedProvider = focusedProviders.length > 0 ? focusedProviders[0] : null;
 
-      {focusedProviders.length === 0 && (
-        <div
-          className="col"
-          style={{
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '48px 16px',
-            textAlign: 'center',
-            border: '1px solid var(--c-border-1)',
-            borderRadius: 14,
-            background: 'var(--c-background-1)',
-          }}
-        >
-          <p className="med" style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-text-1)', marginBottom: 4 }}>
-            {t('models.noCustomProviders')}
-          </p>
-          <p className="subtle" style={{ fontSize: 'var(--fs-xs)', marginBottom: 16 }}>
-            {t('models.noCustomProvidersHint')}
-          </p>
-        </div>
-      )}
-
+  const providerDetailPanel = selectedProvider ? (
+    <ProviderDetailPanel
+      provider={selectedProvider}
+      hiddenModels={draftHiddenModels}
+      draftKey={draftKeys[selectedProvider.id] ?? ''}
+      draftBaseUrl={draftBaseUrls[selectedProvider.id] ?? selectedProvider.baseUrl}
+      importState={importState[selectedProvider.id] ?? { phase: 'idle' }}
+      connectionState={connectionState[selectedProvider.id] ?? { phase: 'idle' }}
+      testConnectionState={testConnectionState[selectedProvider.id] ?? { phase: 'idle' }}
+      syncState={syncState[selectedProvider.id] ?? { phase: 'idle' }}
+      onDraftKeyChange={(v) => handleDraftKeyChange(selectedProvider.id, v)}
+      onDraftBaseUrlChange={(v) => handleDraftBaseUrlChange(selectedProvider.id, v)}
+      onTestConnection={() => handleTestConnection(selectedProvider.id)}
+      onSyncModels={() => handleSyncModels(selectedProvider.id)}
+      onToggleModel={toggleModel}
+      onAddCustomModel={addCustomModel}
+      onDeleteProvider={(id) => {
+        void useAIStore.getState().deleteCustomProvider(id);
+      }}
+      onSaveProviderBaseUrl={(id, baseUrl) => {
+        void useAIStore.getState().saveProviderConfig({ id, baseUrl });
+      }}
+    />
+  ) : (
+    <div className="col settings-empty-provider">
+      <p className="med" style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-text-1)', marginBottom: 4 }}>
+        {t('models.noCustomProviders')}
+      </p>
+      <p className="subtle" style={{ fontSize: 'var(--fs-xs)', marginBottom: 16 }}>
+        {t('models.noCustomProvidersHint')}
+      </p>
       <button
         type="button"
         onClick={() => setConnectDrawerOpen(true)}
@@ -644,7 +578,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
         <Plus size={16} />
         {t('models.connectProvider')}
       </button>
-    </>
+    </div>
   );
 
   const handleProviderConnected = (providerId: string, apiKey: string) => {
@@ -659,76 +593,9 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
       setInitialDraftKeys((prev) => ({ ...prev, [providerId]: persistedKey }));
       setDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
       setInitialDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
-      setExpandedIds(new Set([providerId]));
     }
   };
 
-  const exaSection = (
-    <div className="col gap-3">
-      <div className="row gap-2" style={{ padding: '0 4px 8px' }}>
-        <Globe size={14} style={{ color: 'var(--c-accent-center-panel)' }} />
-        <span className="label-sm">{t('settings.exa')}</span>
-      </div>
-      <div className="col gap-3" style={{ padding: 12, borderRadius: 12 }}>
-        <p className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>
-          {t('settings.exaKeyHint')}
-        </p>
-        <div className="col gap-1">
-          <div className="label-sm">{t('settings.exaKey')}</div>
-          <div className="row gap-2">
-            <input
-              type={showExaKey ? 'text' : 'password'}
-              value={searchDraft.exaKey}
-              onChange={(e) => { setSearchDraft((s) => ({ ...s, exaKey: e.target.value })); }}
-              placeholder="exa_..."
-              className="ctrl ctrl--mono flex-1"
-              style={{ fontSize: 'var(--fs-xs)', backgroundColor: 'rgba(194, 194, 194, 0)' }}
-            />
-            <button type="button" onClick={() => setShowExaKey((v) => !v)} className="btn-icon">
-              {showExaKey ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const tavilySection = (
-    <div className="col gap-3">
-      <div className="row gap-2" style={{ padding: '0 4px 8px' }}>
-        <Globe size={14} style={{ color: 'var(--c-accent-center-panel)' }} />
-        <span className="label-sm">{t('settings.tavily')}</span>
-      </div>
-      <div className="col gap-3" style={{ padding: 12, borderRadius: 12 }}>
-        <p className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>
-          {t('settings.tavilyKeyHint')}
-        </p>
-        <div className="col gap-1">
-          <div className="label-sm">{t('settings.tavilyKey')}</div>
-          <div className="row gap-2">
-            <input
-              type={showTavilyKey ? 'text' : 'password'}
-              value={searchDraft.tavilyKey}
-              onChange={(e) => { setSearchDraft((s) => ({ ...s, tavilyKey: e.target.value })); }}
-              placeholder="tvly-..."
-              className="ctrl ctrl--mono flex-1"
-              style={{ fontSize: 'var(--fs-xs)', backgroundColor: 'rgba(194, 194, 194, 0)' }}
-            />
-            <button type="button" onClick={() => setShowTavilyKey((v) => !v)} className="btn-icon">
-              {showTavilyKey ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const searchProviderSection =
-    focusProviderId === EXA_PROVIDER_ID
-      ? exaSection
-      : focusProviderId === TAVILY_PROVIDER_ID
-        ? tavilySection
-        : null;
 
   const placeholderGroupSection =
     focusProviderId === EMBEDDINGS_GROUP_ID
@@ -736,37 +603,45 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
           icon: <Layers size={14} style={{ color: 'var(--c-accent-center-panel)' }} />,
           title: t('settings.groupEmbeddings'),
           hint: t('settings.embeddingsHint'),
+          t,
         })
       : focusProviderId === VECTOR_GROUP_ID
         ? renderComingSoonSection({
             icon: <Database size={14} style={{ color: 'var(--c-accent-center-panel)' }} />,
             title: t('settings.groupVector'),
             hint: t('settings.vectorHint'),
+            t,
           })
-        : null;
+        : focusProviderId === IMAGE_GROUP_ID
+          ? renderComingSoonSection({
+              icon: <Image size={14} style={{ color: 'var(--c-accent-center-panel)' }} />,
+              title: t('settings.groupImageModels'),
+              hint: t('settings.comingSoon'),
+              t,
+            })
+          : null;
 
   if (isInline) {
     return (
       <div
         ref={modalRef}
-        className="flex-col h-full w-full"
+        className="flex-col h-full w-full settings-models-inline"
         id="model-management-inline"
-        style={{ background: 'var(--c-background-1)', overflow: 'hidden', display: 'flex', borderRadius: 8 }}
       >
-        <div className="settings-models-toolbar row gap-2" style={{ padding: '8px 12px', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="settings-models-toolbar row gap-2 settings-models-inline-toolbar">
           <span className="subtle" style={{ fontSize: 'var(--fs-xs)' }}>{t('models.subtitle')}</span>
           <button
             type="button"
             onClick={handleRefresh}
-            aria-label="Refresh provider status"
+            aria-label={t('settings.refreshProviderStatus')}
             className="btn-icon"
-            title="Refresh provider status"
+            title={t('settings.refreshProviderStatus')}
           >
             <RefreshCw size={14} />
           </button>
         </div>
-        <div className="model-provider-body flex-1 col gap-2" style={{ padding: '0px 12px 16px 12px', overflowY: 'auto' }}>
-          {placeholderGroupSection ?? searchProviderSection ?? providerAccordionList}
+        <div className="model-provider-body flex-1 col gap-2 settings-models-inline-body">
+          {placeholderGroupSection ?? providerDetailPanel}
         </div>
 
         <ModalFooter
@@ -816,9 +691,8 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
             <button
               type="button"
               onClick={handleRefresh}
-              aria-label="Refresh provider status"
-              className="modal-close"
-              style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              aria-label={t('settings.refreshProviderStatus')}
+              className="modal-close settings-modal-icon-btn"
             >
               <RefreshCw size={16} />
             </button>
@@ -827,16 +701,15 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
               type="button"
               onClick={handleClose}
               aria-label={t('models.close')}
-              className="modal-close"
-              style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              className="modal-close settings-modal-icon-btn"
             >
               <X size={18} />
             </button>
           </div>
         </div>
 
-        <div className="model-provider-body flex-1 col gap-2" style={{ padding: '16px 20px' }}>
-          {placeholderGroupSection ?? searchProviderSection ?? providerAccordionList}
+        <div className="model-provider-body flex-1 col gap-2 settings-models-inline-body--modal">
+          {placeholderGroupSection ?? providerDetailPanel}
         </div>
 
         <ModalFooter

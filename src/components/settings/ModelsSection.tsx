@@ -4,20 +4,12 @@ import { Plus, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAIStore } from '../../stores/aiStore';
 import { SettingsPanels } from './SettingsPanels';
+import { ModelManagementContent } from './ModelsContent';
 import {
-  ModelManagementContent,
-  EXA_PROVIDER_ID,
-  TAVILY_PROVIDER_ID,
   EMBEDDINGS_GROUP_ID,
+  IMAGE_GROUP_ID,
   VECTOR_GROUP_ID,
-  isSearchProviderId,
-  isPlaceholderGroupId,
-} from './ModelsContent';
-
-const SEARCH_PROVIDERS = [
-  { id: EXA_PROVIDER_ID, labelKey: 'settings.exa' as const },
-  { id: TAVILY_PROVIDER_ID, labelKey: 'settings.tavily' as const },
-] as const;
+} from './modelProviderGroups';
 
 interface ListItem {
   id: string;
@@ -34,7 +26,7 @@ interface ModelsSectionProps {
 
 export function ModelsSection({ rightHeader, rightMain, rightFooter }: ModelsSectionProps = {}) {
   const { t } = useTranslation();
-  const { providerConfigs, searchConfig } = useAIStore();
+  const { providerConfigs } = useAIStore();
   const [focusProviderId, setFocusProviderId] = useState<string | null>(
     providerConfigs.find((p) => p.status === 'connected')?.id ?? providerConfigs[0]?.id ?? null,
   );
@@ -46,44 +38,24 @@ export function ModelsSection({ rightHeader, rightMain, rightFooter }: ModelsSec
     meta: (p.models ?? []).length,
   }));
 
-  const searchItems: ListItem[] = SEARCH_PROVIDERS.map((p) => ({
-    id: p.id,
-    label: t(p.labelKey),
-    connected: p.id === EXA_PROVIDER_ID
-      ? Boolean(searchConfig.exaKey.trim())
-      : Boolean(searchConfig.tavilyKey.trim()),
-  }));
-
   const groups: { id: string; label: string; items: ListItem[] }[] = [
     { id: 'llm', label: t('settings.groupLLM'), items: llmItems },
-    { id: 'web-search', label: t('settings.groupWebSearch'), items: searchItems },
     { id: EMBEDDINGS_GROUP_ID, label: t('settings.groupEmbeddings'), items: [] },
     { id: VECTOR_GROUP_ID, label: t('settings.groupVector'), items: [] },
+    { id: IMAGE_GROUP_ID, label: t('settings.groupImageModels'), items: [] },
   ];
 
   const renderDot = (connected: boolean) => (
     <span
-      className="settings-list-item-meta"
-      style={{
-        width: 8,
-        height: 8,
-        borderRadius: 9999,
-        flexShrink: 0,
-        background: connected ? 'var(--c-success)' : 'var(--c-text-3)',
-      }}
+      className={`settings-status-dot ${connected ? 'settings-status-dot--connected' : 'settings-status-dot--disconnected'}`}
       aria-hidden
     />
   );
 
-  const renderEmptyGroup = (groupId: string) => (
-    <button
-      className={`settings-list-item settings-list-item--placeholder${focusProviderId === groupId ? ' settings-list-item--active' : ''}`}
-      onClick={() => setFocusProviderId(groupId)}
-    >
-      <span className="settings-list-item-title subtle" style={{ fontStyle: 'italic' }}>
-        {t('settings.comingSoon')}
-      </span>
-    </button>
+  const renderEmptyGroup = () => (
+    <span className="settings-list-item--empty">
+      {t('settings.comingSoon')}
+    </span>
   );
 
   const leftMain = (
@@ -96,7 +68,7 @@ export function ModelsSection({ rightHeader, rightMain, rightFooter }: ModelsSec
           </div>
           <div className="settings-provider-group-body">
             {group.items.length === 0
-              ? renderEmptyGroup(group.id)
+              ? renderEmptyGroup()
               : group.items.map((item) => (
                   <button
                     key={item.id}
@@ -114,22 +86,17 @@ export function ModelsSection({ rightHeader, rightMain, rightFooter }: ModelsSec
       <button
         className="settings-add-btn"
         onClick={() => setFocusProviderId(null)}
-        title="Use the Connect provider button in the center panel to add a provider"
       >
-        <Plus size={14} /> Connect provider
+        <Plus size={14} /> {t('settings.addProvider')}
       </button>
     </div>
   );
 
   const focusedProvider = providerConfigs.find((p) => p.id === focusProviderId);
-  const focusedSearchProvider = SEARCH_PROVIDERS.find((p) => p.id === focusProviderId);
   const focusedPlaceholderGroup = groups.find((g) => g.id === focusProviderId && g.items.length === 0);
-  const focusedLabel =
-    focusedSearchProvider
-      ? t(focusedSearchProvider.labelKey)
-      : focusedPlaceholderGroup
-        ? focusedPlaceholderGroup.label
-        : focusedProvider?.name ?? null;
+  const focusedLabel = focusedPlaceholderGroup
+    ? focusedPlaceholderGroup.label
+    : focusedProvider?.name ?? null;
 
   const centerMain = (
     <div className="flex-1 min-h-0 overflow-h flex-col items-start justify-start">
@@ -139,7 +106,7 @@ export function ModelsSection({ rightHeader, rightMain, rightFooter }: ModelsSec
 
   const centerHeader = (
     <div className="settings-list-head">
-      <h3>{focusedLabel ?? (isSearchProviderId(focusProviderId) || isPlaceholderGroupId(focusProviderId) ? 'Providers' : 'Models')}</h3>
+      <h3>{focusedLabel ?? t('settings.modelsSection')}</h3>
     </div>
   );
 
@@ -147,10 +114,10 @@ export function ModelsSection({ rightHeader, rightMain, rightFooter }: ModelsSec
     <SettingsPanels
       leftHeader={
         <div className="settings-list-head" style={{ justifyContent: 'space-between' }}>
-          <h3>Providers</h3>
+          <h3>{t('settings.aiProviders')}</h3>
           <button
             className="btn-icon"
-            title="Refresh provider status"
+            title={t('settings.refreshProviderStatus')}
             onClick={() => void useAIStore.getState().refreshAllProviderStatuses()}
           >
             <RefreshCw size={14} />
