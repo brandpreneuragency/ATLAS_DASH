@@ -3,7 +3,7 @@
 // API keys stored securely in Tauri keychain via secureStorage.ts.
 
 import { create } from 'zustand';
-import type { Agent, AIProviderConfig, ModelItem, ProviderStatus, SearchConfig, SearchProvider, TaskModelDefault, TaskModelDefaultKey } from '../types';
+import type { Agent, AIProviderConfig, ModelItem, ModelReasoning, ProviderStatus, SearchConfig, SearchProvider, TaskModelDefault, TaskModelDefaultKey } from '../types';
 import { db } from '../services/db';
 import { secureStorage } from '../services/secureStorage';
 import {
@@ -139,6 +139,8 @@ interface AIStore {
   addProvider: (name: string, baseUrl: string, apiKey: string) => Promise<AIProviderConfig | null>;
   setActiveProvider: (id: string) => void;
   setActiveModel: (configId: string, modelSlug: string) => void;
+  setModelReasoning: (configId: string, modelSlug: string, value: string) => void;
+  setModelReasoningDescriptor: (configId: string, modelSlug: string, reasoning: ModelReasoning | undefined) => void;
   addModelToProvider: (configId: string, modelSlug: string) => void;
   removeModelFromProvider: (configId: string, modelSlug: string) => void;
   toggleHiddenModel: (key: string) => void;
@@ -532,6 +534,32 @@ export const useAIStore = create<AIStore>((set, get) => ({
     );
     set({ providerConfigs });
     void db.providerConfigs.update(configId, { selectedModel: modelSlug }).catch(() => undefined);
+  },
+
+  setModelReasoning: (configId, modelSlug, value) => {
+    const providerConfigs = get().providerConfigs.map((config) => {
+      if (config.id !== configId) return config;
+      const models = (config.models ?? []).map((m) =>
+        m.id === modelSlug ? { ...m, selectedReasoning: value } : m,
+      );
+      return { ...config, models };
+    });
+    set({ providerConfigs });
+    const models = providerConfigs.find((c) => c.id === configId)?.models;
+    if (models) void db.providerConfigs.update(configId, { models }).catch(() => undefined);
+  },
+
+  setModelReasoningDescriptor: (configId, modelSlug, reasoning) => {
+    const providerConfigs = get().providerConfigs.map((config) => {
+      if (config.id !== configId) return config;
+      const models = (config.models ?? []).map((m) =>
+        m.id === modelSlug ? { ...m, reasoning } : m,
+      );
+      return { ...config, models };
+    });
+    set({ providerConfigs });
+    const models = providerConfigs.find((c) => c.id === configId)?.models;
+    if (models) void db.providerConfigs.update(configId, { models }).catch(() => undefined);
   },
 
   addModelToProvider: (configId, modelSlug) => {

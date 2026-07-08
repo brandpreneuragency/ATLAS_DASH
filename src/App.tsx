@@ -31,6 +31,7 @@ import { useCrmStore } from './stores/crmStore';
 import { useFormsStore } from './stores/formsStore';
 import { useThemeStore } from './stores/themeStore';
 import { runStartupUpdateCheck } from './services/updater';
+import { loadReasoningOverlay } from './services/ai/reasoning';
 
 export default function App() {
   const [editor, setEditor] = useState<Editor | null>(null);
@@ -76,6 +77,8 @@ export default function App() {
     ]);
     // Check for app updates in the background (no-op in the browser).
     void runStartupUpdateCheck();
+    // Load any runtime-refreshed reasoning catalog override from Dexie.
+    void loadReasoningOverlay();
   }, [
     loadDocuments,
     loadUISettings,

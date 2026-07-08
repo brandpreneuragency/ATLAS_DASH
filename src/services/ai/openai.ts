@@ -1,10 +1,10 @@
-// OpenAI-compatible streaming (covers `openai`, `openrouter`, and
-// `custom` providers). Used by the dormant Tauri desktop build only —
-// the browser web build routes through `aiRepository.streamChat()` which
-// hits the server. See AGENTS.md for the Tauri isolation strategy.
+// OpenAI-compatible streaming. All connected providers are added as
+// OpenAI-compatible endpoints (see ConnectProviderDrawer), so this is
+// the only streamer used by the router.
 
 import type { AIProviderConfig, MessageUsage } from '../../types';
 import { runtimeFetch } from '../http';
+import { buildReasoningPayload, resolveReasoning } from './reasoning';
 import type { ChatMessage, StreamChunk } from './types';
 
 function normalizeUsage(usage: unknown): MessageUsage | undefined {
@@ -40,6 +40,12 @@ export async function* streamOpenAI(
     headers['X-Title'] = 'TABS';
   }
 
+  const activeModel = config.models?.find((m) => m.id === config.selectedModel);
+  const reasoning = activeModel ? resolveReasoning(activeModel, config.baseUrl) : undefined;
+  const reasoningPayload = reasoning
+    ? buildReasoningPayload(reasoning, activeModel?.selectedReasoning)
+    : {};
+
   const response = await runtimeFetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers,
@@ -48,6 +54,7 @@ export async function* streamOpenAI(
       messages,
       stream: true,
       stream_options: { include_usage: true },
+      ...reasoningPayload,
     }),
     signal,
   });

@@ -4,6 +4,7 @@
 import type { ModelItem, ModelReasoning } from '../../types';
 import bundled from '../../data/reasoningCatalog.json';
 import { runtimeFetch } from '../http';
+import { db } from '../db';
 
 export interface ReasoningCatalog {
   providers: Record<string, Record<string, ModelReasoning>>;
@@ -17,6 +18,18 @@ let overlay: ReasoningCatalog | null = null;
 /** Replace the in-memory override layer (called after a refresh or cache load). */
 export function setReasoningOverlay(next: ReasoningCatalog | null): void {
   overlay = next;
+}
+
+const CACHE_KEY = 'reasoningCatalogOverride';
+
+/** Load a previously refreshed catalog from Dexie into the overlay (call at startup). */
+export async function loadReasoningOverlay(): Promise<void> {
+  try {
+    const row = await db.settings.get(CACHE_KEY);
+    if (row && typeof row.value === 'string') {
+      setReasoningOverlay(JSON.parse(row.value) as ReasoningCatalog);
+    }
+  } catch { /* ignore: fall back to bundled */ }
 }
 
 function hostOf(baseUrl?: string): string | undefined {
@@ -143,8 +156,9 @@ export function normalizeModelsDev(db: Record<string, ModelsDevProvider>): Reaso
 export async function refreshReasoningCatalog(): Promise<ReasoningCatalog> {
   const res = await runtimeFetch('https://models.dev/api.json', { headers: { Accept: 'application/json' } });
   if (!res.ok) throw new Error(`models.dev fetch failed: ${res.status}`);
-  const db = await res.json() as Record<string, ModelsDevProvider>;
-  const catalog = normalizeModelsDev(db);
+  const apiDb = await res.json() as Record<string, ModelsDevProvider>;
+  const catalog = normalizeModelsDev(apiDb);
   setReasoningOverlay(catalog);
+  try { await db.settings.put({ key: CACHE_KEY, value: JSON.stringify(catalog) }); } catch { /* ignore */ }
   return catalog;
 }
