@@ -2,37 +2,92 @@
 
 **Date:** 2026-07-08
 **Status:** Approved (decisions delegated to implementer)
+**Revised:** 2026-07-08 — capability source changed from a hand-curated catalog to
+models.dev after confirming provider `/models` endpoints expose no reasoning data.
 
 ## Goal
 
 Add a "thinking effort" dropup next to the model dropup in the chat composer. It
-shows the effort levels the **currently selected model** supports, remembers the
-choice per model, and injects the right reasoning parameter into the API request.
-It appears in both composers (`ChatInput` and `CRMAISidebar`) and is hidden for
-models with no thinking capability.
+shows the effort levels the currently selected model supports, remembers the choice
+per model, and injects the right reasoning parameter into the API request. It
+appears in both composers (`ChatInput` and `CRMAISidebar`) and is hidden for models
+with no thinking capability.
 
-## Key finding: effort levels are per-model and mostly not auto-discoverable
+## Why a general solution was needed
 
-Reasoning controls are not uniform across providers or models:
+Reasoning controls are heterogeneous and not self-describing:
 
-- deepseek-flash → `off / high / max`
-- mimo-2.5 → `off / low / mid / high`
-- nemotron-ultra → `on / off`
-- OpenAI o-series / gpt-5 → `off / low / med / high` (`reasoning_effort` string)
-- Anthropic 3.7/4 → token **budget** (`thinking.budget_tokens`), not levels
-- Gemini 2.5 → token **budget** (`thinkingConfig.thinkingBudget`)
+- deepseek-flash: `off / high / max`
+- mimo-2.5: `off / low / mid / high`
+- nemotron-ultra: `on / off`
+- OpenAI o-series / gpt-5: discrete effort strings
+- Anthropic / Gemini native: token budgets, not levels
 
-The OpenAI-compatible `/models` endpoint (what opencode-go exposes) returns only
-`{ id, name }` — it does **not** enumerate the allowed effort values. OpenRouter's
-`/models` includes `supported_parameters` which reveals *that* a model accepts a
-`reasoning` param (yes/no), but not its enum. So the specific level sets come from
-model docs and cannot be fully imported. This drives a **hybrid** approach: curated
-defaults + best-effort import detection + manual override.
+Provider `/models` endpoints do not describe any of this. Verified directly:
+`https://opencode.ai/zen/v1/models` and `.../zen/go/v1/models` return only
+`{ id, object, created, owned_by }`. A hand-maintained catalog would be a
+maintenance treadmill against fast-moving names (gpt-5.5, deepseek-v4-flash, ...).
+
+## Capability source: models.dev
+
+Use **models.dev** — the community capability database opencode itself uses. Its
+`api.json` lists 151 providers and, per model, `reasoning` (boolean) plus
+`reasoning_options`, which give the exact allowed levels:
+
+- `{ type: "effort", values: [...] }` — discrete levels (gpt-5.5 →
+  `none/low/medium/high/xhigh`; deepseek-v4-flash → `high/max`)
+- `{ type: "budget_tokens", min }` — token-budget models (native Anthropic)
+- `{ type: "toggle" }` — on/off models (kimi, glm, nemotron)
+
+This captures every case above generally, for all providers, with no per-model
+manual work.
+
+### Bundled snapshot + host-scoped matching (hybrid)
+
+Build script `scripts/sync-models-dev.mjs` fetches `api.json` and writes a slim
+`src/data/reasoningCatalog.json` (~900KB raw, gzips small):
+
+```jsonc
+{
+  "providers": { "opencode": { "deepseek-v4-flash": <descriptor>, ... }, ... },
+  "hosts":     { "opencode.ai": "opencode", "openrouter.ai": "openrouter", ... },
+  "byId":      { "gpt-5.5": <descriptor>, ... }   // richest fallback
+}
+```
+
+Each `<descriptor>` is `{ param, options }` (see Data model). Normalization:
+- effort values → `[{Off,""}, ...values]`, `param: 'reasoning_effort'` (`none` is
+  dropped since the Off entry already represents it)
+- budget_tokens → `[Off, Low, Med, High]` with `budgetTokens` >= min,
+  `param: 'thinking'`
+- toggle → `[{Off,""},{On,"on"}]`, `param: 'reasoning_enabled'`
+- reasoning:true but no options → default `[Off, Low, Med, High]` effort set
+
+Matching is provider-scoped by base-URL host (same model id can differ per
+provider). `resolveReasoning(model, baseUrl)` precedence:
+
+1. Manual override on the model item (`source: 'manual'`) — always wins.
+2. Provider-scoped: `host = new URL(baseUrl).host` → `catalog.hosts[host]` →
+   `catalog.providers[slug][model.id]`.
+3. Bare-id fallback: `catalog.byId[model.id]`.
+4. Nothing → `undefined` → no dropup.
+
+The `hosts` map is auto-built from each provider's advertised `api` base URL plus a
+few native hosts. For the opencode config, host `opencode.ai` resolves to the
+`opencode` provider, giving exactly-right per-model levels for both `/zen/v1` and
+`/zen/go/v1` (same host).
+
+### Runtime refresh
+
+The bundled snapshot works offline/first-run. `refreshReasoningCatalog()`
+re-fetches models.dev, normalizes with the same rules, and caches an override layer
+in Dexie merged over the bundle. Triggered by a "Refresh capabilities" button in
+Settings → Models, and opportunistically after a model import.
 
 ## Data model
 
-Extend `ModelItem` in `src/types/index.ts`. Absence of `reasoning` means the model
-is not thinking-capable and the dropup is hidden.
+Extend `ModelItem` in `src/types/index.ts`. The dropup is hidden when
+`resolveReasoning` returns `undefined`.
 
 ```ts
 interface ReasoningOption {
@@ -42,96 +97,67 @@ interface ReasoningOption {
 }
 
 interface ModelReasoning {
-  param: 'reasoning_effort' | 'reasoning' | 'thinking' | 'thinkingBudget';
-  options: ReasoningOption[]; // ordered; options[0] is the "off/none" state
-  source: 'map' | 'import' | 'manual';
+  param: 'reasoning_effort' | 'reasoning' | 'thinking' | 'reasoning_enabled';
+  options: ReasoningOption[]; // ordered; options[0] is the off/none state
+  source?: 'manual';          // set only for a user override
 }
 
 // added to ModelItem:
-reasoning?: ModelReasoning;
-selectedReasoning?: string; // current picked value, remembered per-model
+reasoning?: ModelReasoning;   // present only for a manual override
+selectedReasoning?: string;   // current picked value, remembered per-model
 ```
 
 **Decisions:**
-- `selectedReasoning` lives on the model item — gives per-model memory for free and
-  persists through the existing `db.providerConfigs.update(id, { models })` path.
-- `options[0]` is the "off" state. At request time: if its `value === ''`, omit the
-  reasoning param; otherwise send the literal value (handles deepseek `off`,
-  nemotron `on/off`).
-
-## Capability resolution (hybrid)
-
-Pure function `resolveReasoning(config, model): ModelReasoning | undefined`.
-Precedence, highest first:
-
-1. **Manual override** — user-set in settings (`source: 'manual'`). Always wins.
-2. **Import-detected** — `importProviderModels` parses reasoning hints from the
-   endpoint payload when present: OpenRouter/opencode-go style
-   `supported_parameters` containing `reasoning` / `include_reasoning`, plus any
-   raw enum fields the endpoint happens to expose. When found, mark capable and
-   seed a sensible default option set (`source: 'import'`).
-3. **Curated map** — new `src/services/ai/reasoningCatalog.ts`, keyed by model-id
-   patterns:
-   - `o[1-4].*` / `gpt-5.*` → `off/low/med/high` (`reasoning_effort`)
-   - `claude-.*(3-7|opus-4|sonnet-4).*` → `off/low/med/high` mapped to
-     `budgetTokens` (e.g. 0 / 4k / 12k / 24k), `param: 'thinking'`
-   - `gemini-2.5-.*` → `off/low/med/high` mapped to `thinkingBudget`
-4. No match → `undefined` → **no dropup**.
-
-**Auto-fill honesty:** if opencode-go's `/models` yields only `id/name`, those
-models fall through to manual entry (the backup path). A real sample of that
-endpoint's response can be used later to tune the import parser without changing
-the design.
-
-## UI — reusable dropup
-
-New `src/components/sidebar/ReasoningDropup.tsx`, reused in `ChatInput.tsx` (after
-the model dropup at ~line 451) and the equivalent spot in `CRMAISidebar.tsx`.
-
-- Mirrors existing dropup markup: `chat-input-dropup-btn`, `.drop`, Brain icon,
-  `header-dropdown-item--active` on the current option.
-- Reads `activeModel.reasoning.options`; renders one `drop-item` per option.
-- Hidden entirely when the active model has no `reasoning`.
-- Selecting calls store action `setModelReasoning(configId, modelId, value)`.
-- Label shows current option (e.g. "High"); falls back to the off option's label.
+- `selectedReasoning` lives on the model item — per-model memory for free, persists
+  through the existing `db.providerConfigs.update(id, { models })` path.
+- The resolved descriptor normally comes from the catalog, not the item; the item's
+  `reasoning` field is only populated for a manual override.
+- `options[0]` is the off state: if `value === ''`, omit the param; otherwise send
+  the literal value.
 
 ## Request injection
 
 In `src/services/ai/openai.ts` (`streamOpenAI`, the live web path via
-`router.streamChat`), before building the body, resolve the active model's
-`reasoning` + `selectedReasoning` from `config` and inject by `param`:
+`router.streamChat`), resolve the active model's descriptor from `config`
+(`config.models`, `config.selectedModel`, `config.baseUrl`) and inject by `param`:
 
 - `reasoning_effort` → `{ reasoning_effort: value }`
 - `reasoning` → `{ reasoning: { effort: value } }`
 - `thinking` → `{ thinking: { type: 'enabled', budget_tokens } }` (from `budgetTokens`)
-- `thinkingBudget` → provider-appropriate `thinkingConfig` shape
-- off state (`value === ''`) → omit the param entirely.
+- `reasoning_enabled` → `{ reasoning: { enabled: true } }` (toggle On)
+- off state (`value === ''`) → omit entirely.
 
-`streamAnthropic` gets the analogous `thinking` injection for the Tauri path.
+## UI — reusable dropup
 
-## Settings — manual override
+New `src/components/sidebar/ReasoningDropup.tsx`, reused in `ChatInput.tsx` and the
+equivalent spot in `CRMAISidebar.tsx`, placed right after the model dropup. Mirrors
+existing dropup markup (`chat-input-dropup-btn`, `.drop`, Brain icon,
+`header-dropdown-item--active`). Renders the resolved descriptor's options; hidden
+when the active model resolves to no descriptor. Selecting calls
+`setModelReasoning(configId, modelId, value)`.
 
-In the model management panel (`src/components/settings/ModelsContent.tsx`), a small
-per-model editor:
+## Settings — manual override + refresh
 
-- Toggle "Supports thinking".
-- Editable ordered list of options (label / value rows, optional budget tokens).
-- Saving writes `reasoning` with `source: 'manual'`, persisted via the store.
+In the model management panel (`src/components/settings/ModelsContent.tsx`):
+- A "Refresh capabilities" button calling `refreshReasoningCatalog()`.
+- A per-model override: toggle "Supports thinking" + editable comma-separated levels
+  (first = off). Saving writes `reasoning` with `source: 'manual'`.
 
 ## Store + i18n
 
-- `aiStore`: add `setModelReasoning(configId, modelId, value)` (updates the model
-  item, persists to `db.providerConfigs`). Effort survives model switching because
-  it is read from the model item.
-- i18n: add EN/TR keys — `chat.thinkingEffort` and level labels (Off/Low/Med/High).
+- `aiStore`: `setModelReasoning(configId, modelId, value)` and
+  `setModelReasoningDescriptor(configId, modelId, reasoning|undefined)`.
+- i18n: EN/TR keys — `chat.thinkingEffort`, `models.supportsThinking`,
+  `models.thinkingLevelsHint`, `models.refreshCapabilities`.
 
 ## Out of scope
 
 - Server-side (`aiRepository`) rework — the live path is `router.streamChat`.
-- Custom UI for non-standard budget mapping beyond the manual option editor.
-- Auto-refreshing curated map from a remote source; it ships in-repo.
+- Per-provider custom injection shapes beyond the four `param` kinds above.
 
-## Open item
+## Open items
 
-- Obtain a sample opencode-go `/models` response to tune the import parser for
-  deepseek / mimo / nemotron auto-fill. Manual override covers these until then.
+- Toggle-only injection (`reasoning: { enabled: true }`) is a best-effort shape for
+  OpenAI-compatible gateways; manual override covers a provider that rejects it.
+- Snapshot is ~900KB raw; acceptable (compresses well). Revisit if bundle size
+  becomes a concern.
