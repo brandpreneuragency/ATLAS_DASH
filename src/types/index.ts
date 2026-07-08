@@ -160,6 +160,28 @@ export interface ModelItem {
   inputPricePerMillion?: number;
   outputPricePerMillion?: number;
   currency?: 'USD';
+  /** Manual reasoning override; catalog resolution is used when absent. */
+  reasoning?: ModelReasoning;
+  /** Current picked reasoning value for this model (an option's `value`). */
+  selectedReasoning?: string;
+}
+
+export interface ReasoningOption {
+  /** Shown in the dropup, e.g. "High". */
+  label: string;
+  /** Literal value sent to the API, e.g. "high". Empty string = off/omit. */
+  value: string;
+  /** Token budget for budget-based providers (Anthropic/Gemini). */
+  budgetTokens?: number;
+}
+
+export interface ModelReasoning {
+  /** How the value is injected into the request. */
+  param: 'reasoning_effort' | 'reasoning' | 'thinking' | 'reasoning_enabled';
+  /** Ordered options; options[0] is the off/none state. */
+  options: ReasoningOption[];
+  /** Set only when the user manually overrides. */
+  source?: 'manual';
 }
 
 export interface AIProviderConfig {
