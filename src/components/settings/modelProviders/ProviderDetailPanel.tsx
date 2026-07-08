@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { AIProviderConfig, ProviderImportUiState } from '../../../types';
+import type { AIProviderConfig, ModelReasoning, ProviderImportUiState } from '../../../types';
 import { ProviderStatusBadge } from '../../modals/modelProvider/ProviderStatusBadge';
 import { ProviderTabs, type ProviderTabId } from './ProviderTabs';
 import { ProviderConnectionTab } from './ProviderConnectionTab';
@@ -23,6 +23,8 @@ interface ProviderDetailPanelProps {
   onTestConnection: () => void;
   onSyncModels: () => void;
   onToggleModel: (providerId: string, modelId: string, enabled: boolean) => void;
+  onToggleModelTools: (providerId: string, modelId: string, supportsTools: boolean) => void;
+  onSetModelReasoningDescriptor: (providerId: string, modelId: string, reasoning: ModelReasoning | undefined) => void;
   onAddCustomModel: (providerId: string, slug: string) => void;
   onDeleteProvider: (id: string) => void;
   onSaveProviderBaseUrl: (id: string, baseUrl: string) => void;
@@ -50,6 +52,8 @@ export function ProviderDetailPanel({
   onTestConnection,
   onSyncModels,
   onToggleModel,
+  onToggleModelTools,
+  onSetModelReasoningDescriptor,
   onAddCustomModel,
   onDeleteProvider,
   onSaveProviderBaseUrl,
@@ -118,7 +122,10 @@ export function ProviderDetailPanel({
             provider={provider}
             hiddenModels={hiddenModels}
             onToggleModel={onToggleModel}
+            onToggleModelTools={onToggleModelTools}
+            onSetModelReasoningDescriptor={onSetModelReasoningDescriptor}
             onAddCustomModel={onAddCustomModel}
+            onSyncModels={onSyncModels}
           />
         )}
         {activeTab === 'defaults' && (

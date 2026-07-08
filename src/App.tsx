@@ -129,6 +129,18 @@ export default function App() {
     return () => window.removeEventListener('keydown', handler);
   }, [taskMode, setTaskMode, tasks, activeDocumentId, setActiveTask, setActiveDocument]);
 
+  // Keyboard shortcut: Ctrl/Cmd + J toggles the terminal panel.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'j') {
+        e.preventDefault();
+        useUIStore.getState().setTerminalPanelOpen(!useUIStore.getState().terminalPanelOpen);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   const handleEditorReady = useCallback((e: Editor) => {
     setEditor(e);
   }, []);

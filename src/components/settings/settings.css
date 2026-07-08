@@ -21,25 +21,63 @@
 
 .settings-panels { height: 100%; min-height: 0; }
 
+/* Main sections are column flex containers so list/chat bodies fill panel height. */
+.settings-panels .reusable-page-template__section--header,
+.settings-panels .reusable-page-template__section--footer {
+  align-self: stretch;
+  align-items: stretch;
+}
+
+.settings-panels .reusable-page-template__section--main {
+  flex-direction: column;
+  align-items: stretch;
+  align-self: stretch;
+}
+
+.settings-panels .reusable-page-template__section--main > * {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.settings-panels .reusable-page-template__section--footer {
+  height: auto;
+  flex-shrink: 0;
+}
+
+/* Match left/center list headers in the AI sidebar toolbar slot. */
+.settings-panels .right-panel-subheader {
+  height: var(--control-height-xl);
+  min-height: var(--control-height-xl);
+  box-sizing: border-box;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom: 1px solid var(--c-border-1);
+}
+
 /* Left list header + items (shared by all sections). */
 .settings-list-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  width: 100%;
+  height: var(--control-height-xl);
   padding: 10px 12px;
-  border-bottom: 1px solid var(--c-border-1);
+  border-bottom: none;
 }
 .settings-list-head h3 {
   margin: 0;
   font-size: var(--fs-sm);
   font-weight: 600;
+  color: var(--c-text-1);
 }
 .settings-list-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 6px;
+  padding: 0 6px;
 }
 
 .settings-list-item {
@@ -64,7 +102,7 @@
   border-left: none;
   border-image: none;
 }
-.settings-list-item .settings-list-item-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings-list-item .settings-list-item-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-text-1); }
 .settings-list-item .settings-list-item-meta { font-size: var(--fs-xs); color: var(--c-text-3); }
 .settings-list-item--placeholder { padding: 8px 12px; color: var(--c-text-3); }
 .settings-list-item--placeholder[style*="cursor: default"] { cursor: default !important; }
@@ -117,13 +155,20 @@
   background: transparent;
   color: var(--c-text-2);
   font-size: var(--fs-xs);
-  padding: 3px 10px;
+  padding: 0 10px;
   border-radius: 9999px;
   cursor: pointer;
+  width: fit-content;
+  height: fit-content;
+  min-width: 0;
+  min-height: 0;
 }
 .settings-scope-toggle button.is-active {
   background: var(--c-accent-center-panel);
   color: #fff;
+  width: fit-content;
+  height: fit-content;
+  min-height: 0;
 }
 
 /* Center detail header. */
@@ -269,7 +314,10 @@
   gap: 6px;
   justify-content: center;
 }
-.settings-add-btn:hover { color: var(--c-accent-center-panel); border-color: var(--c-accent-center-panel); }
+.settings-add-btn:hover {
+  background: var(--c-background-3);
+  border: 1px solid var(--c-border-1);
+}
 
 /* Provider detail panel — replaces accordion center UX. */
 .provider-detail-panel {
@@ -291,7 +339,7 @@
   appearance: none;
   border: none;
   background: transparent;
-  color: var(--c-text-2);
+  color: var(--c-text-1);
   font-size: var(--fs-xs);
   font-weight: 500;
   padding: 8px 12px;
@@ -299,12 +347,16 @@
   border-bottom: 2px solid transparent;
   white-space: nowrap;
   transition: color 0.15s, border-color 0.15s;
+  width: fit-content;
+  height: fit-content;
+  min-width: 0;
+  min-height: 0;
 }
 .provider-detail-tab:hover {
   color: var(--c-text-1);
 }
 .provider-detail-tab--active {
-  color: var(--c-accent-center-panel);
+  color: var(--c-text-1);
   border-bottom-color: var(--c-accent-center-panel);
 }
 .provider-detail-content {
@@ -397,6 +449,7 @@
   border-radius: var(--radius-md);
 }
 .settings-models-inline-toolbar {
+  height: 56px;
   padding: 8px 12px;
   align-items: center;
   justify-content: space-between;
@@ -426,6 +479,12 @@
   border-radius: var(--radius-md);
   gap: 8px;
   border-bottom: 1px solid var(--c-border-1);
+}
+.settings-model-row-group {
+  border-bottom: 1px solid var(--c-border-1);
+}
+.settings-model-row-group .settings-model-table-row {
+  border-bottom: none;
 }
 .settings-model-name {
   flex: 2;
@@ -460,6 +519,45 @@
   display: flex;
   justify-content: center;
 }
+.settings-model-reasoning-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 10px 12px;
+  font-size: var(--fs-xs);
+}
+.settings-model-reasoning-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--c-text-2);
+  white-space: nowrap;
+}
+.settings-model-reasoning-select,
+.settings-model-reasoning-input {
+  border: 1px solid var(--c-border-1);
+  border-radius: var(--radius-sm);
+  background: var(--c-background-0);
+  color: var(--c-text-1);
+  font-size: var(--fs-xs);
+  height: 28px;
+}
+.settings-model-reasoning-select {
+  min-width: 142px;
+  padding: 0 8px;
+}
+.settings-model-reasoning-input {
+  flex: 1;
+  min-width: 180px;
+  padding: 0 8px;
+}
+.settings-model-reasoning-hint {
+  color: var(--c-text-3);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* Search input used in model table. */
 .settings-search-input-wrap {
@@ -483,6 +581,9 @@
   font-size: var(--fs-xs);
   padding: 3px 8px;
   height: auto;
+  width: fit-content;
+  min-width: fit-content;
+  border: none;
 }
 .settings-filter-btn--active { opacity: 1; }
 .settings-filter-btn--inactive { opacity: 0.7; }
@@ -638,6 +739,14 @@
 .settings-action-btn--disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+.settings-spin {
+  animation: settings-spin 1s linear infinite;
+}
+
+@keyframes settings-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* No-models empty padding. */

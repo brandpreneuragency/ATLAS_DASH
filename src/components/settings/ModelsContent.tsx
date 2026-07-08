@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../../stores/uiStore';
 import { useAIStore } from '../../stores/aiStore';
 import { secureStorage } from '../../services/secureStorage';
-import type { AIProviderConfig, ModelItem, ProviderImportPhase } from '../../types';
+import type { AIProviderConfig, ModelItem, ModelReasoning, ProviderImportPhase } from '../../types';
 import { ProviderDetailPanel } from './modelProviders/ProviderDetailPanel';
 import { ConnectProviderDrawer } from '../modals/modelProvider/ConnectProviderDrawer';
 import { ModalFooter } from '../modals/modelProvider/ModalFooter';
@@ -388,6 +388,10 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     });
   };
 
+  const toggleModelTools = (providerId: string, modelId: string, supportsTools: boolean) => {
+    useAIStore.getState().setModelSupportsTools(providerId, modelId, supportsTools);
+  };
+
   const addCustomModel = (providerId: string, slug: string) => {
     setDraftProviders((prev) =>
       prev.map((p) => {
@@ -415,6 +419,24 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
           models: [...(p.models ?? []), newModel],
         };
       })
+    );
+  };
+
+  const setModelReasoningDescriptor = (
+    providerId: string,
+    modelId: string,
+    reasoning: ModelReasoning | undefined,
+  ) => {
+    setDraftProviders((prev) =>
+      prev.map((provider) => {
+        if (provider.id !== providerId) return provider;
+        return {
+          ...provider,
+          models: (provider.models ?? []).map((model) =>
+            model.id === modelId ? { ...model, reasoning } : model,
+          ),
+        };
+      }),
     );
   };
 
@@ -554,6 +576,8 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
       onTestConnection={() => handleTestConnection(selectedProvider.id)}
       onSyncModels={() => handleSyncModels(selectedProvider.id)}
       onToggleModel={toggleModel}
+      onToggleModelTools={toggleModelTools}
+      onSetModelReasoningDescriptor={setModelReasoningDescriptor}
       onAddCustomModel={addCustomModel}
       onDeleteProvider={(id) => {
         void useAIStore.getState().deleteCustomProvider(id);
