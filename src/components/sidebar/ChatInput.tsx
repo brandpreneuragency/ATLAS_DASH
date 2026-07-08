@@ -16,6 +16,7 @@ import {
   ComposerSendButton,
   ComposerTextarea,
 } from '../ui/Composer';
+import { ReasoningDropup } from './ReasoningDropup';
 import type { Attachment, ChatMessage, QuickPrompt } from '../../types';
 
 interface ChatInputProps {
@@ -261,7 +262,7 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
   const promptOptions: PromptOption[] = mode === 'task' ? [...TASK_BUILT_INS, ...quickPrompts] : quickPrompts;
 
   return (
-    <div style={{ flexShrink: 0, paddingTop: '0px', paddingBottom: '12px', paddingLeft: '12px', paddingRight: '12px', height: 'fit-content' }}>
+    <div style={{ flexShrink: 0, paddingTop: '12px', paddingBottom: '12px', paddingLeft: '12px', paddingRight: '12px', height: 'fit-content' }}>
       {selectedText && (
         <div style={{ marginBottom: 8, fontSize: 'var(--fs-xs)', color: accentColor, background: 'var(--c-background-4)', borderRadius: 6, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span className="med">{t('chat.context')}</span>
@@ -408,52 +409,6 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
               </div>
             </div>
 
-            <div ref={modelRef} className="chat-input-bottom-col chat-input-bottom-col--model">
-              <button
-                type="button"
-                onClick={() => { setModelDropdownOpen((v) => !v); setAgentDropdownOpen(false); }}
-                className="chat-input-dropup-btn"
-                data-active="true"
-                style={{ color: accentColor }}
-                aria-label={modelLabel}
-                aria-haspopup="menu"
-                aria-expanded={modelDropdownOpen}
-              >
-                <Brain size={12} className="chat-input-dropup-icon" />
-                <span className="trunc med chat-input-dropup-label">{modelLabel}</span>
-              </button>
-              {modelDropdownOpen && (
-                <div className="drop" style={{ left: 0, bottom: '100%', marginBottom: 4, minWidth: 180 }}>
-                  {providerConfigs.length === 0 && (
-                    <div className="subtle" style={{ padding: '8px 12px', fontSize: 'var(--fs-xs)' }}>{t('sidebar.noProviders')}</div>
-                  )}
-                  {providerConfigs.filter((config) => config.status === 'connected').flatMap((config) => {
-                    const visibleModels = (config.models ?? []).filter((m) => !isModelHidden(config.id, m.id));
-                    return visibleModels.map((model) => (
-                      <button
-                        type="button"
-                        key={`${config.id}:${model.id}`}
-                        onClick={() => { setActiveProvider(config.id); setActiveModel(config.id, model.id); setModelDropdownOpen(false); }}
-                        className={`drop-item${config.id === activeProviderId && config.selectedModel === model.id ? ' header-dropdown-item--active' : ''}`}
-                        style={{ fontSize: 'var(--fs-xs)' }}
-                      >
-                        <span className="med">{config.name} / {model.name}</span>
-                      </button>
-                    ));
-                  })}
-                  <div style={{ borderTop: '1px solid var(--c-border-1)', marginTop: 4, paddingTop: 4 }}>
-                    <button
-                      type="button"
-                      onClick={() => { openSettings('models'); setModelDropdownOpen(false); }}
-                      className="drop-item drop-item--brand"
-                    >
-                      {t('sidebar.manageModels')}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
             <div ref={agentRef} className="chat-input-bottom-col chat-input-bottom-col--agent">
               <button
                 type="button"
@@ -481,7 +436,7 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
                       <span className="trunc med">{agent.name}</span>
                     </button>
                   ))}
-                  <div style={{ borderTop: '1px solid var(--c-border-1)', marginTop: 4, paddingTop: 4 }}>
+                  <div style={{ borderTop: '1px solid var(--c-border-1)', marginTop: 0, paddingTop: 0 }}>
                     <button
                       type="button"
                       onClick={() => { openSettings('agents'); setAgentDropdownOpen(false); }}
@@ -493,6 +448,54 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
                 </div>
               )}
             </div>
+
+            <div ref={modelRef} className="chat-input-bottom-col chat-input-bottom-col--model">
+              <button
+                type="button"
+                onClick={() => { setModelDropdownOpen((v) => !v); setAgentDropdownOpen(false); }}
+                className="chat-input-dropup-btn"
+                data-active="true"
+                style={{ color: accentColor }}
+                aria-label={modelLabel}
+                aria-haspopup="menu"
+                aria-expanded={modelDropdownOpen}
+              >
+                <Brain size={12} className="chat-input-dropup-icon" />
+                <span className="trunc med chat-input-dropup-label">{modelLabel}</span>
+              </button>
+              {modelDropdownOpen && (
+                <div className="drop" style={{ left: 0, bottom: '100%', marginBottom: 4, minWidth: 180 }}>
+                  {providerConfigs.length === 0 && (
+                    <div className="subtle" style={{ padding: '14px 12px', fontSize: 'var(--fs-xs)' }}>{t('sidebar.noProviders')}</div>
+                  )}
+                  {providerConfigs.filter((config) => config.status === 'connected').flatMap((config) => {
+                    const visibleModels = (config.models ?? []).filter((m) => !isModelHidden(config.id, m.id));
+                    return visibleModels.map((model) => (
+                      <button
+                        type="button"
+                        key={`${config.id}:${model.id}`}
+                        onClick={() => { setActiveProvider(config.id); setActiveModel(config.id, model.id); setModelDropdownOpen(false); }}
+                        className={`drop-item${config.id === activeProviderId && config.selectedModel === model.id ? ' header-dropdown-item--active' : ''}`}
+                        style={{ fontSize: 'var(--fs-xs)' }}
+                      >
+                        <span className="med">{config.name} / {model.name}</span>
+                      </button>
+                    ));
+                  })}
+                  <div style={{ borderTop: '1px solid var(--c-border-1)', marginTop: 0, paddingTop: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => { openSettings('models'); setModelDropdownOpen(false); }}
+                      className="drop-item drop-item--brand"
+                    >
+                      {t('sidebar.manageModels')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <ReasoningDropup />
           </div>
 
           {/* Right side: send button */}

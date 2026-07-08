@@ -17,6 +17,7 @@ import {
   Bot,
   Brain,
   Check,
+  ChevronDown,
   Plus,
   User,
   X,
@@ -31,6 +32,7 @@ import {
   ComposerSendButton,
   ComposerTextarea,
 } from '../ui/Composer';
+import { ReasoningDropup } from './ReasoningDropup';
 import { useAIStore } from '../../stores/aiStore';
 import { useUIStore } from '../../stores/uiStore';
 import {
@@ -224,6 +226,32 @@ interface CRMPreviewChange {
   kind: 'add' | 'update' | 'flag';
 }
 
+/* ------------------------------------------------------------------ *
+ * Collapsible thinking/reasoning box (scaffold for real AI answers).
+ * Thinking phase renders in --c-text-2; the answer/output uses
+ * --c-text-1 (handled by the preview body below).
+ * ------------------------------------------------------------------ */
+function CrmReasoningBox({ content }: { content: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="crm-ai-reasoning">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="crm-ai-reasoning-toggle"
+        aria-expanded={open}
+      >
+        <span className="med">Reasoning</span>
+        <ChevronDown
+          size={12}
+          style={{ transform: open ? undefined : 'rotate(-90deg)', transition: 'transform 0.2s' }}
+        />
+      </button>
+      {open && <div className="crm-ai-reasoning-body">{content}</div>}
+    </div>
+  );
+}
+
 interface CRMSuggestion {
   id: string;
   agentId: CRMAgentId;
@@ -232,6 +260,9 @@ interface CRMSuggestion {
   summary: string;
   changes: CRMPreviewChange[];
   applyLabel: string;
+  /** Optional AI thinking/reasoning phase. When present it renders in a
+   *  collapsible box (text-2 color) above the output (text-1 color). */
+  thinking?: string;
 }
 
 let suggestionSeq = 0;
@@ -523,6 +554,9 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
               {/* Preview pane (Suggest -> Preview -> Apply) */}
               {suggestion && (
                 <div className="crm-ai-preview">
+                  {suggestion.thinking && (
+                    <CrmReasoningBox content={suggestion.thinking} />
+                  )}
                   <div className="crm-ai-preview-head">
                     <span className="crm-ai-preview-title">{suggestion.title}</span>
                     <span className="crm-ai-preview-badge">Preview</span>
@@ -647,74 +681,6 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
                   </div>
                 </div>
 
-                <div ref={modelRef} className="chat-input-bottom-col chat-input-bottom-col--model">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setModelDropdownOpen((v) => !v);
-                      setAgentDropdownOpen(false);
-                    }}
-                    className="chat-input-dropup-btn"
-                    data-active="true"
-                    style={{ color: accentColor }}
-                    aria-label={modelLabel}
-                    aria-haspopup="menu"
-                    aria-expanded={modelDropdownOpen}
-                  >
-                    <Brain size={12} className="chat-input-dropup-icon" />
-                    <span className="trunc med chat-input-dropup-label">{modelLabel}</span>
-                  </button>
-                  {modelDropdownOpen && (
-                    <div className="drop" style={{ left: 0, bottom: '100%', marginBottom: 4, minWidth: 180 }}>
-                      {providerConfigs.length === 0 && (
-                        <div className="subtle" style={{ padding: '8px 12px', fontSize: 'var(--fs-xs)' }}>
-                          {t('sidebar.noProviders')}
-                        </div>
-                      )}
-                      {providerConfigs
-                        .filter((config) => config.status === 'connected')
-                        .flatMap((config) => {
-                          const visibleModels = (config.models ?? []).filter(
-                            (m) => !isModelHidden(config.id, m.id),
-                          );
-                          return visibleModels.map((model) => (
-                            <button
-                              type="button"
-                              key={`${config.id}:${model.id}`}
-                              onClick={() => {
-                                setActiveProvider(config.id);
-                                setActiveModel(config.id, model.id);
-                                setModelDropdownOpen(false);
-                              }}
-                              className={`drop-item${
-                                config.id === activeProviderId && config.selectedModel === model.id
-                                  ? ' header-dropdown-item--active'
-                                  : ''
-                              }`}
-                              style={{ fontSize: 'var(--fs-xs)' }}
-                            >
-                              <span className="med">
-                                {config.name} / {model.name}
-                              </span>
-                            </button>
-                          ));
-                        })}
-                      <div style={{ borderTop: '1px solid var(--c-border-1)', marginTop: 4, paddingTop: 4 }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            openSettings('models');
-                            setModelDropdownOpen(false);
-                          }}
-                          className="drop-item drop-item--brand"
-                        >
-                          {t('sidebar.manageModels')}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 <div ref={agentRef} className="chat-input-bottom-col chat-input-bottom-col--agent">
                   <button
                     type="button"
@@ -745,7 +711,7 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
                           className={`drop-item${
                             agent.id === activeAgentId ? ' header-dropdown-item--active' : ''
                           }`}
-                          style={{ fontSize: 'var(--fs-xs)' }}
+                          style={{ fontSize: 'var(--fs-base)' }}
                         >
                           <span className="trunc med">{agent.name}</span>
                         </button>
@@ -753,6 +719,76 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
                     </div>
                   )}
                 </div>
+
+                <div ref={modelRef} className="chat-input-bottom-col chat-input-bottom-col--model">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModelDropdownOpen((v) => !v);
+                      setAgentDropdownOpen(false);
+                    }}
+                    className="chat-input-dropup-btn"
+                    data-active="true"
+                    style={{ color: accentColor }}
+                    aria-label={modelLabel}
+                    aria-haspopup="menu"
+                    aria-expanded={modelDropdownOpen}
+                  >
+                    <Brain size={12} className="chat-input-dropup-icon" />
+                    <span className="trunc med chat-input-dropup-label">{modelLabel}</span>
+                  </button>
+                  {modelDropdownOpen && (
+                    <div className="drop" style={{ left: 0, bottom: '100%', marginBottom: 4, minWidth: 180 }}>
+                      {providerConfigs.length === 0 && (
+                        <div className="subtle" style={{ padding: '14px 12px', fontSize: 'var(--fs-base)' }}>
+                          {t('sidebar.noProviders')}
+                        </div>
+                      )}
+                      {providerConfigs
+                        .filter((config) => config.status === 'connected')
+                        .flatMap((config) => {
+                          const visibleModels = (config.models ?? []).filter(
+                            (m) => !isModelHidden(config.id, m.id),
+                          );
+                          return visibleModels.map((model) => (
+                            <button
+                              type="button"
+                              key={`${config.id}:${model.id}`}
+                              onClick={() => {
+                                setActiveProvider(config.id);
+                                setActiveModel(config.id, model.id);
+                                setModelDropdownOpen(false);
+                              }}
+                              className={`drop-item${
+                                config.id === activeProviderId && config.selectedModel === model.id
+                                  ? ' header-dropdown-item--active'
+                                  : ''
+                              }`}
+                              style={{ fontSize: 'var(--fs-base)' }}
+                            >
+                              <span className="med">
+                                {config.name} / {model.name}
+                              </span>
+                            </button>
+                          ));
+                        })}
+                      <div style={{ borderTop: '1px solid var(--c-border-1)', marginTop: 0, paddingTop: 0 }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            openSettings('models');
+                            setModelDropdownOpen(false);
+                          }}
+                          className="drop-item drop-item--brand"
+                        >
+                          {t('sidebar.manageModels')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <ReasoningDropup />
               </div>
 
               <div className="chat-input-bottom-col chat-input-bottom-col--send">
