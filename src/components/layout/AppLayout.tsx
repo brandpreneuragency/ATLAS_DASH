@@ -6,6 +6,7 @@ import { LeftNarrowSidebar } from './LeftNarrowSidebar';
 import { RightNarrowSidebar } from './RightNarrowSidebar';
 import { FileViewerPanel } from '../fileViewer/FileViewerPanel';
 import { RightPanelSubheader } from '../sidebar/RightPanelSubheader';
+import { TerminalPanel } from '../terminal/TerminalPanel';
 import type { ReactNode } from 'react';
 
 interface AppLayoutProps {
@@ -52,7 +53,16 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
     (!mainRowSwapped && !showSidebarPanel) ||
     (mainRowSwapped && showSidebarPanel && !centerPanelOpen);
   const rightPanelWidth = `clamp(320px, ${sidebarWidth}vw, calc(100vw - var(--sidebar-width) - 6px))`;
-  const detailPanelWidth = `calc(6px + ${rightPanelWidth})`;
+
+  const showSubtasksBar = !settingsActive && taskMode && activeTaskPage !== 'projects' && subtasksBar;
+  const centerPanel = showCenterPanel && (
+    <div id="center-panel" className="panel flex-1 h-full overflow-h flex-col min-w-0" style={{ minWidth: 140 }}>
+      {showSubtasksBar && <div className='subtasks-bar-wrapper' style={{ paddingTop: '12px', paddingBottom: '12px', paddingLeft: '12px', paddingRight: '12px' }}>{subtasksBar}</div>}
+      <div id="center-panel-body" className="panel-body flex-1 min-h-0 overflow-h">
+        {editor}
+      </div>
+    </div>
+  );
 
   return (
     <div className="workspace">
@@ -60,37 +70,39 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
         <LeftNarrowSidebar />
       </div>
 
-      {showFileExplorer && (
-        <div
-          id="file-tree-panel"
-          className="task-list-panel relative shrink-0 overflow-h flex-col h-full min-w-0"
-          style={{ width: `clamp(260px, ${fileExplorerWidth}vw, 420px)`, paddingLeft: 6, paddingRight: 6 }}
-        >
-          {leftPanel}
-        </div>
-      )}
-      {showTaskList && (
-        <div
-          id="task-list-column"
-          className="task-list-panel relative shrink-0 overflow-h flex-col h-full"
-          style={{ width: `clamp(260px, ${fileExplorerWidth}vw, 420px)`, paddingTop: '0px', paddingBottom: '0px', backgroundColor: 'var(--c-background-2)' }}
-        >
-          {taskListPanel}
-        </div>
-      )}
-      {showCrmFormsList && (
-        <div
-          id="crm-forms-list-column"
-          className="task-list-panel relative shrink-0 overflow-h flex-col h-full"
-          style={{ width: `clamp(260px, ${fileExplorerWidth}vw, 420px)`, paddingTop: '0px', paddingBottom: '0px', backgroundColor: 'var(--c-background-1)' }}
-        >
-          {leftPanel}
-        </div>
-      )}
+      <div id="workspace-panels" className="workspace-panels flex flex-1 min-w-0 min-h-0 overflow-h">
+        <div id="workspace-content" className="workspace-content flex flex-1 min-w-0 min-h-0 overflow-h">
+        {showFileExplorer && (
+          <div
+            id="file-tree-panel"
+            className="task-list-panel relative shrink-0 overflow-h flex-col h-full min-w-0"
+            style={{ width: `clamp(260px, ${fileExplorerWidth}vw, 420px)`, paddingLeft: 12, paddingRight: 0 }}
+          >
+            {leftPanel}
+          </div>
+        )}
+        {showTaskList && (
+          <div
+            id="task-list-column"
+            className="task-list-panel relative shrink-0 overflow-h flex-col h-full"
+            style={{ width: `clamp(260px, ${fileExplorerWidth}vw, 420px)`, paddingTop: '0px', paddingBottom: '0px', backgroundColor: 'var(--c-background-2)' }}
+          >
+            {taskListPanel}
+          </div>
+        )}
+        {showCrmFormsList && (
+          <div
+            id="crm-forms-list-column"
+            className="task-list-panel relative shrink-0 overflow-h flex-col h-full"
+            style={{ width: `clamp(260px, ${fileExplorerWidth}vw, 420px)`, paddingTop: '0px', paddingBottom: '0px', backgroundColor: 'var(--c-background-1)' }}
+          >
+            {leftPanel}
+          </div>
+        )}
 
-      {showLeftResizableHandle && <LeftResizableHandle />}
+        {showLeftResizableHandle && <LeftResizableHandle />}
 
-      <div id="main-columns" className="main-panel flex flex-col flex-1 overflow-h min-w-0">
+        <div id="main-columns" className="main-panel flex flex-col flex-1 overflow-h min-w-0">
         {/* Center + Right panels. `#main-row` is a 2-col grid
          *  (centre | .detail-panel wrapper) defined in layout.css. */}
         <div
@@ -103,10 +115,7 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
                   .detail-panel wraps (panel, handle) so the handle
                   stays adjacent to its panel. */}
               {showSidebarPanel && (
-                <div
-                  className="detail-panel"
-                  style={singlePanelMainRow ? undefined : { width: detailPanelWidth }}
-                >
+                <div className="detail-panel">
                   <div
                     id={fileViewerOpen ? 'file-viewer-panel' : 'ai-sidebar-panel'}
                     className="relative shrink-0 overflow-h flex-col h-full min-w-0"
@@ -123,32 +132,15 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
                 </div>
               )}
 
-              {showCenterPanel && (
-              <div id="center-panel" className="panel flex-1 h-full overflow-h flex-col min-w-0" style={{ minWidth: 140 }}>
-                {subtasksBar && <div className='subtasks-bar-wrapper' style={{ paddingTop: '12px', paddingBottom: '12px', paddingLeft: '12px', paddingRight: '12px' }}>{subtasksBar}</div>}
-                <div id="center-panel-body" className="panel-body flex-1 min-h-0 overflow-h">
-                  {editor}
-                </div>
-              </div>
-              )}
+              {centerPanel}
             </>
           ) : (
             <>
-              {showCenterPanel && (
-              <div id="center-panel" className="panel flex-1 h-full overflow-h flex-col min-w-0" style={{ minWidth: 140 }}>
-                {subtasksBar && <div className='subtasks-bar-wrapper' style={{ paddingTop: '12px', paddingBottom: '12px', paddingLeft: '12px', paddingRight: '12px' }}>{subtasksBar}</div>}
-                <div id="center-panel-body" className="panel-body flex-1 min-h-0 overflow-h">
-                  {editor}
-                </div>
-              </div>
-              )}
+              {centerPanel}
 
               {/* Normal order: centre | (handle, panel). */}
               {showSidebarPanel && (
-                <div
-                  className="detail-panel"
-                  style={singlePanelMainRow ? undefined : { width: detailPanelWidth }}
-                >
+                <div className="detail-panel">
                   {showCenterPanel && <CenterResizableHandle />}
                   <div
                     id={fileViewerOpen ? 'file-viewer-panel' : 'ai-sidebar-panel'}
@@ -169,7 +161,11 @@ export function AppLayout({ editor, sidebar, leftPanel, taskListPanel, modals, s
         </div>
 
         {modals}
+        </div>
+        </div>
       </div>
+
+      <TerminalPanel />
 
       <RightNarrowSidebar />
     </div>

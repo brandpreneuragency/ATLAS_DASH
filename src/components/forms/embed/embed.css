@@ -421,6 +421,10 @@ input[type='file'].forms-embed-input {
   opacity: 0.6;
 }
 
+.forms-embed-btn[type='submit'] {
+  border-radius: 100px;
+}
+
 .forms-embed-btn--solid {
   background: var(--tabs-form-primary);
   color: #ffffff;

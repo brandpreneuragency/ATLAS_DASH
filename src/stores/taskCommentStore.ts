@@ -75,7 +75,7 @@ interface TaskCommentStore {
    */
   addComment: (
     taskId: string,
-    input: Omit<CommentCreateInput, 'id'>,
+    input: CommentCreateInput,
     file?: File,
     options?: AddCommentOptions,
   ) => Promise<AddCommentResult>;

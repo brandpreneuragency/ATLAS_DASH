@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { CheckCircle2, Circle, ArrowLeftRight } from 'lucide-react';
+import { CheckCircle2, Circle, ArrowUpDown } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import { useTaskStore } from '../../stores/taskStore';
 import { TaskMetadataControls } from '../taskManager/TaskMetadataControls';
@@ -36,6 +36,9 @@ export function SubtasksToggleBar() {
   // The "Projects" tab shows a full-width kanban board in the center panel;
   // the task-detail subtasks bar does not apply there.
   if (activeTaskPage === 'projects') return null;
+  // No selected task: leave the center panel to TaskDetailPanel's empty state
+  // (do not render Untitled task / No due date placeholders).
+  if (!activeTask) return null;
 
   const startEditingTitle = () => {
     setLocalTitle(activeTask?.title ?? '');
@@ -66,63 +69,66 @@ export function SubtasksToggleBar() {
       className="subtasks-toggle-bar"
     >
       <div className="subtasks-toggle-bar-inner">
-        {/* Row 1: meta-controls + swap button */}
-        <TaskMetadataControls />
-
-        <button
-          type="button"
-          className="tdp-meta-swap-btn"
-          onClick={() => setSubtasksOpen(!subtasksOpen)}
-          title={subtasksOpen ? 'Show comments' : 'Show subtasks'}
-          aria-label={subtasksOpen ? 'Show comments' : 'Show subtasks'}
-        >
-          <ArrowLeftRight size={12} />
-        </button>
-
-        {/* Row 2: complete button + title */}
-        <button
-          type="button"
-          className={`subtasks-complete-btn${isCompleted ? ' subtasks-complete-btn--completed' : ''}`}
-          onClick={toggleComplete}
-          disabled={!activeTask}
-          title={isCompleted ? 'Mark as Incomplete' : 'Mark as Completed'}
-          aria-label={isCompleted ? 'Mark as Incomplete' : 'Mark as Completed'}
-        >
-          {isCompleted ? <CheckCircle2 size={16} /> : <Circle size={16} />}
-        </button>
-
-        {isEditingTitle ? (
-          <input
-            ref={inputRef}
-            type="text"
-            className="subtasks-title-input"
-            value={localTitle}
-            onChange={(e) => setLocalTitle(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                commit();
-              } else if (e.key === 'Escape') {
-                e.preventDefault();
-                cancelTitleEdit();
-              }
-            }}
-            placeholder="Untitled task"
-            aria-label="Task title"
-            spellCheck={false}
-            maxLength={TASK_TITLE_MAX_LENGTH}
-          />
-        ) : (
+        <div className="subtasks-toggle-bar-row">
           <button
             type="button"
-            className="subtasks-title-input"
-            onClick={startEditingTitle}
-            title="Click to rename"
+            className={`subtasks-complete-btn${isCompleted ? ' subtasks-complete-btn--completed' : ''}`}
+            onClick={toggleComplete}
+            disabled={!activeTask}
+            title={isCompleted ? 'Mark as Incomplete' : 'Mark as Completed'}
+            aria-label={isCompleted ? 'Mark as Incomplete' : 'Mark as Completed'}
           >
-            {activeTask?.title || 'Untitled task'}
+            {isCompleted ? <CheckCircle2 size={16} /> : <Circle size={16} />}
           </button>
-        )}
+
+          {isEditingTitle ? (
+            <input
+              ref={inputRef}
+              type="text"
+              className="subtasks-title-input"
+              value={localTitle}
+              onChange={(e) => setLocalTitle(e.target.value)}
+              onBlur={commit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  commit();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  cancelTitleEdit();
+                }
+              }}
+              placeholder="Untitled task"
+              aria-label="Task title"
+              spellCheck={false}
+              maxLength={TASK_TITLE_MAX_LENGTH}
+            />
+          ) : (
+            <button
+              type="button"
+              className="subtasks-title-input"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={startEditingTitle}
+              title="Click to rename"
+            >
+              {activeTask?.title || 'Untitled task'}
+            </button>
+          )}
+        </div>
+
+        <div className="subtasks-toggle-bar-row">
+          <button
+            type="button"
+            className="tdp-meta-swap-btn"
+            onClick={() => setSubtasksOpen(!subtasksOpen)}
+            title={subtasksOpen ? 'Hide subtasks' : 'Show subtasks'}
+            aria-label={subtasksOpen ? 'Hide subtasks' : 'Show subtasks'}
+          >
+            <ArrowUpDown size={12} />
+          </button>
+
+          <TaskMetadataControls />
+        </div>
       </div>
     </div>
   );

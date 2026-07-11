@@ -21,7 +21,7 @@ export function ConfirmDialog({ message, onConfirm, onCancel, onSave, confirmLab
             type="button"
             onClick={onCancel}
             className="btn-xs"
-            style={{ background: 'var(--c-background-2)', border: '1px solid var(--c-border-1)' }}
+            style={{ background: 'transparent', border: '1px solid var(--c-border-1)', color: 'var(--c-text-2)' }}
           >
             {t('confirm.cancel')}
           </button>

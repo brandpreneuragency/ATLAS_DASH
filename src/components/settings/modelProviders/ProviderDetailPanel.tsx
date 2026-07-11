@@ -1,13 +1,11 @@
 import { useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AIProviderConfig, ModelReasoning, ProviderImportUiState } from '../../../types';
 import { ProviderStatusBadge } from '../../modals/modelProvider/ProviderStatusBadge';
 import { ProviderTabs, type ProviderTabId } from './ProviderTabs';
 import { ProviderConnectionTab } from './ProviderConnectionTab';
 import { ProviderModelsTab } from './ProviderModelsTab';
-import { ProviderDefaultsTab } from './ProviderDefaultsTab';
-import { ProviderUsageTab } from './ProviderUsageTab';
-import { ProviderAdvancedTab } from './ProviderAdvancedTab';
 
 interface ProviderDetailPanelProps {
   provider: AIProviderConfig;
@@ -27,15 +25,12 @@ interface ProviderDetailPanelProps {
   onSetModelReasoningDescriptor: (providerId: string, modelId: string, reasoning: ModelReasoning | undefined) => void;
   onAddCustomModel: (providerId: string, slug: string) => void;
   onDeleteProvider: (id: string) => void;
-  onSaveProviderBaseUrl: (id: string, baseUrl: string) => void;
+  onSaveProviderBaseUrl?: (id: string, baseUrl: string) => void;
 }
 
 const DEFAULT_TABS: { id: ProviderTabId; labelKey: string }[] = [
   { id: 'connection', labelKey: 'models.tabConnection' },
   { id: 'models', labelKey: 'models.tabModels' },
-  { id: 'defaults', labelKey: 'models.tabDefaults' },
-  { id: 'usage', labelKey: 'models.tabUsage' },
-  { id: 'advanced', labelKey: 'models.tabAdvanced' },
 ];
 
 export function ProviderDetailPanel({
@@ -56,13 +51,16 @@ export function ProviderDetailPanel({
   onSetModelReasoningDescriptor,
   onAddCustomModel,
   onDeleteProvider,
-  onSaveProviderBaseUrl,
 }: ProviderDetailPanelProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<ProviderTabId>('connection');
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const status = provider.status ?? 'not_connected';
   const modelCount = (provider.models ?? []).length;
+  const enabledCount = (provider.models ?? []).filter(
+    (m) => !hiddenModels.includes(`${provider.id}:${m.id}`),
+  ).length;
   const lastImportedAt = provider.lastImportedAt;
   const lastImportedLabel = lastImportedAt
     ? new Date(lastImportedAt).toLocaleString()
@@ -72,6 +70,15 @@ export function ProviderDetailPanel({
     id: tab.id,
     label: t(tab.labelKey),
   }));
+
+  const handleDelete = () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    onDeleteProvider(provider.id);
+    setConfirmDelete(false);
+  };
 
   return (
     <div className="provider-detail-panel col gap-0" style={{ height: '100%' }}>
@@ -83,16 +90,27 @@ export function ProviderDetailPanel({
               {provider.name}
             </span>
             <ProviderStatusBadge status={status} />
-          </div>
-          <div className="row gap-2 shrink-0">
             <span className="subtle settings-provider-detail-head-meta">
-              {t('models.modelCount', { count: modelCount })}
+              {enabledCount}/{modelCount} {t('models.tabModels')}
             </span>
             {lastImportedLabel && (
               <span className="subtle settings-provider-detail-head-meta">
                 · {t('models.lastImportedAt', { time: lastImportedLabel })}
               </span>
             )}
+          </div>
+          <div className="row gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleDelete}
+              onBlur={() => setConfirmDelete(false)}
+              className={`btn-icon${confirmDelete ? ' settings-delete-confirm' : ''}`}
+              title={confirmDelete ? t('models.confirmDelete') : t('models.deleteProvider')}
+              aria-label={confirmDelete ? t('models.confirmDelete') : t('models.deleteProvider')}
+              style={{ color: confirmDelete ? 'var(--c-danger, #dc2626)' : undefined }}
+            >
+              <Trash2 size={14} />
+            </button>
           </div>
         </div>
       </div>
@@ -128,15 +146,7 @@ export function ProviderDetailPanel({
             onSyncModels={onSyncModels}
           />
         )}
-        {activeTab === 'defaults' && (
-          <ProviderDefaultsTab />
-        )}
-        {activeTab === 'usage' && (
-          <ProviderUsageTab provider={provider} />
-        )}
-        {activeTab === 'advanced' && (
-          <ProviderAdvancedTab provider={provider} onDeleteProvider={onDeleteProvider} onSaveBaseUrl={onSaveProviderBaseUrl} />
-        )}
+
       </div>
     </div>
   );

@@ -85,7 +85,17 @@ button.task-item {
   margin-bottom: 2px;
 }
 button.task-item:hover {
-  background: var(--c-background-1);
+  background: transparent;
+  background-color: transparent;
+  color: var(--c-text-1);
+}
+button.task-item:hover .task-title {
+  color: var(--c-text-1);
+}
+button.task-item--on,
+button.task-item--on:hover {
+  background: transparent;
+  background-color: var(--c-accent-3);
 }
 #task-list-panel {
   background: unset;
@@ -107,7 +117,7 @@ button.task-item:hover {
   gap: 6px;
   padding-top: 12px;
   padding-bottom: 0;
-  padding-left: 18px;
+  padding-left: 12px;
   padding-right: 12px;
   width: 100%;
   min-height: 0;
@@ -117,6 +127,46 @@ button.task-item:hover {
   border: none;
   outline: none;
 }
+/* Clock panel header (live timestamp at top of task list) */
+.task-list-clock-header {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  vertical-align: middle;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-1);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+  height: 20px;
+  background-color: var(--c-background-4);
+  padding: 6px 0;
+  margin: 0 0 6px;
+  border-radius: 8px;
+}
+
+/* Category group headers (TODAY / THIS WEEK / NOT YET / COMPLETED) */
+.task-list-category-header {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  vertical-align: middle;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+  height: 20px;
+  background-color: var(--c-background-3);
+  padding: 6px 0;
+  margin: 6px 0;
+  border-radius: 8px;
+}
+
 #task-list-content button .meta,
 #task-list-content button .subtle {
   color: var(--c-text-2);
@@ -129,7 +179,7 @@ button.task-item:hover {
   font-size: var(--fs-sm);
 }
 #task-quick-create{
-  background-color: var(--c-background-1);
+  background-color: var(--c-background-3);
   border-radius: 8px;
   padding: 0;
   border: none;
@@ -142,6 +192,9 @@ button.task-item:hover {
   background-color: rgba(233, 233, 233, 0);
   border: none;
   padding-top: 12px;
+  padding-bottom: 12px;
+  padding-left: 18px;
+  padding-right: 18px;
 }
 #task-quick-create .composer-card {
   background: unset;
@@ -177,12 +230,12 @@ button.task-item:hover {
   gap: 0;
   height: fit-content;
   min-height: 36px;
-  padding: 0 6px 6px;
+  padding: 0 12px 6px 6px;
 }
 #task-quick-create .task-quick-create-actions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
   min-width: 0;
   padding: 0;
   width: 100%;
@@ -196,11 +249,20 @@ button.task-item:hover {
   width: 100%;
   padding: 0;
 }
+#task-quick-create .btn-send {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 100px;
+  padding-left: 0;
+  padding-right: 0;
+}
 #task-quick-create .task-quick-create-dropup-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 0;
+  min-width: var(--control-height-sm);
   height: fit-content;
   width: fit-content;
   padding: 6px 9px;
@@ -224,9 +286,10 @@ button.task-item:hover {
 }
 #task-quick-create .task-quick-create-dropup-btn .task-quick-create-dropup-icon {
   flex-shrink: 0;
+  color: var(--c-text-2);
 }
-#task-quick-create .task-quick-create-dropup-btn .task-quick-create-dropup-chevron {
-  flex-shrink: 0;
+#task-quick-create .task-quick-create-dropup-btn[data-active='true'] .task-quick-create-dropup-icon {
+  color: inherit;
 }
 #task-quick-create .task-quick-create-dropup-btn .task-quick-create-dropup-label {
   min-width: 0;
@@ -241,7 +304,6 @@ button.task-item:hover {
   background-color: var(--c-background-2);
 }
 #task-quick-create .task-quick-create-dropup-btn:hover .task-quick-create-dropup-label,
-#task-quick-create .task-quick-create-dropup-btn:hover .task-quick-create-dropup-chevron,
 #task-quick-create .task-quick-create-dropup-btn:hover .task-quick-create-dropup-icon {
   color: var(--c-accent-1);
 }
@@ -256,8 +318,7 @@ button.task-item:hover {
 #task-quick-create .task-quick-create-dropup-btn:disabled:hover {
   background: transparent;
 }
-#task-quick-create .task-quick-create-dropup-btn:disabled .task-quick-create-dropup-label,
-#task-quick-create .task-quick-create-dropup-btn:disabled .task-quick-create-dropup-chevron {
+#task-quick-create .task-quick-create-dropup-btn:disabled .task-quick-create-dropup-label {
   color: inherit;
 }
 #task-quick-create .composer-left {
@@ -295,11 +356,11 @@ button.task-item:hover {
 }
 @container (max-width: 300px) {
   #task-quick-create .task-quick-create-dropup-btn {
-    width: 32px;
-    padding: 6px;
+    width: var(--control-height-sm);
+    height: var(--control-height-sm);
+    padding: 0;
   }
-  #task-quick-create .task-quick-create-dropup-label,
-  #task-quick-create .task-quick-create-dropup-chevron {
+  #task-quick-create .task-quick-create-dropup-label {
     display: none;
   }
 }
@@ -396,10 +457,17 @@ button.task-item:hover {
   min-width: 0;
   overflow: hidden;
 }
+#chat-input-card .chat-input-bottom-col--model .chat-input-dropup-btn {
+  width: fit-content;
+}
 #chat-input-card .chat-input-bottom-col--agent {
+  width: fit-content;
   padding: 0;
   min-width: 0;
   overflow: hidden;
+}
+#chat-input-card .chat-input-bottom-col--agent .chat-input-dropup-btn {
+  width: fit-content;
 }
 .btn-send svg {
   width: 14px;
@@ -424,6 +492,9 @@ button.task-item:hover {
 }
 #chat-input-card .chat-input-dropup-btn:hover .chat-input-dropup-chevron {
   color: var(--c-text-2);
+}
+#chat-input-card .chat-input-dropup-btn:hover .chat-input-dropup-icon {
+  color: var(--c-accent-1);
 }
 @container (max-width: 280px) {
   #chat-input-card .chat-input-dropup-btn .trunc {
@@ -693,6 +764,7 @@ button.task-item:hover {
   justify-content: flex-start;
   border: none;
   background: transparent;
+  background-color: transparent;
   margin-bottom: 2px;
   flex-shrink: 0;
   height: fit-content;
@@ -703,18 +775,28 @@ button.task-item:hover {
   font-size: var(--fs-sm);
   color: var(--c-text-2);
 }
-.task-item--on {
-  background: var(--c-background-1);
+.task-item:hover {
+  background: transparent;
+  background-color: transparent;
+  color: var(--c-text-1);
+}
+.task-item:hover .task-title {
+  color: var(--c-text-1);
+}
+.task-item--on,
+.task-item--on:hover {
+  background: transparent;
+  background-color: var(--c-accent-3);
   border: none;
   border-image: none;
 }
-.task-item:hover {
-  background: var(--c-background-1);
+.task-item--on .task-title {
+  color: var(--c-text-1);
 }
 .task-title {
   font-size: var(--fs-base);
   font-weight: 600;
-  color: var(--c-text-3);
+  color: var(--c-text-2);
   text-align: left;
   white-space: normal;
   overflow-wrap: break-word;
@@ -772,12 +854,12 @@ button.task-item:hover {
   gap: 0;
   height: fit-content;
   min-height: 36px;
-  padding: 0 6px 6px;
+  padding: 0 12px 6px 6px;
 }
 #subtask-quick-create .task-quick-create-actions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
   min-width: 0;
   padding: 0;
   width: 100%;
@@ -816,9 +898,15 @@ button.task-item:hover {
 }
 #subtask-quick-create .task-quick-create-dropup-btn .task-quick-create-dropup-icon {
   flex-shrink: 0;
+  color: var(--c-text-2);
 }
 #subtask-quick-create .task-quick-create-dropup-btn .task-quick-create-dropup-chevron {
   flex-shrink: 0;
+  color: var(--c-text-2);
+}
+#subtask-quick-create .task-quick-create-dropup-btn[data-active='true'] .task-quick-create-dropup-icon,
+#subtask-quick-create .task-quick-create-dropup-btn[data-active='true'] .task-quick-create-dropup-chevron {
+  color: inherit;
 }
 #subtask-quick-create .task-quick-create-dropup-btn .task-quick-create-dropup-label {
   min-width: 0;
@@ -872,8 +960,9 @@ button.task-item:hover {
 }
 @container (max-width: 300px) {
   #subtask-quick-create .task-quick-create-dropup-btn {
-    width: 32px;
-    padding: 6px;
+    width: var(--control-height-sm);
+    height: var(--control-height-sm);
+    padding: 0;
   }
   #subtask-quick-create .task-quick-create-dropup-label,
   #subtask-quick-create .task-quick-create-dropup-chevron {
@@ -1004,6 +1093,7 @@ button.task-item:hover {
 :root button.task-item {
   margin-bottom: 2px;
   background: transparent;
+  background-color: transparent;
   border: none;
   border-left: none;
   border-image: none;
@@ -1013,10 +1103,17 @@ button.task-item:hover {
   transition: background-color 0.12s;
 }
 :root button.task-item:hover {
-  background: var(--c-background-1);
+  background: transparent;
+  background-color: transparent;
+  color: var(--c-text-1);
 }
-:root button.task-item--on {
-  background: var(--c-background-1);
+:root button.task-item:hover .task-title {
+  color: var(--c-text-1);
+}
+:root button.task-item--on,
+:root button.task-item--on:hover {
+  background: transparent;
+  background-color: var(--c-accent-3);
   border: none;
   border-image: none;
   outline: none;
@@ -1041,7 +1138,7 @@ button.task-item:hover {
   gap: 6px;
   padding-top: 12px;
   padding-bottom: 0;
-  padding-left: 18px;
+  padding-left: 12px;
   padding-right: 12px;
   width: 100%;
   min-height: 0;
@@ -1063,7 +1160,7 @@ button.task-item:hover {
   font-size: var(--fs-sm);
 }
 :root #task-quick-create {
-  background-color: var(--c-background-1);
+  background-color: var(--c-background-3);
   border-radius: 8px;
   padding: 0;
   border: none;
@@ -1076,6 +1173,9 @@ button.task-item:hover {
   background-color: rgba(233, 233, 233, 0);
   border: none;
   padding-top: 12px;
+  padding-bottom: 12px;
+  padding-left: 18px;
+  padding-right: 18px;
 }
 :root #task-quick-create .composer-card {
   background: unset;
@@ -1113,14 +1213,14 @@ button.task-item:hover {
   gap: 0;
   height: fit-content;
   min-height: 36px;
-  padding: 0 6px 6px;
+  padding: 0 12px 6px 6px;
   overflow: visible;
   z-index: 2;
 }
 :root #task-quick-create .task-quick-create-actions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
   min-width: 0;
   padding: 0;
   width: 100%;
@@ -1134,11 +1234,20 @@ button.task-item:hover {
   width: 100%;
   padding: 0;
 }
+:root #task-quick-create .btn-send {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 100px;
+  padding-left: 0;
+  padding-right: 0;
+}
 :root #task-quick-create .task-quick-create-dropup-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 0;
+  min-width: var(--control-height-sm);
   height: fit-content;
   width: fit-content;
   padding: 6px 9px;
@@ -1162,9 +1271,10 @@ button.task-item:hover {
 }
 :root #task-quick-create .task-quick-create-dropup-btn .task-quick-create-dropup-icon {
   flex-shrink: 0;
+  color: var(--c-text-2);
 }
-:root #task-quick-create .task-quick-create-dropup-btn .task-quick-create-dropup-chevron {
-  flex-shrink: 0;
+:root #task-quick-create .task-quick-create-dropup-btn[data-active='true'] .task-quick-create-dropup-icon {
+  color: inherit;
 }
 :root #task-quick-create .task-quick-create-dropup-btn .task-quick-create-dropup-label {
   min-width: 0;
@@ -1179,7 +1289,6 @@ button.task-item:hover {
   background-color: var(--c-background-2);
 }
 :root #task-quick-create .task-quick-create-dropup-btn:hover .task-quick-create-dropup-label,
-:root #task-quick-create .task-quick-create-dropup-btn:hover .task-quick-create-dropup-chevron,
 :root #task-quick-create .task-quick-create-dropup-btn:hover .task-quick-create-dropup-icon {
   color: var(--c-accent-1);
 }
@@ -1194,8 +1303,7 @@ button.task-item:hover {
 :root #task-quick-create .task-quick-create-dropup-btn:disabled:hover {
   background: transparent;
 }
-:root #task-quick-create .task-quick-create-dropup-btn:disabled .task-quick-create-dropup-label,
-:root #task-quick-create .task-quick-create-dropup-btn:disabled .task-quick-create-dropup-chevron {
+:root #task-quick-create .task-quick-create-dropup-btn:disabled .task-quick-create-dropup-label {
   color: inherit;
 }
 :root #task-quick-create .composer-left {
@@ -1233,11 +1341,11 @@ button.task-item:hover {
 }
 @container (max-width: 300px) {
   :root #task-quick-create .task-quick-create-dropup-btn {
-    width: 32px;
-    padding: 6px;
+    width: var(--control-height-sm);
+    height: var(--control-height-sm);
+    padding: 0;
   }
-  :root #task-quick-create .task-quick-create-dropup-label,
-  :root #task-quick-create .task-quick-create-dropup-chevron {
+  :root #task-quick-create .task-quick-create-dropup-label {
     display: none;
   }
 }
@@ -1479,6 +1587,7 @@ button.task-item:hover {
   justify-content: flex-start;
   border: none;
   background: transparent;
+  background-color: transparent;
   margin-bottom: 2px;
   flex-shrink: 0;
   height: fit-content;
@@ -1489,18 +1598,28 @@ button.task-item:hover {
   font-size: var(--fs-sm);
   color: var(--c-text-2);
 }
-:root .task-item--on {
-  background: var(--c-background-1);
+:root .task-item:hover {
+  background: transparent;
+  background-color: transparent;
+  color: var(--c-text-1);
+}
+:root .task-item:hover .task-title {
+  color: var(--c-text-1);
+}
+:root .task-item--on,
+:root .task-item--on:hover {
+  background: transparent;
+  background-color: var(--c-accent-3);
   border: none;
   border-image: none;
 }
-:root .task-item:hover {
-  background: var(--c-background-1);
+:root .task-item--on .task-title {
+  color: var(--c-text-1);
 }
 :root .task-title {
   font-size: var(--fs-base);
   font-weight: 600;
-  color: var(--c-text-3);
+  color: var(--c-text-2);
   text-align: left;
   white-space: normal;
   overflow-wrap: break-word;

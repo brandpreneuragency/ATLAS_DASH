@@ -3,8 +3,9 @@ import { Calendar, Folder } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import { useTaskStore } from '../../stores/taskStore';
 import { useProjectStore } from '../../stores/projectStore';
+import './taskDetail.css';
 
-function dateOptions() {
+export function dateOptions() {
   const days: { label: string; value: string }[] = [{ label: 'No date', value: '' }];
   const today = new Date();
   const labels = ['Today', 'Tomorrow'];
@@ -80,7 +81,7 @@ export function TaskMetadataControls() {
                 type="button"
                 className="drop-item"
                 onClick={() => { updateTask(activeTask.id, { date: opt.value }); setShowDatePicker(false); }}
-                style={{ fontSize: 'var(--fs-sm)' }}
+                style={{ fontSize: 'var(--fs-base)' }}
               >
                 {opt.label}
               </button>
@@ -108,7 +109,7 @@ export function TaskMetadataControls() {
               type="button"
               className="drop-item"
               onClick={() => { updateTask(activeTask.id, { projectId: null }); setShowProjectPicker(false); }}
-              style={{ fontSize: 'var(--fs-sm)' }}
+              style={{ fontSize: 'var(--fs-base)' }}
             >
               No project
             </button>
@@ -118,7 +119,7 @@ export function TaskMetadataControls() {
                 type="button"
                 className="drop-item"
                 onClick={() => { updateTask(activeTask.id, { projectId: p.id }); setShowProjectPicker(false); }}
-                style={{ fontSize: 'var(--fs-sm)' }}
+                style={{ fontSize: 'var(--fs-base)' }}
               >
                 {p.name}
               </button>

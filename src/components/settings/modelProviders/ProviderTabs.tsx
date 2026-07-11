@@ -1,4 +1,4 @@
-export type ProviderTabId = 'connection' | 'models' | 'defaults' | 'usage' | 'advanced';
+export type ProviderTabId = 'connection' | 'models';
 
 export interface ProviderTab {
   id: ProviderTabId;

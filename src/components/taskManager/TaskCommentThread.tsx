@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { TaskComment, FileViewerItem } from '../../types';
-import { Paperclip, Play, Reply, Trash2 } from 'lucide-react';
+import { Paperclip, Play, Reply, Sparkles, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useLongPress } from '../../hooks/useLongPress';
 import { useTaskCommentStore } from '../../stores/taskCommentStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -60,34 +61,44 @@ function CommentContextMenu({
   onReply,
   onDelete,
   onClose,
+  onSendToAI,
 }: {
   x: number;
   y: number;
   comment: TaskComment;
   onReply: () => void;
+  onSendToAI: () => void;
   onDelete: () => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
   const deletable = canDeleteComment(comment);
+  const hasText = comment.text.trim().length > 0;
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
+        onCloseRef.current();
       }
     };
-    const id = setTimeout(() => document.addEventListener('mousedown', handler), 50);
-    return () => {
-      clearTimeout(id);
-      document.removeEventListener('mousedown', handler);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCloseRef.current();
     };
-  }, [onClose]);
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
 
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const menuW = 150;
-  const menuH = 88;
+  const menuH = 116;
   const left = Math.min(x, vw - menuW - 8);
   const top = Math.min(y, vh - menuH - 8);
 
@@ -106,6 +117,23 @@ function CommentContextMenu({
       >
         <Reply size={12} />
         Reply
+      </button>
+      <button
+        type="button"
+        disabled={!hasText}
+        onClick={() => {
+          if (hasText) {
+            onSendToAI();
+            onClose();
+          }
+        }}
+        className={`drop-item${hasText ? '' : ' cursor-not-allowed'}`}
+        style={hasText ? { color: 'var(--c-accent-2)' } : { color: 'var(--c-text-2)' }}
+        onMouseEnter={e => { if (hasText) e.currentTarget.style.background = 'var(--c-background-4)'; }}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+      >
+        <Sparkles size={12} />
+        {t('chat.sendToAI')}
       </button>
       <button
         type="button"
@@ -318,6 +346,7 @@ function CommentBubble({
 }
 
 export function TaskCommentThread({ comments, onReplyComment }: TaskCommentThreadProps) {
+  const { t } = useTranslation();
   const [contextMenu, setContextMenu] = useState<{
     comment: TaskComment;
     x: number;
@@ -328,6 +357,8 @@ export function TaskCommentThread({ comments, onReplyComment }: TaskCommentThrea
   const closeFileViewer = useUIStore((s) => s.closeFileViewer);
   const fileViewerOpen = useUIStore((s) => s.fileViewerOpen);
   const fileViewerFile = useUIStore((s) => s.fileViewerFile);
+  const setSelectedText = useUIStore((s) => s.setSelectedText);
+  const showToast = useUIStore((s) => s.showToast);
 
   const handleOpenFileViewer = useCallback(
     (file: FileViewerItem) => {
@@ -355,6 +386,14 @@ export function TaskCommentThread({ comments, onReplyComment }: TaskCommentThrea
     []
   );
 
+  const handleSendToAI = useCallback(
+    (comment: TaskComment) => {
+      setSelectedText({ text: comment.text, from: 0, to: 0 });
+      showToast(t('chat.sendToAIToast'), 'info');
+    },
+    [setSelectedText, showToast, t]
+  );
+
   if (comments.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center" style={{color:'var(--c-text-3)',textAlign:'center',marginTop:8,marginBottom:8}}>
@@ -368,7 +407,8 @@ export function TaskCommentThread({ comments, onReplyComment }: TaskCommentThrea
 
   return (
     <>
-      <div id="task-comment-thread" className="ai-scroll flex-1 overflow-y-a py-3" style={{display:'flex',flexDirection:'column',gap:16}}>
+      <div className="tdp-comments-header">COMMENTS</div>
+      <div id="task-comment-thread" className="ai-scroll flex-1 overflow-y-a" style={{display:'flex',flexDirection:'column',gap:16}}>
         {comments.map((comment) => (
           <CommentBubble
             key={comment.id}
@@ -385,6 +425,7 @@ export function TaskCommentThread({ comments, onReplyComment }: TaskCommentThrea
           y={contextMenu.y}
           comment={contextMenu.comment}
           onReply={() => onReplyComment?.(contextMenu.comment)}
+          onSendToAI={() => handleSendToAI(contextMenu.comment)}
           onDelete={() => deleteComment(contextMenu.comment.id, contextMenu.comment.taskId)}
           onClose={() => setContextMenu(null)}
         />,

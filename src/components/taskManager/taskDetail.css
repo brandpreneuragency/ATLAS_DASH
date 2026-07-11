@@ -29,15 +29,137 @@
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
+  padding: 0 18px;
+}
+
+#task-detail-panel {
+  position: relative;
+}
+
+.composer-mode-toggle[data-active='true'] {
+  color: var(--c-accent-2);
+  background: var(--c-background-3);
+  border-radius: 6px;
+}
+
+#task-comment-card .composer-tool-button:hover {
+  background: transparent;
+}
+
+/* Subtask drag-to-reorder */
+.subtask-row {
+  position: relative;
+  background-color: var(--c-background-3);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, opacity 0.18s ease;
+  cursor: default;
+}
+
+.subtask-row--completed {
+  background-color: var(--c-background-2);
+}
+
+.subtask-row--dragging {
+  opacity: 0.4;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+/* Thin drop indicator line shown between rows where the dragged
+   subtask will be inserted on release. */
+.subtask-row--drag-over::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--c-accent-2);
+  pointer-events: none;
+}
+
+.subtask-row--drag-over-above::before {
+  top: -4px;
+}
+
+.subtask-row--drag-over-below::before {
+  bottom: -4px;
+}
+
+.subtask-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: fit-content;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: grab;
+  color: var(--c-text-3);
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.subtask-drag-handle:hover {
+  color: var(--c-text-1);
+  background: var(--c-background-3);
+}
+
+.subtask-drag-handle:active {
+  cursor: grabbing;
+}
+
+.tdp-overlay-region {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.tdp-subtasks-dropdown {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-background-1);
+  z-index: 5;
+  height: fit-content;
+  max-height: 45%;
+  overflow-y: auto;
+  padding-bottom: 18px;
+  border: none;
+  border-bottom: none;
+}
+
+.tdp-subtasks-header {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  vertical-align: middle;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+  height: 20px;
+  background: unset;
+  padding: 6px 0;
+  margin: 6px 0;
+  border-radius: 8px;
 }
 
 .tdp-meta-controls {
-  gap: 0px;
+  gap: 12px;
   width: fit-content;
-  height: fit-content;
-  margin-bottom: 6px;
-  padding-top: 6px;
-  padding-bottom: 6px;
+  height: 20px;
+  margin-bottom: 0px;
+  padding-top: 0;
+  padding-bottom: 0;
   background-color: transparent;
 }
 
@@ -46,14 +168,16 @@
 
 .tdp-meta-field {
   position: relative;
-  flex: 1 1 0;
+  flex: 0 0 auto;
+  width: fit-content;
   min-width: 0;
   display: flex;
   align-items: center;
   height: 20px;
   border: none;
   border-radius: 8px;
-  background-color: var(--c-background-2);
+  background-color: transparent;
+  text-align: left;
 }
 
 .tdp-meta-field-btn {
@@ -64,12 +188,13 @@
   width: fit-content;
   height: 100%;
   min-height: 0;
-  padding: 6px 12px;
-  background-color: var(--c-background-2);
+  padding: 0 6px;
+  background-color: transparent;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   flex-shrink: 0;
+  text-align: left;
 }
 
 .tdp-meta-field-btn:disabled {
@@ -80,12 +205,12 @@
 .tdp-meta-field-btn svg {
   width: 12px;
   height: 12px;
-  color: var(--c-text-1);
+  color: var(--c-text-2);
 }
 
 .tdp-meta-field-label {
   font-size: var(--fs-base);
-  color: var(--c-text-1);
+  color: var(--c-text-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -97,10 +222,9 @@
   height: 10px;
   min-width: 0;
   min-height: 0;
-  border-radius: 50%;
-  border: 1.5px solid var(--c-border-1);
   flex-shrink: 0;
   background: transparent;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -109,19 +233,18 @@
   margin-top: 2px;
   margin-bottom: 2px;
   vertical-align: middle;
-  transition: background-color 0.15s, border-color 0.15s;
+  color: var(--c-text-2);
+  transition: color 0.15s;
 }
 .subtask-status-btn--completed {
-  border: 1px solid var(--c-border-1);
-  background: var(--c-background-3);
+  color: var(--c-emerald-600, #059669);
 }
 .subtask-status-btn svg {
   width: 10px;
   height: 10px;
 }
 .subtask-status-btn--active {
-  background: transparent;
-  border: 1px solid var(--c-text-2);
+  color: var(--c-text-2);
 }
 .subtask-title {
   height: 20px;
@@ -178,22 +301,24 @@
   color: var(--c-text-2);
 }
 
-.subtask-due-date-btn--active {
-  color: var(--c-text-3);
+.subtask-due-date-btn--active,
+.subtask-due-date-btn--active .subtask-due-date-label {
+  color: var(--c-text-2);
 }
 
-.subtask-due-date-btn--active:hover {
+.subtask-due-date-btn--active:hover,
+.subtask-due-date-btn--active:hover .subtask-due-date-label {
   color: var(--c-text-2);
 }
 
 .subtask-due-date-btn--completed,
 .subtask-due-date-btn--completed .subtask-due-date-label {
-  color: var(--c-border-2);
+  color: var(--c-text-3);
 }
 
 .subtask-due-date-btn--completed:hover,
 .subtask-due-date-btn--completed:hover .subtask-due-date-label {
-  color: var(--c-border-2);
+  color: var(--c-text-3);
 }
 
 .subtask-due-date-label {
@@ -253,8 +378,8 @@
   flex: 0 0 auto;
   min-height: 0;
   height: fit-content;
-  width: fit-content;
-  padding: 0 12px 12px 12px;
+  width: 100%;
+  padding: 0 12px 12px 18px;
   background: transparent;
   border-bottom: none;
   z-index: 2;
@@ -267,7 +392,7 @@
   border-radius: 8px;
 }
 #task-comment-card {
-  background-color: var(--c-background-2);
+  background-color: var(--c-background-3);
   border-radius: 8px;
   border: none;
   padding-left: 0px;
@@ -295,7 +420,7 @@
   right: 0;
   width: 16px;
   height: 14px;
-  margin: 6px 6px 6px 12px;
+  margin: 8px 16px;
   cursor: ns-resize;
   display: flex;
   align-items: center;
@@ -320,7 +445,7 @@
   grid-template-rows: 1fr;
   height: fit-content;
   width: fit-content;
-  padding: 0 6px 6px;
+  padding: 0 12px 6px 6px;
   border: none;
   border-top: none;
   border-image: none;
@@ -360,7 +485,8 @@
 #task-comment-card .task-comment-bottom-col--left {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
+  width: 100%;
   min-width: 0;
   padding-right: 0px;
   padding-left: 0;
@@ -371,13 +497,67 @@
   justify-content: flex-end;
   padding-right: 0;
 }
+#task-comment-card .btn-send {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 100px;
+  padding-left: 0;
+  padding-right: 0;
+}
+#task-comment-card .task-quick-create-dropup-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  width: fit-content;
+  height: fit-content;
+  gap: 4px;
+  background-color: rgba(34, 34, 34, 0);
+}
+#task-comment-card .task-quick-create-dropup-btn:hover {
+  background-color: rgba(34, 34, 34, 0);
+}
+#task-comment-card .task-quick-create-dropup-btn .task-quick-create-dropup-icon {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  color: var(--c-text-2);
+}
+#task-comment-card .task-quick-create-dropup-btn .task-quick-create-dropup-chevron {
+  color: var(--c-text-2);
+}
+#task-comment-card .task-quick-create-dropup-btn[data-active='true'] .task-quick-create-dropup-icon,
+#task-comment-card .task-quick-create-dropup-btn[data-active='true'] .task-quick-create-dropup-chevron {
+  color: inherit;
+}
+.tdp-comments-header {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  vertical-align: middle;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--c-text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+  height: 20px;
+  background-color: rgba(26, 26, 26, 0);
+  padding: 6px 0;
+  margin: 6px 0;
+  border-radius: 8px;
+}
+
 #task-comment-thread {
   background: transparent;
-  padding-top: 12px;
-  padding-bottom: 12px;
-  padding-left: 24px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  padding-left: 18px;
   padding-right: 12px;
-  width: fit-content;
+  width: 100%;
   justify-content: flex-start;
   align-items: flex-start;
   text-align: left;
@@ -552,10 +732,9 @@
   height: 10px;
   min-width: 0;
   min-height: 0;
-  border-radius: 50%;
-  border: 1.5px solid var(--c-border-1);
   flex-shrink: 0;
   background: transparent;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -564,19 +743,18 @@
   margin-top: 2px;
   margin-bottom: 2px;
   vertical-align: middle;
-  transition: background-color 0.15s, border-color 0.15s;
+  color: var(--c-text-2);
+  transition: color 0.15s;
 }
 :root .subtask-status-btn--completed {
-  border: 1px solid var(--c-border-1);
-  background: var(--c-background-3);
+  color: var(--c-emerald-600, #059669);
 }
 :root .subtask-status-btn svg {
   width: 10px;
   height: 10px;
 }
 :root .subtask-status-btn--active {
-  background: transparent;
-  border: 1px solid var(--c-text-2);
+  color: var(--c-text-2);
 }
 :root #tdc-subtasks-toggle {
   background: none;
@@ -620,8 +798,8 @@
   flex: 0 0 auto;
   min-height: 0;
   height: fit-content;
-  width: fit-content;
-  padding: 0 12px 12px 12px;
+  width: 100%;
+  padding: 0 12px 12px 18px;
   background: transparent;
   border-bottom: none;
   z-index: 2;
@@ -635,11 +813,11 @@
 }
 :root #task-comment-thread {
   background: transparent;
-  padding-top: 12px;
-  padding-bottom: 12px;
-  padding-left: 24px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  padding-left: 18px;
   padding-right: 12px;
-  width: fit-content;
+  width: 100%;
   justify-content: flex-start;
   align-items: flex-start;
   text-align: left;

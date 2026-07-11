@@ -10,7 +10,9 @@
 use tauri::{Emitter, Manager, WindowEvent};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
+pub mod ai_tools;
 mod commands;
+mod terminal;
 mod tray;
 
 // Convenience command to exercise the notification plugin from the webview
@@ -44,6 +46,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(terminal::TerminalRegistry::new())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
@@ -63,7 +66,19 @@ pub fn run() {
             commands::secrets::secret_get,
             commands::secrets::secret_set,
             commands::secrets::secret_delete,
-            commands::search::search_web
+            commands::search::search_web,
+            commands::terminal::terminal_create,
+            commands::terminal::terminal_write,
+            commands::terminal::terminal_resize,
+            commands::terminal::terminal_kill,
+            commands::terminal::terminal_list,
+            commands::terminal::home_dir,
+            commands::ai_tools::shell::ai_shell_exec,
+            commands::ai_tools::fs_ops::ai_file_read,
+            commands::ai_tools::fs_ops::ai_file_write,
+            commands::ai_tools::fs_ops::ai_file_edit,
+            commands::ai_tools::search::ai_glob,
+            commands::ai_tools::search::ai_grep
         ])
         .setup(|app| {
             // Intercept the main window's close button: instead of quitting

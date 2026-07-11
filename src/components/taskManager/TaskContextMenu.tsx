@@ -22,22 +22,30 @@ export function TaskContextMenu({ taskId, x, y, onClose }: TaskContextMenuProps)
   const [customDate, setCustomDate] = useState(task?.date ?? '');
 
   const rootRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
-  // Close on outside click / escape
+  // Close on outside click / escape (deferred capture listener avoids the opening click)
   useEffect(() => {
-    const onDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) onClose();
+    const onPointerDown = (e: PointerEvent) => {
+      if (rootRef.current?.contains(e.target as Node)) return;
+      onCloseRef.current();
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current();
     };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
+
+    const id = window.setTimeout(() => {
+      document.addEventListener('pointerdown', onPointerDown, true);
+      document.addEventListener('keydown', onKey);
+    }, 0);
+
     return () => {
-      document.removeEventListener('mousedown', onDown);
+      window.clearTimeout(id);
+      document.removeEventListener('pointerdown', onPointerDown, true);
       document.removeEventListener('keydown', onKey);
     };
-  }, [onClose]);
+  }, []);
 
   // Keep menu in viewport
   const adjustPos = useCallback(() => {
@@ -111,13 +119,14 @@ export function TaskContextMenu({ taskId, x, y, onClose }: TaskContextMenuProps)
     setPanel('main');
   };
 
-  const itemStyle = { fontSize: 'var(--fs-sm)' } as const;
+  const itemStyle = { fontSize: 'var(--fs-base)' } as const;
 
   return (
     <div
       ref={rootRef}
       className="drop"
       style={{ position: 'fixed', left: pos.left, top: pos.top, zIndex: 1001, minWidth: 180 }}
+      onMouseDown={(e) => e.stopPropagation()}
     >
       {panel === 'main' && (
         <>
@@ -161,7 +170,7 @@ export function TaskContextMenu({ taskId, x, y, onClose }: TaskContextMenuProps)
               }}
               placeholder="New project name..."
               style={{
-                width: '100%', fontSize: 'var(--fs-sm)', padding: '6px 8px',
+                width: '100%', fontSize: 'var(--fs-base)', padding: '6px 8px',
                 border: '1px solid var(--c-border-1)', borderRadius: 4,
                 background: 'var(--c-background-1)', color: 'var(--c-text-1)',
                 outline: 'none',
@@ -204,7 +213,7 @@ export function TaskContextMenu({ taskId, x, y, onClose }: TaskContextMenuProps)
                 if (e.key === 'Escape') setPanel('main');
               }}
               style={{
-                width: '100%', fontSize: 'var(--fs-sm)', padding: '6px 8px',
+                width: '100%', fontSize: 'var(--fs-base)', padding: '6px 8px',
                 border: '1px solid var(--c-border-1)', borderRadius: 4,
                 background: 'var(--c-background-1)', color: 'var(--c-text-1)',
                 outline: 'none',

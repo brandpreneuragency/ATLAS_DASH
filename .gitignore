@@ -27,11 +27,16 @@ dist-ssr
 .claude/
 .opencode/
 .playwright-cli/
+.playwright-mcp/
 tmp_run/
+tmp_*.png
+fix_fs.py
 
 # Tauri
 src-tauri/target/
 src-tauri/gen/schemas/
+# Local task markdown sync (runtime data, not source)
+src-tauri/TASKS/
 
 # Production secrets (NEVER commit)
 .env

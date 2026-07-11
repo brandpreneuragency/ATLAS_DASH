@@ -4,10 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { useChatStore } from '../../stores/chatStore';
 import { UserMessage } from './UserMessage';
 import { AssistantMessage } from './AssistantMessage';
+import { ToolCallBubble } from './ToolCallBubble';
+import { resolveApproval } from '../../services/aiTools';
 import type { ChatMessage } from '../../types';
 
 interface ChatThreadProps {
-  documentId: string | null;
+  workspaceId: string | null;
   taskId?: string | null;
   editor: Editor | null;
   onReplyMessage?: (msg: ChatMessage) => void;
@@ -53,7 +55,14 @@ export function ChatThread({ taskId, editor, onReplyMessage }: ChatThreadProps) 
   return (
     <div id="scroll-ai" ref={scrollRef} className="ai-scroll flex-1 overflow-y-a flex flex-col" style={{ gap: 16 }}>
       {messages.map((msg) => (
-        msg.role === 'user' ? (
+        msg.role === 'tool_call' ? (
+          <ToolCallBubble
+            key={msg.id}
+            message={msg}
+            onApprove={(id) => resolveApproval(id, true)}
+            onReject={(id) => resolveApproval(id, false)}
+          />
+        ) : msg.role === 'user' ? (
           <UserMessage key={msg.id} message={msg} onReplyMessage={onReplyMessage} />
         ) : (
           <AssistantMessage

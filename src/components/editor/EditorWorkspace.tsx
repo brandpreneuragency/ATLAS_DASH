@@ -1,11 +1,10 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { FilePlus2 } from 'lucide-react';
 import type { Editor } from '@tiptap/react';
-import { useTranslation } from 'react-i18next';
 import { TipTapEditor } from './TipTapEditor';
+import { BlockInsertMenu } from './BlockInsertMenu';
 import { SelectionToolbar } from './SelectionToolbar';
 import { EditorTopBar } from './EditorTopBar';
-import { useDocumentStore } from '../../stores/documentStore';
+import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { useSaveDocument } from '../../hooks/useSaveDocument';
 import { useUIStore } from '../../stores/uiStore';
 import { editorRef } from '../../stores/editorRef';
@@ -45,13 +44,12 @@ interface EditorWorkspaceProps {
 
 export function EditorWorkspace({ onEditorReady }: EditorWorkspaceProps) {
   const [localEditor, setLocalEditor] = useState<Editor | null>(null);
-  const { t } = useTranslation();
-  const { activeDocumentId, documents, updateDocument, createDocument } = useDocumentStore();
+  const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const { htmlViewOpen } = useUIStore();
-  const activeDoc = documents.find((d) => d.id === activeDocumentId);
+  const activeWs = workspaces.find((w) => w.id === activeWorkspaceId);
+  const currentFile = activeWs?.currentFile ?? null;
   const editorScrollRef = useRef<HTMLDivElement>(null);
   const saveDocument = useSaveDocument();
-  const hasNoDocuments = documents.length === 0;
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -88,73 +86,49 @@ export function EditorWorkspace({ onEditorReady }: EditorWorkspaceProps) {
   return (
     <div id="editor-column" className="panel col h-full" style={{ background: 'var(--center-bg)' }}>
       <EditorTopBar editor={localEditor} onSave={saveDocument} />
-      {/* Empty state when all tabs are closed (e.g. X on the only empty tab) */}
-      {hasNoDocuments ? (
-        <div className="panel-body empty-state flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3" style={{ color: 'var(--c-text-2)' }}>
-            <FilePlus2 size={40} strokeWidth={1.25} />
-            <p className="txt-sm">{t('tabs.noDocumentsOpen') ?? 'No document open'}</p>
-            <button
-              type="button"
-              className="tbar-btn"
-              onClick={() => createDocument()}
-              title={t('tabs.newTab')}
-            >
-              {t('tabs.newDocument') ?? 'New document'}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Editor area */}
-          <div
-            id="scroll-main"
-            ref={editorScrollRef}
-            className="panel-body ai-scroll flex-1 overflow-y-a"
-            style={{
-              padding: '6px 60px',
-            }}
-            onClick={(e) => {
-              if (!localEditor) return;
-              // If the click target is the scroll container itself (empty area below text),
-              // focus the editor and place cursor at the end of the content
-              const editorDom = localEditor.view.dom;
-              if (!editorDom.contains(e.target as Node)) {
-                e.preventDefault();
-                localEditor.commands.focus('end');
-              }
-            }}
-          >
-            <div style={{ margin: '0 auto', padding: 0 }}>
-              <div style={{ display: htmlViewOpen ? 'none' : 'block' }}>
-                <TipTapEditor
-                  documentId={activeDocumentId}
-                  initialContent={activeDoc?.content ?? ''}
-                  onEditorReady={handleEditorReady}
-                  title={activeDoc?.title}
-                  onTitleChange={(t) => {
-                    if (activeDocumentId) updateDocument(activeDocumentId, { title: t });
-                  }}
-                />
-              </div>
-              {htmlViewOpen && (
-                <textarea
-                  className="html-source-view"
-                  value={htmlSource}
-                  onChange={(e) => {
-                    if (!localEditor) return;
-                    localEditor.commands.setContent(e.target.value);
-                  }}
-                  placeholder="HTML source"
-                  spellCheck={false}
-                />
-              )}
-            </div>
-          </div>
 
-          <SelectionToolbar editor={localEditor} editorScrollRef={editorScrollRef} />
-        </>
-      )}
+      <div
+        id="scroll-main"
+        ref={editorScrollRef}
+        className="panel-body ai-scroll flex-1 overflow-y-a editor-pane"
+        style={{ padding: '6px 60px' }}
+        onClick={(e) => {
+          if (!localEditor) return;
+          const editorDom = localEditor.view.dom;
+          if (!editorDom.contains(e.target as Node)) {
+            e.preventDefault();
+            localEditor.commands.focus('end');
+          }
+        }}
+      >
+        <div style={{ margin: 0, padding: 0, width: '100%' }}>
+          <div style={{ display: htmlViewOpen ? 'none' : 'block', width: '100%' }}>
+            <TipTapEditor
+              fileId={currentFile?.path ?? null}
+              workspaceId={activeWorkspaceId}
+              initialContent={currentFile?.content ?? ''}
+              onEditorReady={handleEditorReady}
+              title={currentFile?.name}
+              onTitleChange={() => { /* file names are managed by the tree */ }}
+            />
+          </div>
+          {htmlViewOpen && (
+            <textarea
+              className="html-source-view"
+              value={htmlSource}
+              onChange={(e) => {
+                if (!localEditor) return;
+                localEditor.commands.setContent(e.target.value);
+              }}
+              placeholder="HTML source"
+              spellCheck={false}
+            />
+          )}
+        </div>
+      </div>
+
+      <SelectionToolbar editor={localEditor} editorScrollRef={editorScrollRef} />
+      <BlockInsertMenu editor={localEditor} editorScrollRef={editorScrollRef} />
     </div>
   );
 }

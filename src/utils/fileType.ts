@@ -2,7 +2,7 @@ export type FileCategory = 'image' | 'video' | 'text' | 'code' | 'pdf' | 'other'
 
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'bmp', 'ico']);
 const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'ogv', 'mov', 'mkv', 'avi']);
-const TEXT_EXTENSIONS = new Set(['txt', 'md', 'markdown']);
+const TEXT_EXTENSIONS = new Set(['txt', 'md', 'markdown', 'doc']);
 const CODE_EXTENSIONS = new Set(['js', 'ts', 'tsx', 'jsx', 'mjs', 'cjs', 'json', 'html', 'htm', 'css', 'scss', 'yaml', 'yml', 'toml', 'xml', 'csv', 'env', 'local', 'gitignore', 'sh', 'bash', 'zsh', 'py', 'rb', 'go', 'rs', 'java', 'cpp', 'c', 'h', 'hpp']);
 const PDF_EXTENSIONS = new Set(['pdf']);
 

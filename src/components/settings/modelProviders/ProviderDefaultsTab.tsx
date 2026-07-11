@@ -51,7 +51,7 @@ export function ProviderDefaultsTab() {
     <div className="col gap-3" style={{ padding: '16px 0' }}>
       <div className="col gap-2">
         <div className="label-sm">{t('models.defaultsTaskDefault')}</div>
-        <p className="subtle" style={{ fontSize: 'var(--fs-sm)', margin: 0 }}>
+        <p className="subtle" style={{ fontSize: 'var(--fs-base)', margin: 0 }}>
           {t('models.defaultsTaskDefaultHint')}
         </p>
       </div>
@@ -124,7 +124,7 @@ export function ProviderDefaultsTab() {
                   className="btn-xs"
                   style={{
                     border: '1px solid var(--c-border-1)',
-                    fontSize: 'var(--fs-xs)',
+                    fontSize: 'var(--fs-base)',
                     padding: '2px 8px',
                     whiteSpace: 'nowrap',
                   }}

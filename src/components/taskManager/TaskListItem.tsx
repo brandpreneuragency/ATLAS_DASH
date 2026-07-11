@@ -10,7 +10,7 @@ interface TaskListItemProps {
   onClick: () => void;
 }
 
-const metaStyle = { color: 'var(--c-text-2)', fontSize: 'var(--fs-sm)' } as const;
+const metaStyle = { color: 'var(--c-text-3)', fontSize: 'var(--fs-sm)' } as const;
 
 export function TaskListItem({ task, isActive, onClick }: TaskListItemProps) {
   const { getProjectById } = useProjectStore();
@@ -26,6 +26,8 @@ export function TaskListItem({ task, isActive, onClick }: TaskListItemProps) {
   const openMenu = useCallback((x: number, y: number) => {
     setMenu({ x, y });
   }, []);
+
+  const closeMenu = useCallback(() => setMenu(null), []);
 
   const longPress = useLongPress({
     onLongPress: (pos) => openMenu(pos.x, pos.y),
@@ -67,7 +69,7 @@ export function TaskListItem({ task, isActive, onClick }: TaskListItemProps) {
           taskId={task.id}
           x={menu.x}
           y={menu.y}
-          onClose={() => setMenu(null)}
+          onClose={closeMenu}
         />
       )}
     </>

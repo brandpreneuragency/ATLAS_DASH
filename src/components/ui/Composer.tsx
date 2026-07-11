@@ -1,6 +1,6 @@
 import './composer.css';
 import { forwardRef } from 'react';
-import type { ButtonHTMLAttributes, CSSProperties, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, CSSProperties, DragEvent as ReactDragEvent, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react';
 import { ArrowUp } from 'lucide-react';
 
 function cx(...classes: Array<string | undefined | false>) {
@@ -27,13 +27,29 @@ export function ComposerCard({
   children,
   id,
   className,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  'data-drag-over': dataDragOver,
 }: {
   children: ReactNode;
   id?: string;
   className?: string;
+  onDragOver?: (e: ReactDragEvent<HTMLDivElement>) => void;
+  onDragLeave?: (e: ReactDragEvent<HTMLDivElement>) => void;
+  onDrop?: (e: ReactDragEvent<HTMLDivElement>) => void;
+  'data-drag-over'?: boolean;
 }) {
   return (
-    <div id={id} className={cx('composer-card card flex flex-col', className)} style={{ height: 'fit-content', paddingTop: 0 }}>
+    <div
+      id={id}
+      className={cx('composer-card card flex flex-col', className)}
+      style={{ height: 'fit-content', paddingTop: 0 }}
+      data-drag-over={dataDragOver ? 'true' : undefined}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
       {children}
     </div>
   );

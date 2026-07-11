@@ -2,11 +2,10 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import type React from 'react';
 import {
   FilePlus, FolderPlus, X,
-  File, Folder, Monitor,
+  File, Folder,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useFileSystemStore, type TreeNode as TreeNodeType } from '../../stores/fileSystemStore';
-import { useDocumentStore } from '../../stores/documentStore';
+import { useWorkspaceStore, type TreeNode as TreeNodeType } from '../../stores/workspaceStore';
 import { useUIStore } from '../../stores/uiStore';
 import { TreeNode } from './TreeNode';
 import { FileTreeTabs } from './FileTreeTabs';
@@ -39,14 +38,27 @@ function collectSearchMatches(nodes: TreeNodeType[], query: string, max = SEARCH
 export function FileExplorerPanel() {
   const { t } = useTranslation();
   const {
-    rootNode, error, folderCapability,
-    refreshDir,
-    createFile, createDirectory, ensureSubtreeLoaded, ensureChildrenLoaded,
-  } = useFileSystemStore();
-  const { openFileFromTree } = useDocumentStore();
-  const { expandedPaths, setExpandedPaths, setSelectedTreePath, fileExplorerOpen } = useUIStore();
-  const activeFolderId = useFileSystemStore((s) => s.activeFolderId);
-  const nativeAvailable = folderCapability === 'available';
+    workspaces,
+    activeWorkspaceId,
+    refreshWorkspaceDir,
+    createFileInWorkspace,
+    createDirectoryInWorkspace,
+    ensureSubtreeLoaded,
+    ensureChildrenLoaded,
+    swapFileInWorkspace,
+    setExpandedPaths,
+    setSelectedTreePath,
+    error,
+    getActiveRootNode,
+    getActiveFolderId,
+  } = useWorkspaceStore();
+  const { fileExplorerOpen } = useUIStore();
+
+  // Derive active workspace state
+  const activeWs = workspaces.find((w) => w.id === activeWorkspaceId);
+  const rootNode = getActiveRootNode();
+  const activeFolderId = getActiveFolderId();
+  const expandedPaths = activeWs?.expandedPaths ?? [];
 
   // inline input at root level (new file / new folder)
   const [rootInput, setRootInput] = useState<{ mode: 'new-file' | 'new-folder' } | null>(null);
@@ -92,12 +104,12 @@ export function FileExplorerPanel() {
   }, [activeFolderId, searchActive]);
 
   useEffect(() => {
-    if (!searchActive || !searchIndexing || !rootNode) return;
+    if (!searchActive || !searchIndexing || !rootNode || !activeWorkspaceId) return;
     // Only trigger the expensive full-subtree load when the search query
     // actually changed (not when rootNode changed due to a folder switch).
     if (searchFolderIdRef.current !== activeFolderId) return;
-    void ensureSubtreeLoaded(rootNode.fullPath).catch(() => undefined);
-  }, [ensureSubtreeLoaded, rootNode, searchActive, searchIndexing, activeFolderId]);
+    void ensureSubtreeLoaded(activeWorkspaceId, rootNode.fullPath).catch(() => undefined);
+  }, [ensureSubtreeLoaded, rootNode, searchActive, searchIndexing, activeFolderId, activeWorkspaceId]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -125,13 +137,13 @@ export function FileExplorerPanel() {
 
   const stablePoll = useCallback(async () => {
     const rootPath = rootPathRef.current;
-    if (!rootPath) return;
-    await refreshDir(rootPath);
+    if (!rootPath || !activeWorkspaceId) return;
+    await refreshWorkspaceDir(activeWorkspaceId, rootPath);
     const paths = expandedPathsRef.current;
     if (paths.length > 0) {
-      await Promise.all(paths.map((p) => refreshDir(p)));
+      await Promise.all(paths.map((p) => refreshWorkspaceDir(activeWorkspaceId, p)));
     }
-  }, [refreshDir]);
+  }, [refreshWorkspaceDir, activeWorkspaceId]);
 
   // Poll-based external-change detection while panel is visible
   useEffect(() => {
@@ -141,23 +153,23 @@ export function FileExplorerPanel() {
   }, [fileExplorerOpen, rootNode, stablePoll]);
 
   const startRootNew = (mode: 'new-file' | 'new-folder') => {
-    if (!rootNode) return;
+    if (!rootNode || !activeWorkspaceId) return;
     // ensure root is "expanded" so the virtual row appears
     if (!expandedPaths.includes(rootNode.path)) {
-      setExpandedPaths([...expandedPaths, rootNode.path]);
+      setExpandedPaths(activeWorkspaceId, [...expandedPaths, rootNode.path]);
     }
     setRootInput({ mode });
     setRootInputValue('');
   };
 
   const commitRootInput = async () => {
-    if (!rootInput || !rootNode) return;
+    if (!rootInput || !rootNode || !activeWorkspaceId) return;
     const val = rootInputValue.trim();
     const mode = rootInput.mode;
     setRootInput(null);
     if (!val) return;
-    if (mode === 'new-file') await createFile(rootNode.fullPath, val);
-    else await createDirectory(rootNode.fullPath, val);
+    if (mode === 'new-file') await createFileInWorkspace(activeWorkspaceId, rootNode.fullPath, val);
+    else await createDirectoryInWorkspace(activeWorkspaceId, rootNode.fullPath, val);
   };
 
   const handleRootInputKey = (e: React.KeyboardEvent) => {
@@ -174,16 +186,17 @@ export function FileExplorerPanel() {
   };
 
   const handleSearchResultClick = async (node: TreeNodeType) => {
-    setSelectedTreePath(node.path);
+    if (!activeWorkspaceId) return;
+    setSelectedTreePath(activeWorkspaceId, node.path);
     if (node.kind === 'directory') {
       if (node.children === undefined) {
-        await ensureChildrenLoaded(node.fullPath);
+        await ensureChildrenLoaded(activeWorkspaceId, node.fullPath);
       }
       if (!expandedPaths.includes(node.path)) {
-        setExpandedPaths([...expandedPaths, node.path]);
+        setExpandedPaths(activeWorkspaceId, [...expandedPaths, node.path]);
       }
     } else {
-      await openFileFromTree(node, false);
+      await swapFileInWorkspace(activeWorkspaceId, node, { skipPrompt: true });
     }
     setSearchDropdownOpen(false);
     setSearchQuery('');
@@ -231,8 +244,8 @@ export function FileExplorerPanel() {
               )}
             </div>
             <div
-              className="flex items-center gap-1 filetree-actions"
-              style={{ height: 28, padding: 0, fontSize: 'var(--fs-xs)' }}
+              className="flex items-center gap-0.5 filetree-actions"
+              style={{ padding: 0, fontSize: 'var(--fs-xs)' }}
             >
               <button
                 type="button"
@@ -260,10 +273,10 @@ export function FileExplorerPanel() {
                 className="drop"
                 role="listbox"
                 aria-label={t('explorer.searchFiles')}
-                style={{ left: 0, right: 0, top: '100%', marginTop: 4, minWidth: 180 }}
+                style={{ left: 0, top: '100%', marginTop: 4, minWidth: 0, width: 250 }}
               >
                 {searchIndexing && (
-                  <div className="subtle" style={{ padding: '8px 12px', fontSize: 'var(--fs-xs)' }}>
+                  <div className="subtle" style={{ padding: '8px 12px', fontSize: 'var(--fs-base)' }}>
                     {t('explorer.searchLoading')}
                   </div>
                 )}
@@ -274,7 +287,7 @@ export function FileExplorerPanel() {
                     role="option"
                     onClick={() => { void handleSearchResultClick(node); }}
                     className="drop-item"
-                    style={{ fontSize: 'var(--fs-xs)' }}
+                    style={{ fontSize: 'var(--fs-base)' }}
                   >
                     {node.kind === 'file'
                       ? <File size={11} style={{ flexShrink: 0, color: 'var(--c-text-2)' }} />
@@ -283,12 +296,12 @@ export function FileExplorerPanel() {
                   </button>
                 ))}
                 {!searchIndexing && searchActive && searchMatches.length === 0 && (
-                  <div className="subtle" style={{ padding: '8px 12px', fontSize: 'var(--fs-xs)' }}>
+                  <div className="subtle" style={{ padding: '8px 12px', fontSize: 'var(--fs-base)' }}>
                     {t('explorer.noSearchMatches')}
                   </div>
                 )}
                 {!searchActive && (
-                  <div className="subtle" style={{ padding: '8px 12px', fontSize: 'var(--fs-sm)' }}>
+                  <div className="subtle" style={{ padding: '8px 12px', fontSize: 'var(--fs-base)' }}>
                     {t('explorer.searchPlaceholder')}
                   </div>
                 )}
@@ -302,28 +315,6 @@ export function FileExplorerPanel() {
       <div className="panel-body ai-scroll flex-1 overflow-y-a" style={{ minHeight: 0, padding: '8px 0' }}>
         {error && (
           <p style={{ fontSize: 'var(--fs-xs)', color: '#EF4444', marginBottom: 8, lineHeight: 1.375 }}>{error}</p>
-        )}
-
-        {!nativeAvailable && !rootNode && (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '24px 16px',
-            textAlign: 'center',
-            gap: 8,
-          }}>
-            <Monitor size={24} style={{ color: 'var(--c-text-2)' }} />
-            <p style={{
-              fontSize: 'var(--fs-xs)',
-              color: 'var(--c-text-2)',
-              lineHeight: 1.5,
-              maxWidth: 200,
-            }}>
-              {t('explorer.desktopRequiredHint')}
-            </p>
-          </div>
         )}
 
         {rootNode?.children && (

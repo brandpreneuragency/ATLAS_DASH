@@ -1,11 +1,16 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Reply, Zap, Plus, X, Square, Brain, User } from 'lucide-react';
+import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent, ChangeEvent } from 'react';
+import { Reply, Zap, Plus, X, Square, Brain, User, File, Folder, Shield } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../../stores/uiStore';
 import { useActionsStore } from '../../stores/actionsStore';
 import { useChatStore } from '../../stores/chatStore';
 import { useAIStore } from '../../stores/aiStore';
 import { useStreamingChat } from '../../hooks/useStreamingChat';
+import { useWorkspaceStore, flattenTree, findNodeByFullPath } from '../../stores/workspaceStore';
+import type { TreeNode } from '../../stores/workspaceStore';
+import { readBinaryFile, basename, getExt } from '../../services/fs-adapter';
+import { isImageFile } from '../../utils/fileType';
 import { db } from '../../services/db';
 import { useThemedPlaceholder } from '../../utils/placeholders';
 import {
@@ -22,7 +27,7 @@ import type { Attachment, ChatMessage, QuickPrompt } from '../../types';
 interface ChatInputProps {
   mode: 'writer' | 'task';
   threadId: string;
-  documentId: string | null;
+  workspaceId: string | null;
   taskId?: string | null;
   settingsTab?: string | null;
   replyToMessage?: ChatMessage | null;
@@ -35,6 +40,41 @@ function maxHeightVw(): number {
 }
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+/** Convert raw bytes to a base64 string (chunked to avoid call-stack limits). */
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+function imageMimeFromPath(path: string): string {
+  const ext = getExt(path);
+  const sub = ext === 'jpg' ? 'jpeg' : ext || 'png';
+  return `image/${sub}`;
+}
+
+/** Detect an active @-mention immediately preceding the caret. Returns the
+ *  query substring and the index of the `@` (or null when none is active). */
+function detectMention(text: string, caret: number): { query: string; start: number } | null {
+  let i = caret - 1;
+  while (i >= 0) {
+    const ch = text[i];
+    if (/\s/.test(ch)) return null;
+    if (ch === '@') {
+      const before = i - 1;
+      if (before < 0 || /\s/.test(text[before])) {
+        return { query: text.slice(i + 1, caret), start: i };
+      }
+      return null;
+    }
+    i--;
+  }
+  return null;
+}
 
 interface PromptOption extends QuickPrompt {
   builtin?: boolean;
@@ -83,7 +123,7 @@ const TASK_BUILT_INS: PromptOption[] = [
   },
 ];
 
-export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, replyToMessage, onClearReply }: ChatInputProps) {
+export function ChatInput({ mode, threadId, workspaceId, taskId, settingsTab, replyToMessage, onClearReply }: ChatInputProps) {
   const { t } = useTranslation();
   const accentColor = 'var(--c-accent-2)';
   const [value, setValue] = useState('');
@@ -102,12 +142,38 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
   const modelRef = useRef<HTMLDivElement>(null);
   const agentRef = useRef<HTMLDivElement>(null);
   const userHeightRef = useRef<number>(0);
+  const mentionRef = useRef<HTMLDivElement>(null);
+  const indexedNodesRef = useRef<TreeNode[] | null>(null);
+  const indexedFolderRef = useRef<string | null>(null);
+
+  const { getActiveRootNode, getActiveFolderId, ensureSubtreeLoaded, activeWorkspaceId } = useWorkspaceStore();
+  const rootNode = getActiveRootNode();
+  const activeFolderId = getActiveFolderId();
+
+  const [dragOver, setDragOver] = useState(false);
+  const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionStart, setMentionStart] = useState<number | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [indexedNodes, setIndexedNodes] = useState<TreeNode[]>([]);
+  const [indexedFolderId, setIndexedFolderId] = useState<string | null>(null);
+
+  // Filter the indexed workspace tree by the active @-mention query.
+  const filtered = indexedNodes.length
+    ? indexedNodes
+        .filter((n) => {
+          const q = mentionQuery.toLowerCase();
+          return q === '' || (n.path + ' ' + n.name).toLowerCase().includes(q);
+        })
+        .slice(0, 50)
+    : [];
+  const indexing = mentionOpen && indexedFolderId !== activeFolderId;
 
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
-  }, [documentId, taskId]);
+  }, [workspaceId, taskId]);
 
   const { selectedText } = useUIStore();
   const { isStreaming } = useChatStore();
@@ -124,7 +190,7 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
     isModelHidden,
   } = useAIStore();
   const { openSettings } = useUIStore();
-  const { sendMessage, stopStreaming } = useStreamingChat(threadId, mode, documentId ?? undefined, taskId ?? undefined, settingsTab ?? undefined);
+  const { sendMessage, stopStreaming } = useStreamingChat(threadId, mode, workspaceId ?? undefined, taskId ?? undefined, settingsTab ?? undefined);
 
   const activeAgent = getActiveAgent(mode);
   const scopedAgents = getAgentsByScope(mode);
@@ -133,6 +199,8 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
   const activeModelName = activeConfig?.models?.find((m) => m.id === activeConfig.selectedModel)?.name;
   const modelLabel = activeConfig ? (activeModelName || activeConfig.selectedModel || t('sidebar.noModel')) : t('sidebar.noModel');
   const actionsLabel = t('chat.actions');
+  // Whether the active model advertises tool support (defaults to true).
+  const toolsSupported = activeConfig?.models?.find((m) => m.id === activeConfig.selectedModel)?.supportsTools ?? true;
 
   // Outside-click dismissal for dropdowns
   useEffect(() => {
@@ -140,6 +208,10 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
       if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) setActionsDropdownOpen(false);
       if (modelRef.current && !modelRef.current.contains(e.target as Node)) setModelDropdownOpen(false);
       if (agentRef.current && !agentRef.current.contains(e.target as Node)) setAgentDropdownOpen(false);
+      if (mentionRef.current && !mentionRef.current.contains(e.target as Node)) {
+        setMentionOpen(false);
+        setMentionStart(null);
+      }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -172,12 +244,14 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
     const trimmed = value.trim();
     if ((!trimmed && attachments.length === 0) || isStreaming) return;
     const toSend = attachments.slice();
-    const replyData = replyToMessage ? {
-      id: replyToMessage.id,
-      role: replyToMessage.role,
-      content: replyToMessage.content.slice(0, 200),
-      sender: replyToMessage.role === 'user' ? 'You' : 'Assistant',
-    } : undefined;
+    const replyData = replyToMessage
+      ? {
+          id: replyToMessage.id,
+          role: (replyToMessage.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+          content: replyToMessage.content.slice(0, 200),
+          sender: replyToMessage.role === 'user' ? 'You' : 'Assistant',
+        }
+      : undefined;
     setValue('');
     setAttachments([]);
     onClearReply?.();
@@ -199,7 +273,30 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
     }
   }, [value, attachments, isStreaming, sendMessage, selectedText, replyToMessage, onClearReply]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+    if (mentionOpen) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionIndex((i) => Math.min(i + 1, Math.max(filtered.length - 1, 0)));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionIndex((i) => Math.max(i - 1, 0));
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (filtered[mentionIndex]) selectMention(filtered[mentionIndex]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setMentionOpen(false);
+        setMentionStart(null);
+        return;
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -254,15 +351,198 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
     }
   };
 
-  const removeAttachment = (index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  const addAttachment = (att: Attachment) => {
+    setAttachments((prev) => {
+      if (att.path && prev.some((p) => p.path === att.path)) return prev;
+      if (!att.path && prev.some((p) => p.name === att.name && p.dataUrl === att.dataUrl)) return prev;
+      return [...prev, att];
+    });
   };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => {
+      const att = prev[index];
+      if (att) {
+        const token = '@' + att.name;
+        setValue((v) => (v.includes(token) ? v.replace(token, '') : v));
+      }
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const insertTokenAtCaret = (token: string) => {
+    const ta = textareaRef.current;
+    const current = ta ? ta.value : value;
+    const caret = ta ? ta.selectionStart ?? current.length : current.length;
+    const before = current.slice(0, caret);
+    const after = current.slice(caret);
+    const needsLeadingSpace = before.length > 0 && !/\s$/.test(before);
+    const insertText = (needsLeadingSpace ? ' ' : '') + token + ' ';
+    const newValue = before + insertText + after;
+    setValue(newValue);
+    requestAnimationFrame(() => {
+      const ta2 = textareaRef.current;
+      if (ta2) {
+        const pos = before.length + insertText.length;
+        ta2.focus();
+        ta2.setSelectionRange(pos, pos);
+        handleInput();
+      }
+    });
+  };
+
+  const attachDroppedPath = async (
+    fullPath: string,
+    kind: 'file' | 'directory',
+    displayPath?: string,
+  ) => {
+    const resolvedKind: 'file' | 'folder' = kind === 'directory' ? 'folder' : 'file';
+    const name = basename(fullPath);
+    if (resolvedKind === 'file' && isImageFile(fullPath)) {
+      try {
+        const bytes = await readBinaryFile(fullPath);
+        const mime = imageMimeFromPath(fullPath);
+        const dataUrl = `data:${mime};base64,${uint8ToBase64(bytes)}`;
+        addAttachment({ name, dataUrl, mimeType: mime });
+      } catch {
+        /* ignore unreadable images */
+      }
+      return;
+    }
+    const disp =
+      displayPath || (rootNode ? findNodeByFullPath(rootNode, fullPath)?.path : undefined) || name;
+    insertTokenAtCaret('@' + name);
+    addAttachment({
+      name,
+      kind: resolvedKind,
+      path: fullPath,
+      displayPath: disp,
+      mimeType: resolvedKind === 'folder' ? 'folder' : 'text/plain',
+    });
+  };
+
+  const handleDragOver = (e: ReactDragEvent<HTMLDivElement>) => {
+    const types = e.dataTransfer.types;
+    if (types.includes('application/x-tabs-tree-node') || types.includes('text/plain')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      setDragOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: ReactDragEvent<HTMLDivElement>) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setDragOver(false);
+  };
+
+  const handleDrop = (e: ReactDragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOver(false);
+    const raw = e.dataTransfer.getData('application/x-tabs-tree-node');
+    let fullPath: string | undefined;
+    let kind: 'file' | 'directory' | undefined;
+    let displayPath: string | undefined;
+    if (raw) {
+      try {
+        const payload = JSON.parse(raw) as { fullPath: string; kind: string; path: string };
+        fullPath = payload.fullPath;
+        kind = payload.kind as 'file' | 'directory';
+        displayPath = payload.path;
+      } catch {
+        /* fall through to text/plain */
+      }
+    }
+    if (!fullPath) {
+      const text = e.dataTransfer.getData('text/plain');
+      if (!text) return;
+      fullPath = text;
+      const node = rootNode ? findNodeByFullPath(rootNode, fullPath) : null;
+      if (node) {
+        kind = node.kind;
+        displayPath = node.path;
+      }
+    }
+    if (fullPath && kind) {
+      void attachDroppedPath(fullPath, kind, displayPath);
+    }
+  };
+
+  const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    const next = e.target.value;
+    setValue(next);
+    handleInput();
+    const caret = e.target.selectionStart ?? next.length;
+    const m = detectMention(next, caret);
+    if (m) {
+      setMentionStart(m.start);
+      setMentionQuery(m.query);
+      setMentionIndex(0);
+      setMentionOpen(true);
+    } else {
+      setMentionOpen(false);
+      setMentionStart(null);
+    }
+  };
+
+  const selectMention = (node: TreeNode) => {
+    if (mentionStart === null) return;
+    const ta = textareaRef.current;
+    const caret = ta ? ta.selectionStart ?? value.length : value.length;
+    const start = mentionStart;
+    const before = value.slice(0, start);
+    const after = value.slice(caret);
+    const token = '@' + node.name;
+    const needsTrailingSpace = after.length > 0 && !/^\s/.test(after);
+    const inserted = token + (needsTrailingSpace ? ' ' : '');
+    const newValue = before + inserted + after;
+    setValue(newValue);
+    addAttachment({
+      name: node.name,
+      kind: node.kind === 'directory' ? 'folder' : 'file',
+      path: node.fullPath,
+      displayPath: node.path,
+      mimeType: node.kind === 'directory' ? 'folder' : 'text/plain',
+    });
+    setMentionOpen(false);
+    setMentionStart(null);
+    requestAnimationFrame(() => {
+      const ta2 = textareaRef.current;
+      if (ta2) {
+        const pos = before.length + inserted.length;
+        ta2.focus();
+        ta2.setSelectionRange(pos, pos);
+        handleInput();
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (!mentionOpen) return;
+    if (indexedFolderId === activeFolderId && indexedNodesRef.current) return;
+    if (!rootNode || !activeWorkspaceId) return;
+    let cancelled = false;
+    ensureSubtreeLoaded(activeWorkspaceId, rootNode.fullPath)
+      .then(() => {
+        if (cancelled) return;
+        indexedNodesRef.current = flattenTree(useWorkspaceStore.getState().getActiveRootNode());
+        indexedFolderRef.current = activeFolderId;
+        setIndexedNodes(indexedNodesRef.current);
+        setIndexedFolderId(activeFolderId);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setIndexedFolderId(activeFolderId);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mentionOpen, activeFolderId, indexedFolderId, rootNode, ensureSubtreeLoaded, activeWorkspaceId]);
 
   const canSend = (value.trim().length > 0 || attachments.length > 0) && !isStreaming;
   const promptOptions: PromptOption[] = mode === 'task' ? [...TASK_BUILT_INS, ...quickPrompts] : quickPrompts;
 
   return (
-    <div style={{ flexShrink: 0, paddingTop: '12px', paddingBottom: '12px', paddingLeft: '12px', paddingRight: '12px', height: 'fit-content' }}>
+    <div style={{ flexShrink: 0, paddingTop: '12px', paddingBottom: '12px', paddingLeft: '18px', paddingRight: '18px', height: 'fit-content' }}>
       {selectedText && (
         <div style={{ marginBottom: 8, fontSize: 'var(--fs-xs)', color: accentColor, background: 'var(--c-background-4)', borderRadius: 6, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span className="med">{t('chat.context')}</span>
@@ -298,7 +578,14 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
         </div>
       )}
 
-      <ComposerCard id="chat-input-card">
+      <ComposerCard
+        id="chat-input-card"
+        className={dragOver ? 'composer-dropzone composer-dropzone--active' : 'composer-dropzone'}
+        data-drag-over={dragOver ? true : undefined}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <div
           className="composer-resize-handle"
           onMouseDown={handleResizeStart}
@@ -306,26 +593,45 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
         />
         {attachments.length > 0 && (
           <ComposerAttachments>
-            {attachments.map((att, i) => (
-              <div key={i} className="relative" style={{ display: 'inline-block' }}>
-                <img
-                  src={att.dataUrl}
-                  alt={att.name}
-                  style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--c-border-1)' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => removeAttachment(i)}
-                  title={t('chat.removeAttachment')}
-                  className="absolute"
-                  style={{ top: -6, right: -6, width: 16, height: 16, background: 'var(--c-text-1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0 }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0'; }}
-                >
-                  <X size={9} style={{ color: '#fff' }} />
-                </button>
-              </div>
-            ))}
+            {attachments.map((att, i) =>
+              att.kind === 'file' || att.kind === 'folder' ? (
+                <div key={i} className="composer-chip" title={(att.kind === 'folder' ? 'Folder: ' : 'File: ') + (att.displayPath || att.name)}>
+                  {att.kind === 'folder' ? (
+                    <Folder size={13} className="composer-chip-icon" />
+                  ) : (
+                    <File size={13} className="composer-chip-icon" />
+                  )}
+                  <span className="composer-chip-name">{att.displayPath || att.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(i)}
+                    title={t('chat.removeFileAttachment')}
+                    className="composer-chip-remove"
+                  >
+                    <X size={9} style={{ color: '#fff' }} />
+                  </button>
+                </div>
+              ) : (
+                <div key={i} className="relative" style={{ display: 'inline-block' }}>
+                  <img
+                    src={att.dataUrl}
+                    alt={att.name}
+                    style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--c-border-1)' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(i)}
+                    title={t('chat.removeAttachment')}
+                    className="absolute"
+                    style={{ top: -6, right: -6, width: 16, height: 16, background: 'var(--c-text-1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0 }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0'; }}
+                  >
+                    <X size={9} style={{ color: '#fff' }} />
+                  </button>
+                </div>
+              )
+            )}
           </ComposerAttachments>
         )}
 
@@ -333,12 +639,40 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
           id="chat-input"
           ref={textareaRef}
           value={value}
-          onChange={(e) => { setValue(e.target.value); handleInput(); }}
+          onChange={handleChange}
           onKeyDown={handleKeyDown}
           placeholder={queryAIPlaceholder || t('chat.askPlaceholder', { name: activeAgent.name })}
           rows={1}
           style={{ height: 'fit-content', padding: '18px 18px 0' }}
         />
+
+        {mentionOpen && (
+          <div ref={mentionRef} className="drop chat-mention-dropup" style={{ left: 12, right: 12, bottom: '100%', marginBottom: 4, maxHeight: 240, overflowY: 'auto' }}>
+            {indexing ? (
+              <div className="subtle" style={{ padding: '8px 12px', fontSize: 'var(--fs-base)' }}>{t('chat.indexing')}</div>
+            ) : filtered.length === 0 ? (
+              <div className="subtle" style={{ padding: '8px 12px', fontSize: 'var(--fs-base)' }}>{t('chat.noMatches')}</div>
+            ) : (
+              filtered.map((node, idx) => (
+                <button
+                  type="button"
+                  key={node.fullPath}
+                  onClick={() => selectMention(node)}
+                  className={`drop-item${idx === mentionIndex ? ' header-dropdown-item--active' : ''}`}
+                  style={{ fontSize: 'var(--fs-base)' }}
+                  onMouseEnter={() => setMentionIndex(idx)}
+                >
+                  {node.kind === 'directory' ? (
+                    <Folder size={13} className="composer-chip-icon" />
+                  ) : (
+                    <File size={13} className="composer-chip-icon" />
+                  )}
+                  <span className="trunc med">{node.path}</span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
 
         <ComposerRow className="chat-input-bottom-row">
           <div className="chat-input-bottom-col chat-input-bottom-col--left">
@@ -374,7 +708,7 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
                 {actionsDropdownOpen && (
                   <div className="drop" style={{ left: 0, bottom: '100%', marginBottom: 4, minWidth: 192 }}>
                     {promptOptions.length === 0 ? (
-                      <div className="subtle" style={{ padding: '8px 12px', fontSize: 'var(--fs-xs)' }}>{t('chat.noActions')}</div>
+                      <div className="subtle" style={{ padding: '8px 12px', fontSize: 'var(--fs-base)' }}>{t('chat.noActions')}</div>
                     ) : (
                       promptOptions.map((qp) => (
                         <button
@@ -391,7 +725,7 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
                         </button>
                       ))
                     )}
-                    <div style={{ borderTop: '1px solid var(--c-border-1)', marginTop: 4, paddingTop: 4 }}>
+                    <div style={{ borderTop: '1px solid var(--c-border-1)', marginTop: 0, paddingTop: 0 }}>
                       <button
                         type="button"
                         onClick={() => {
@@ -431,7 +765,7 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
                       key={agent.id}
                       onClick={() => { setActiveAgent(agent.id, mode); setAgentDropdownOpen(false); }}
                       className={`drop-item${agent.id === activeScopedId ? ' header-dropdown-item--active' : ''}`}
-                      style={{ fontSize: 'var(--fs-xs)' }}
+                      style={{ fontSize: 'var(--fs-base)' }}
                     >
                       <span className="trunc med">{agent.name}</span>
                     </button>
@@ -466,7 +800,7 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
               {modelDropdownOpen && (
                 <div className="drop" style={{ left: 0, bottom: '100%', marginBottom: 4, minWidth: 180 }}>
                   {providerConfigs.length === 0 && (
-                    <div className="subtle" style={{ padding: '14px 12px', fontSize: 'var(--fs-xs)' }}>{t('sidebar.noProviders')}</div>
+                    <div className="subtle" style={{ padding: '14px 12px', fontSize: 'var(--fs-base)' }}>{t('sidebar.noProviders')}</div>
                   )}
                   {providerConfigs.filter((config) => config.status === 'connected').flatMap((config) => {
                     const visibleModels = (config.models ?? []).filter((m) => !isModelHidden(config.id, m.id));
@@ -476,7 +810,7 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
                         key={`${config.id}:${model.id}`}
                         onClick={() => { setActiveProvider(config.id); setActiveModel(config.id, model.id); setModelDropdownOpen(false); }}
                         className={`drop-item${config.id === activeProviderId && config.selectedModel === model.id ? ' header-dropdown-item--active' : ''}`}
-                        style={{ fontSize: 'var(--fs-xs)' }}
+                        style={{ fontSize: 'var(--fs-base)' }}
                       >
                         <span className="med">{config.name} / {model.name}</span>
                       </button>
@@ -496,6 +830,20 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
             </div>
 
             <ReasoningDropup />
+
+            <PermissionModeControl
+              threadId={threadId}
+              chatMode={mode}
+              workspaceId={workspaceId}
+              taskId={taskId}
+              settingsTab={settingsTab}
+              disabled={!toolsSupported}
+              title={
+                toolsSupported
+                  ? undefined
+                  : t('chat.tools.disabledTooltip')
+              }
+            />
           </div>
 
           {/* Right side: send button */}
@@ -514,6 +862,120 @@ export function ChatInput({ mode, threadId, documentId, taskId, settingsTab, rep
           </div>
         </ComposerRow>
       </ComposerCard>
+    </div>
+  );
+}
+
+/** Dropup control for the AI tool permission mode (Ask & Approve / Bypass). */
+function PermissionModeControl({
+  threadId,
+  chatMode,
+  workspaceId,
+  taskId,
+  settingsTab,
+  disabled,
+  title,
+}: {
+  threadId: string;
+  chatMode: 'writer' | 'task';
+  workspaceId: string | null;
+  taskId?: string | null;
+  settingsTab?: string | null;
+  disabled?: boolean;
+  title?: string;
+}) {
+  const { t } = useTranslation();
+  const accentColor = 'var(--c-accent-2)';
+  const [open, setOpen] = useState(false);
+  const [creatingThread, setCreatingThread] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const activeThreadId = useChatStore((s) => s.activeThreadId);
+  const currentThreadId = activeThreadId ?? threadId;
+  const permissionMode = useChatStore(
+    (s) => s.threads.find((th) => th.id === currentThreadId)?.permissionMode ?? 'ask',
+  );
+  const newChat = useChatStore((s) => s.newChat);
+  const setPermissionMode = useChatStore((s) => s.setPermissionMode);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handlePermissionModeChange = useCallback(async (nextMode: 'ask' | 'bypass') => {
+    if (disabled || creatingThread) return;
+
+    let nextThreadId = useChatStore.getState().activeThreadId ?? threadId;
+    if (!nextThreadId) {
+      setCreatingThread(true);
+      try {
+        await newChat({
+          mode: chatMode,
+          workspaceId: workspaceId ?? undefined,
+          taskId: taskId ?? undefined,
+          settingsTab: settingsTab ?? undefined,
+        });
+        nextThreadId = useChatStore.getState().activeThreadId ?? '';
+      } finally {
+        setCreatingThread(false);
+      }
+    }
+
+    if (!nextThreadId) return;
+    setPermissionMode(nextThreadId, nextMode);
+    setOpen(false);
+  }, [chatMode, creatingThread, disabled, workspaceId, newChat, setPermissionMode, settingsTab, taskId, threadId]);
+  const currentLabel =
+    permissionMode === 'bypass' ? t('chat.tools.bypass') : t('chat.tools.askApprove');
+  const CurrentIcon = permissionMode === 'bypass' ? Zap : Shield;
+
+  return (
+    <div
+      ref={ref}
+      className="chat-input-bottom-col chat-input-bottom-col--model"
+      title={title}
+    >
+      <button
+        type="button"
+        disabled={disabled || creatingThread}
+        onClick={() => setOpen((v) => !v)}
+        className="chat-input-dropup-btn"
+        data-active="true"
+        style={{
+          color: accentColor,
+          opacity: disabled || creatingThread ? 0.5 : 1,
+          cursor: disabled || creatingThread ? 'not-allowed' : 'pointer',
+        }}
+        aria-label={currentLabel}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <CurrentIcon size={12} className="chat-input-dropup-icon" />
+        <span className="trunc med chat-input-dropup-label">{currentLabel}</span>
+      </button>
+      {open && !disabled && (
+        <div className="drop" style={{ left: 0, bottom: '100%', marginBottom: 4, minWidth: 160 }}>
+          <button
+            type="button"
+            onClick={() => void handlePermissionModeChange('ask')}
+            className={`drop-item${permissionMode === 'ask' ? ' header-dropdown-item--active' : ''}`}
+            style={{ fontSize: 'var(--fs-base)' }}
+          >
+            <span className="med">{t('chat.tools.askApprove')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => void handlePermissionModeChange('bypass')}
+            className={`drop-item${permissionMode === 'bypass' ? ' header-dropdown-item--active' : ''}`}
+            style={{ fontSize: 'var(--fs-base)' }}
+          >
+            <span className="med">{t('chat.tools.bypass')}</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

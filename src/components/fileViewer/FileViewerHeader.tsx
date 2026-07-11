@@ -2,7 +2,7 @@ import { X, ExternalLink } from 'lucide-react';
 import type { FileViewerItem } from '../../types';
 import { canOpenInTipTap } from '../../utils/fileType';
 import { useUIStore } from '../../stores/uiStore';
-import { useDocumentStore } from '../../stores/documentStore';
+import { useWorkspaceStore } from '../../stores/workspaceStore';
 
 interface FileViewerHeaderProps {
   file: FileViewerItem;
@@ -11,19 +11,17 @@ interface FileViewerHeaderProps {
 export function FileViewerHeader({ file }: FileViewerHeaderProps) {
   const closeFileViewer = useUIStore((s) => s.closeFileViewer);
   const showToast = useUIStore((s) => s.showToast);
-  const openFileFromViewer = useDocumentStore((s) => s.openFileFromViewer);
+  const openFileFromViewer = useWorkspaceStore((s) => s.openFileFromViewer);
   const setTaskMode = useUIStore((s) => s.setTaskMode);
 
   const canOpen = canOpenInTipTap(file.name);
 
   const handleOpenInTipTap = async () => {
     try {
-      const doc = await openFileFromViewer(file);
-      if (doc) {
-        // Switch to document mode so the editor is visible
-        setTaskMode(false);
-        closeFileViewer();
-      }
+      await openFileFromViewer(file);
+      // Switch to document mode so the editor is visible
+      setTaskMode(false);
+      closeFileViewer();
     } catch {
       showToast('Could not open file in editor.', 'error');
     }

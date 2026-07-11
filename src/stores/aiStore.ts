@@ -141,6 +141,7 @@ interface AIStore {
   setActiveModel: (configId: string, modelSlug: string) => void;
   setModelReasoning: (configId: string, modelSlug: string, value: string) => void;
   setModelReasoningDescriptor: (configId: string, modelSlug: string, reasoning: ModelReasoning | undefined) => void;
+  setModelSupportsTools: (configId: string, modelSlug: string, supportsTools: boolean) => void;
   addModelToProvider: (configId: string, modelSlug: string) => void;
   removeModelFromProvider: (configId: string, modelSlug: string) => void;
   toggleHiddenModel: (key: string) => void;
@@ -157,6 +158,10 @@ interface AIStore {
     options?: { refreshStatus?: boolean },
   ) => Promise<void>;
   connectProvider: (id: string, baseUrl: string, apiKey: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  connectNewProvider: (input: { name: string; baseUrl: string; apiKey: string; presetId?: string }) => Promise<
+    | { ok: true; provider: AIProviderConfig; modelCount: number }
+    | { ok: false; code: string; error: string }
+  >;
   importProviderModels: (id: string, baseUrl: string, apiKey: string) => Promise<{ ok: true } | { ok: false; error: string; code: string }>;
   getEnabledModels: (providerId: string) => ModelItem[];
   getAllEnabledModels: () => { provider: AIProviderConfig; model: ModelItem }[];
@@ -197,7 +202,7 @@ export const useAIStore = create<AIStore>((set, get) => ({
 
       // Load settings from Dexie
       const settingsRows = await db.settings.toArray();
-      const settings: Record<string, string | number | boolean> = {};
+      const settings: Record<string, string | number | boolean | Record<string, unknown>> = {};
       settingsRows.forEach(row => {
         settings[row.key] = row.value;
       });
@@ -562,6 +567,19 @@ export const useAIStore = create<AIStore>((set, get) => ({
     if (models) void db.providerConfigs.update(configId, { models }).catch(() => undefined);
   },
 
+  setModelSupportsTools: (configId, modelSlug, supportsTools) => {
+    const providerConfigs = get().providerConfigs.map((config) => {
+      if (config.id !== configId) return config;
+      const models = (config.models ?? []).map((m) =>
+        m.id === modelSlug ? { ...m, supportsTools } : m,
+      );
+      return { ...config, models };
+    });
+    set({ providerConfigs });
+    const models = providerConfigs.find((c) => c.id === configId)?.models;
+    if (models) void db.providerConfigs.update(configId, { models }).catch(() => undefined);
+  },
+
   addModelToProvider: (configId, modelSlug) => {
     const slug = modelSlug.trim();
     if (!slug) return;
@@ -786,6 +804,103 @@ export const useAIStore = create<AIStore>((set, get) => ({
       const message = err instanceof Error ? err.message : 'Failed to connect provider.';
       return { ok: false, error: message };
     }
+  },
+
+  connectNewProvider: async ({ name, baseUrl, apiKey }) => {
+    const trimmedName = name.trim();
+    const trimmedBaseUrl = normalizeProviderBaseUrl(baseUrl);
+    const trimmedKey = apiKey.trim();
+
+    if (!trimmedName) {
+      return { ok: false, code: 'validation', error: 'Provider name is required.' };
+    }
+    if (!trimmedBaseUrl) {
+      return { ok: false, code: 'invalid_url', error: 'Base URL is required.' };
+    }
+
+    // Validate URL shape before any persistence
+    try {
+      const parsed = new URL(trimmedBaseUrl);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return { ok: false, code: 'invalid_url', error: 'Base URL must use http or https.' };
+      }
+    } catch {
+      return { ok: false, code: 'invalid_url', error: 'Base URL is not valid.' };
+    }
+
+    const id = generateProviderId();
+
+    // 1. Fetch models BEFORE persisting anything
+    let imported: ModelItem[];
+    try {
+      imported = await fetchProviderModels({
+        providerId: id,
+        baseUrl: trimmedBaseUrl,
+        apiKey: trimmedKey,
+      });
+    } catch (err) {
+      if (err instanceof ProviderImportError) {
+        return { ok: false, code: err.code, error: err.message };
+      }
+      const message = err instanceof Error ? err.message : 'Failed to reach provider.';
+      return { ok: false, code: 'request_failed', error: message };
+    }
+
+    if (imported.length === 0) {
+      return { ok: false, code: 'empty_response', error: 'Provider returned no models.' };
+    }
+
+    // 2. Write the API key and verify read-back
+    if (trimmedKey) {
+      try {
+        await secureStorage.secureSet(providerApiKeyName(id), trimmedKey);
+        const savedKey = await secureStorage.secureGet(providerApiKeyName(id));
+        if (savedKey !== trimmedKey) {
+          // Best-effort cleanup of the written secret
+          await secureStorage.secureDelete(providerApiKeyName(id)).catch(() => undefined);
+          return { ok: false, code: 'storage', error: 'Could not verify the saved API key.' };
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to store API key.';
+        return { ok: false, code: 'storage', error: message };
+      }
+    }
+
+    // 3. Build the provider config and persist
+    const selectedModel = imported[0]?.id ?? '';
+    const newConfig: AIProviderConfig = {
+      id,
+      name: trimmedName,
+      provider: 'custom',
+      apiKey: '',
+      selectedModel,
+      isActive: true,
+      baseUrl: trimmedBaseUrl,
+      customModels: [],
+      status: 'connected',
+      models: imported,
+      lastImportedAt: Date.now(),
+    };
+
+    try {
+      await db.providerConfigs.put(newConfig);
+      await secureStorage.secureSet('activeProviderId', id);
+    } catch (err) {
+      // Best-effort cleanup of the written secret on persistence failure
+      if (trimmedKey) {
+        await secureStorage.secureDelete(providerApiKeyName(id)).catch(() => undefined);
+      }
+      const message = err instanceof Error ? err.message : 'Failed to save provider.';
+      return { ok: false, code: 'storage', error: message };
+    }
+
+    // 4. Update Zustand state atomically
+    set((state) => ({
+      providerConfigs: [...state.providerConfigs, newConfig],
+      activeProviderId: id,
+    }));
+
+    return { ok: true, provider: newConfig, modelCount: imported.length };
   },
 
   importProviderModels: async (id, baseUrl, apiKey) => {

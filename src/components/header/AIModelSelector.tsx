@@ -63,10 +63,10 @@ export function AIModelSelector() {
                 className="drop-item header-dropdown-item--spacious"
               >
                 <div className="flex-1" style={{ textAlign: 'left' }}>
-                  <div className="med" style={{ fontSize: 'var(--fs-xs)' }}>
+                  <div className="med" style={{ fontSize: 'var(--fs-base)' }}>
                     {config.name}
                   </div>
-                  <div className="subtle trunc" style={{ fontSize: 'var(--fs-xs)' }}>{model.name}</div>
+                  <div className="subtle trunc" style={{ fontSize: 'var(--fs-base)' }}>{model.name}</div>
                 </div>
                 {config.id === activeProviderId && config.selectedModel === model.id && (
                   <Check size={14} className="shrink-0" style={{ color: 'var(--c-accent-center-panel)' }} />

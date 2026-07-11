@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -11,19 +11,25 @@ import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import Typography from '@tiptap/extension-typography';
 import FontFamily from '@tiptap/extension-font-family';
+import { Table } from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableHeader from '@tiptap/extension-table-header';
+import TableCell from '@tiptap/extension-table-cell';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
 import { Extension } from '@tiptap/core';
 import { UndoRedo } from '@tiptap/extensions/undo-redo';
 import { Fragment, Slice } from '@tiptap/pm/model';
-import type { EditorState } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { InlineTextPreset } from './InlineTextPreset';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { useUIStore } from '../../stores/uiStore';
+import { getEditorStateCache } from '../../stores/workspaceStore';
 import type { Editor } from '@tiptap/react';
 
-// Cache full ProseMirror editor states per document so undo/redo history,
-// selection, and scroll position survive tab switches in the same session.
-const editorStateCache = new Map<string, EditorState>();
+// Cache full ProseMirror editor states per file path so undo/redo history,
+// selection, and scroll position survive file swaps in the same session.
+// The cache is owned by workspaceStore so it can clear entries on save/discard.
 
 // History extension with NO built-in keyboard shortcuts.
 // We handle undo/redo ourselves via EditorShortcuts below so we can
@@ -60,44 +66,6 @@ const EditorShortcuts = Extension.create({
         const isActive = editorDom && (document.activeElement === editorDom || editorDom.contains(document.activeElement));
         if (!isActive) return false;
         return this.editor.commands.redo();
-      },
-    };
-  },
-});
-
-const SmartEnter = Extension.create({
-  name: 'smartEnter',
-  priority: 200,
-
-  addKeyboardShortcuts() {
-    return {
-      Enter: () => {
-        const { editor } = this;
-        const { state } = editor;
-        const { selection } = state;
-        const { $from, empty } = selection;
-
-        if (!empty) return false;
-
-        // Only apply in normal paragraphs, let other nodes (headings, lists, code) use default behavior
-        if ($from.parent.type.name !== 'paragraph') return false;
-
-        // At the end of the paragraph and the last node is a hardBreak -> double Enter -> split paragraph
-        if ($from.parentOffset === $from.parent.content.size) {
-          const lastChild = $from.parent.lastChild;
-          if (lastChild && lastChild.type.name === 'hardBreak') {
-            const posBeforeBreak = $from.pos - lastChild.nodeSize;
-            return editor
-              .chain()
-              .focus()
-              .deleteRange({ from: posBeforeBreak, to: $from.pos })
-              .splitBlock()
-              .run();
-          }
-        }
-
-        // Single Enter -> insert hard break (line break inside the paragraph)
-        return editor.chain().focus().setHardBreak().run();
       },
     };
   },
@@ -150,7 +118,8 @@ function normalizeCopiedParagraphs(slice: Slice, view: EditorView): Slice {
 }
 
 interface TipTapEditorProps {
-  documentId: string | null;
+  fileId: string | null;
+  workspaceId: string | null;
   initialContent: string;
   onEditorReady?: (editor: Editor) => void;
   editable?: boolean;
@@ -158,19 +127,24 @@ interface TipTapEditorProps {
   onTitleChange?: (title: string) => void;
 }
 
-export function TipTapEditor({ documentId, initialContent, onEditorReady, editable = true, title, onTitleChange }: TipTapEditorProps) {
+export function TipTapEditor({
+  fileId,
+  workspaceId,
+  initialContent,
+  onEditorReady,
+  editable = true,
+  title,
+  onTitleChange,
+}: TipTapEditorProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const previousDocumentIdRef = useRef<string | null>(null);
+  const previousFileIdRef = useRef<string | null>(null);
+  const editorStateCache = getEditorStateCache();
   const setSelectedText = useUIStore((s) => s.setSelectedText);
-  const { editorFontFamily, editorFontSize } = useUIStore((s) => s);
+  const editorFontFamily = useUIStore((s) => s.editorFontFamily);
+  const editorFontSize = useUIStore((s) => s.editorFontSize);
 
-  const editor = useEditor({
-    coreExtensionOptions: {
-      clipboardTextSerializer: {
-        blockSeparator: '\n',
-      },
-    },
-    extensions: [
+  const extensions = useMemo(
+    () => [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
         link: false,
@@ -187,29 +161,62 @@ export function TipTapEditor({ documentId, initialContent, onEditorReady, editab
       Highlight.configure({ multicolor: true }),
       Link.configure({ openOnClick: false }),
       Image,
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableHeader,
+      TableCell,
+      TaskList,
+      TaskItem.configure({ nested: true }),
       Placeholder.configure({ placeholder: 'Start writing...' }),
       Typography,
-      SmartEnter,
       EditorShortcuts,
     ],
-    content: '',
-    editorProps: {
+    []
+  );
+
+  const editorProps = useMemo(
+    () => ({
       attributes: {
-        class: `tiptap-editor${editorFontSize !== 12 ? ` font-size-${editorFontSize}` : ''}`,
-        style: `font-family: ${editorFontFamily}`,
+        class: 'tiptap-editor',
       },
-      transformCopied: (slice, view) => normalizeCopiedParagraphs(slice, view),
+      transformCopied: (slice: Slice, view: EditorView) => normalizeCopiedParagraphs(slice, view),
       transformPastedHTML: sanitizePastedHTML,
-    },
-    onSelectionUpdate: ({ editor: e }) => {
+    }),
+    []
+  );
+
+  const coreExtensionOptions = useMemo(
+    () => ({
+      clipboardTextSerializer: {
+        blockSeparator: '\n',
+      },
+    }),
+    []
+  );
+
+  const handleSelectionUpdate = useCallback(
+    ({ editor: e }: { editor: Editor }) => {
       const { from, to } = e.state.selection;
       if (from !== to) {
         const text = e.state.doc.textBetween(from, to, ' ');
+        const current = useUIStore.getState().selectedText;
+        if (current?.text === text && current.from === from && current.to === to) return;
         setSelectedText({ text, from, to });
       } else {
+        if (useUIStore.getState().selectedText === null) return;
         setSelectedText(null);
       }
     },
+    [setSelectedText]
+  );
+
+  const editor = useEditor({
+    coreExtensionOptions,
+    extensions,
+    content: '',
+    editorProps,
+    onSelectionUpdate: handleSelectionUpdate,
+    shouldRerenderOnTransaction: false,
   });
 
   useEffect(() => {
@@ -223,7 +230,7 @@ export function TipTapEditor({ documentId, initialContent, onEditorReady, editab
 
   useEffect(() => {
     if (!editor) return;
-    const el = editor.options.element as HTMLElement;
+    const el = editor.view.dom as HTMLElement;
     el.style.fontFamily = editorFontFamily;
     el.classList.remove('font-size-14', 'font-size-16');
     if (editorFontSize !== 12) el.classList.add(`font-size-${editorFontSize}`);
@@ -235,45 +242,60 @@ export function TipTapEditor({ documentId, initialContent, onEditorReady, editab
     }
   }, [editor, editorFontFamily, editorFontSize]);
 
-  // Load content when document changes, preserving full editor state (including
-  // undo/redo history) per document for the lifetime of the session.
+  // Load content when file changes, preserving full editor state (including
+  // undo/redo history) per file path for the lifetime of the session.
+  // Only reuse a cached EditorState when it belongs to THIS editor instance
+  // (same plugin object identity). States cached from a destroyed instance
+  // (e.g. after remount) must not be passed to updateState — that leaves the
+  // new view unable to render subsequent setContent calls.
   useEffect(() => {
     if (!editor) return;
     try {
-      const prevId = previousDocumentIdRef.current;
-      if (prevId && prevId !== documentId) {
+      const prevId = previousFileIdRef.current;
+      if (prevId && prevId !== fileId) {
         editorStateCache.set(prevId, editor.state);
       }
 
-      const cached = documentId ? editorStateCache.get(documentId) : undefined;
+      const cached = fileId ? editorStateCache.get(fileId) : undefined;
       if (cached) {
-        editor.view.updateState(cached);
+        const livePlugins = editor.state.plugins;
+        const samePlugins =
+          cached.plugins.length === livePlugins.length &&
+          cached.plugins.every((plugin, i) => plugin === livePlugins[i]);
+        if (samePlugins) {
+          editor.view.updateState(cached);
+        } else {
+          editor.commands.setContent(cached.doc.toJSON(), { emitUpdate: false });
+          editorStateCache.delete(fileId!);
+        }
       } else {
         const parsed = initialContent ? JSON.parse(initialContent) : null;
+        // TipTap v3 emits updates from setContent/clearContent by default.
+        // Suppress them on load so useAutoSave does not mark a clean file dirty.
         if (parsed) {
-          editor.commands.setContent(parsed);
+          editor.commands.setContent(parsed, { emitUpdate: false });
         } else {
-          editor.commands.clearContent();
+          editor.commands.clearContent(false);
         }
       }
-      previousDocumentIdRef.current = documentId;
+      previousFileIdRef.current = fileId;
     } catch {
-      editor.commands.clearContent();
+      editor.commands.clearContent(false);
     }
-  }, [editor, documentId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [editor, fileId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Save the current document's editor state when the editor unmounts (e.g.
+  // Save the current file's editor state when the editor unmounts (e.g.
   // switching to Settings/CRM/Task mode) so undo/redo survives those trips too.
   useEffect(() => {
     return () => {
-      const currentId = previousDocumentIdRef.current;
+      const currentId = previousFileIdRef.current;
       if (currentId && editor) {
         editorStateCache.set(currentId, editor.state);
       }
     };
   }, [editor]);
 
-  useAutoSave(editor ?? null, documentId);
+  useAutoSave(editor ?? null, workspaceId);
 
   const showTitleInput = false; // toggle to true to re-enable the h1 title field
 

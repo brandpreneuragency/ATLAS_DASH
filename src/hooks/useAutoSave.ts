@@ -1,34 +1,26 @@
 import { useEffect, useRef } from 'react';
 import type { Editor } from '@tiptap/react';
-import { useDocumentStore } from '../stores/documentStore';
+import { useWorkspaceStore } from '../stores/workspaceStore';
 
-export function useAutoSave(editor: Editor | null, documentId: string | null) {
-  const updateDocument = useDocumentStore((s) => s.updateDocument);
-  const documents = useDocumentStore((s) => s.documents);
+export function useAutoSave(
+  editor: Editor | null,
+  workspaceId: string | null,
+) {
+  const updateFileContent = useWorkspaceStore((s) => s.updateFileContent);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const suppressNextSaveRef = useRef(false);
-
-  // Suppress the first save after content is loaded into the editor
-  useEffect(() => {
-    suppressNextSaveRef.current = true;
-  }, [documentId]);
 
   useEffect(() => {
-    if (!editor || !documentId) return;
+    if (!editor || !workspaceId) return;
 
     const handleUpdate = () => {
-      if (suppressNextSaveRef.current) {
-        suppressNextSaveRef.current = false;
-        return;
-      }
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
-        const editorJson = editor.getJSON();
-        const json = JSON.stringify(editorJson);
-        const doc = documents.find((d) => d.id === documentId);
-        const updates: Parameters<typeof updateDocument>[1] = { content: json };
-        if (doc?.sourcePath) updates.isDirty = true;
-        updateDocument(documentId, updates);
+        const json = JSON.stringify(editor.getJSON());
+        const ws = useWorkspaceStore.getState().workspaces.find((w) => w.id === workspaceId);
+        const file = ws?.currentFile;
+        // Skip if content is unchanged — avoids false dirty from non-edit updates
+        if (!file || file.content === json) return;
+        updateFileContent(workspaceId, json, true);
       }, 300);
     };
 
@@ -37,5 +29,5 @@ export function useAutoSave(editor: Editor | null, documentId: string | null) {
       editor.off('update', handleUpdate);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [editor, documentId, updateDocument, documents]);
+  }, [editor, workspaceId, updateFileContent]);
 }

@@ -54,7 +54,7 @@ function StyleBtn({
       onClick={onClick}
       title={title}
       className={`tbar-btn${active ? ' tbar-btn--on' : ''}`}
-      style={{ fontFamily: 'var(--c-font-1)', fontSize: 'var(--fs-xs)', fontWeight: 500 }}
+      style={{ fontFamily: 'var(--c-font-1)', fontSize: 'var(--fs-base)', fontWeight: 500, paddingLeft: 0, paddingRight: 0 }}
     >
       {label}
     </button>
@@ -368,7 +368,7 @@ export function SelectionToolbar({ editor, editorScrollRef }: SelectionToolbarPr
           title="Text color"
         >
           <span style={{ position: 'relative', display: 'inline-block', width: 13, height: 13, lineHeight: 1 }}>
-            <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--font-fluid-12)', fontWeight: 700 }}>A</span>
+            <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--fs-sm)', fontWeight: 700 }}>A</span>
             <span style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2.5, background: currentColor ?? 'var(--c-text-2)', borderRadius: 1 }} />
           </span>
         </ToolBtn>

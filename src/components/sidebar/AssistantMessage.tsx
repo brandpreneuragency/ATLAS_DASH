@@ -17,18 +17,22 @@ interface AssistantMessageProps {
 }
 
 // ---------------------------------------------------------------------------
-// Thinking-tag parser: splits 꽁...ground from the actual answer
+// Thinking-tag parser: splits <think>...</think> from the actual answer.
+// While the model is still streaming the reasoning phase the closing tag has
+// not arrived yet, so we return the partial reasoning with thinkingDone=false.
 // ---------------------------------------------------------------------------
+const THINK_CLOSE = '</think>';
+
 function parseThinking(raw: string) {
-  const openMatch = raw.match(/^[\s]*꽁/);
+  const openMatch = raw.match(/^\s*<think>/i);
   if (!openMatch) return { thinking: null, thinkingDone: true, content: raw };
   const afterOpen = raw.slice(openMatch[0].length);
-  const closeIdx = afterOpen.indexOf('ground');
+  const closeIdx = afterOpen.toLowerCase().indexOf(THINK_CLOSE);
   if (closeIdx === -1) return { thinking: afterOpen, thinkingDone: false, content: '' };
   return {
     thinking: afterOpen.slice(0, closeIdx).trim(),
     thinkingDone: true,
-    content: afterOpen.slice(closeIdx + 8).trim(),
+    content: afterOpen.slice(closeIdx + THINK_CLOSE.length).trim(),
   };
 }
 
@@ -69,21 +73,21 @@ function splitAtH3(md: string): Part[] {
 // Shared markdown renderer
 // ---------------------------------------------------------------------------
 const mdStyles = {
-  p: { marginBottom: 12, fontSize: 'var(--fs-xs)', color: 'var(--c-text-1)', lineHeight: 1.625 },
-  h1: { fontSize: 'var(--fs-sm)', fontWeight: 700, marginBottom: 14, color: 'var(--c-text-1)' },
-  h2: { fontSize: 'var(--fs-xs)', fontWeight: 700, marginBottom: 13, color: 'var(--c-text-1)' },
-  h3: { fontSize: 'var(--fs-xs)', fontWeight: 600, marginBottom: 12, color: 'var(--c-text-1)' },
-  h4: { fontSize: 'var(--fs-xs)', fontWeight: 600, marginBottom: 12, color: 'var(--c-text-2)' },
-  ul: { listStyle: 'disc', paddingLeft: 16, marginBottom: 8, fontSize: 'var(--fs-xs)', color: 'var(--c-text-1)' },
-  ol: { listStyle: 'decimal', paddingLeft: 16, marginBottom: 8, fontSize: 'var(--fs-xs)', color: 'var(--c-text-1)' },
+  p: { marginBottom: 12, fontSize: 'var(--fs-base)', color: 'var(--c-text-1)', lineHeight: 1.625 },
+  h1: { fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 14, color: 'var(--c-text-1)' },
+  h2: { fontSize: 'var(--fs-base)', fontWeight: 700, marginBottom: 13, color: 'var(--c-text-1)' },
+  h3: { fontSize: 'var(--fs-base)', fontWeight: 600, marginBottom: 12, color: 'var(--c-text-1)' },
+  h4: { fontSize: 'var(--fs-base)', fontWeight: 600, marginBottom: 12, color: 'var(--c-text-2)' },
+  ul: { listStyle: 'disc', paddingLeft: 16, marginBottom: 8, fontSize: 'var(--fs-base)', color: 'var(--c-text-1)' },
+  ol: { listStyle: 'decimal', paddingLeft: 16, marginBottom: 8, fontSize: 'var(--fs-base)', color: 'var(--c-text-1)' },
   li: { lineHeight: 1.625 },
   strong: { fontWeight: 600, color: 'var(--c-text-1)' },
   em: { fontStyle: 'italic' },
-  blockquote: { borderLeft: '2px solid var(--c-border-1)', paddingLeft: 12, fontStyle: 'italic', color: 'var(--c-text-2)', marginBottom: 8, fontSize: 'var(--fs-xs)' },
-  pre: { background: '#111827', color: '#f3f4f6', borderRadius: 8, padding: 12, overflowX: 'auto', fontSize: 'var(--fs-xs)', fontFamily: 'var(--c-font-1)', marginBottom: 8, lineHeight: 1.625, whiteSpace: 'pre' },
-  inlineCode: { background: 'var(--c-background-4)', borderRadius: 4, padding: '1px 4px', fontSize: 'var(--fs-xs)', fontFamily: 'var(--c-font-1)', color: '#e11d48' },
-  codeBlock: { fontFamily: 'var(--c-font-1)', fontSize: 'var(--fs-xs)' },
-  table: { width: '100%', fontSize: 'var(--fs-xs)', borderCollapse: 'collapse' as const },
+  blockquote: { borderLeft: '2px solid var(--c-border-1)', paddingLeft: 12, fontStyle: 'italic', color: 'var(--c-text-2)', marginBottom: 8, fontSize: 'var(--fs-base)' },
+  pre: { background: '#111827', color: '#f3f4f6', borderRadius: 8, padding: 12, overflowX: 'auto', fontSize: 'var(--fs-base)', fontFamily: 'var(--c-font-1)', marginBottom: 8, lineHeight: 1.625, whiteSpace: 'pre' },
+  inlineCode: { background: 'var(--c-background-4)', borderRadius: 4, padding: '1px 4px', fontSize: 'var(--fs-base)', fontFamily: 'var(--c-font-1)', color: '#e11d48' },
+  codeBlock: { fontFamily: 'var(--c-font-1)', fontSize: 'var(--fs-base)' },
+  table: { width: '100%', fontSize: 'var(--fs-base)', borderCollapse: 'collapse' as const },
   thead: { background: 'var(--c-background-4)' },
   th: { border: '1px solid var(--c-border-1)', padding: '6px 12px', textAlign: 'left' as const, fontWeight: 600, color: 'var(--c-text-1)' },
   td: { border: '1px solid var(--c-border-1)', padding: '6px 12px', color: 'var(--c-text-1)' },
@@ -144,7 +148,7 @@ function MdContent({ children }: { children: string }) {
 function ReasoningBox({ content, streaming }: { content: string; streaming: boolean }) {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{ marginBottom: 8, borderRadius: 12, border: '1px solid var(--c-border-1)', background: 'var(--c-background-4)', overflow: 'hidden', fontSize: 'var(--fs-xs)' }}>
+    <div style={{ marginBottom: 8, borderRadius: 12, border: '1px solid var(--c-border-1)', background: 'var(--c-background-4)', overflow: 'hidden', fontSize: 'var(--fs-base)' }}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -182,7 +186,7 @@ function SectionBlock({ heading, content, defaultOpen }: { heading: string; cont
           size={13}
           className="shrink-0" style={{ color: 'var(--c-info)', transition: 'transform 0.2s', transform: open ? 'rotate(90deg)' : undefined }}
         />
-        <span className="semibold" style={{ fontSize: 'var(--fs-xs)', color: 'var(--c-text-1)' }}>{heading}</span>
+        <span className="semibold" style={{ fontSize: 'var(--fs-base)', color: 'var(--c-text-1)' }}>{heading}</span>
       </button>
       {open && content && (
         <div style={{ padding: '4px 12px 12px 12px', borderTop: '1px solid var(--c-border-1)' }}>
@@ -249,7 +253,7 @@ export function AssistantMessage({ message, isStreaming, editor, onReplyMessage 
             background: 'var(--c-background-4)',
             borderRadius: 8,
             padding: '6px 10px',
-            fontSize: 'var(--fs-sm)',
+            fontSize: 'var(--fs-base)',
             border: '1px solid var(--c-border-1)',
             maxWidth: '80%',
             cursor: 'pointer',
@@ -257,10 +261,10 @@ export function AssistantMessage({ message, isStreaming, editor, onReplyMessage 
         >
           <div style={{ width: 3, borderRadius: 2, background: 'var(--c-accent-center-panel)', flexShrink: 0 }} />
           <div style={{ overflow: 'hidden', minWidth: 0 }}>
-            <div className="semibold" style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-accent-center-panel)', marginBottom: 2 }}>
+            <div className="semibold" style={{ fontSize: 'var(--fs-base)', color: 'var(--c-accent-center-panel)', marginBottom: 2 }}>
               {message.replyTo.sender}
             </div>
-            <div className="subtle trunc" style={{ fontSize: 'var(--fs-sm)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div className="subtle trunc" style={{ fontSize: 'var(--fs-base)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {message.replyTo.content}
             </div>
           </div>
@@ -274,16 +278,25 @@ export function AssistantMessage({ message, isStreaming, editor, onReplyMessage 
 
       {/* Content */}
       <div onContextMenu={handleContextMenu} style={{ padding: '4px 0', wordBreak: 'break-word', overflow: 'hidden', cursor: 'context-menu' }}>
-        {/* Still inside 꽁 block — show spinner/placeholder */}
+        {/* Still inside the <think> block — show spinner/placeholder */}
         {isStreaming && !content && (
-          <p className={thinking ? undefined : 'streaming-cursor'} style={{ fontSize: 'var(--fs-xs)', color: 'var(--c-text-2)', opacity: thinking ? 0.5 : undefined }}>
+          <p className={thinking ? undefined : 'streaming-cursor'} style={{ fontSize: 'var(--fs-base)', color: 'var(--c-text-2)', opacity: thinking ? 0.5 : undefined }}>
             {thinking ? 'Thinking…' : ''}
           </p>
         )}
 
-        {/* Rendered content */}
+        {/* Rendered answer — boxed so reasoning and output read as two
+            distinct blocks (see collapsible ReasoningBox above). */}
         {content && (
-          <div className={isStreaming && !hasSections ? 'streaming-cursor' : ''}>
+          <div
+            className={isStreaming && !hasSections ? 'streaming-cursor' : ''}
+            style={{
+              border: '1px solid var(--c-border-1)',
+              borderRadius: 12,
+              background: 'var(--c-background-2)',
+              padding: '12px 14px',
+            }}
+          >
             {hasSections ? (
               <>
                 {parts.map((part, i) =>
@@ -338,7 +351,7 @@ export function AssistantMessage({ message, isStreaming, editor, onReplyMessage 
         )}
       </div>
 
-      <div className="subtle" style={{ fontSize: 'var(--fs-xs)', paddingLeft: 4 }}>
+      <div className="subtle" style={{ fontSize: 'var(--fs-base)', paddingLeft: 4 }}>
         {formatRelativeTime(message.timestamp)}
       </div>
 

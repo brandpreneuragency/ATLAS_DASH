@@ -17,19 +17,25 @@ export function ChatBubbleContextMenu({
   onClose,
 }: ChatBubbleContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
+        onCloseRef.current();
       }
     };
-    const id = setTimeout(() => document.addEventListener('mousedown', handler), 50);
-    return () => {
-      clearTimeout(id);
-      document.removeEventListener('mousedown', handler);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCloseRef.current();
     };
-  }, [onClose]);
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, []);
 
   const vw = window.innerWidth;
   const vh = window.innerHeight;

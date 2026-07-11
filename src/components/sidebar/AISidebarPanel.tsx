@@ -5,19 +5,19 @@ import { AISidebar } from './AISidebar';
 import type { Editor } from '@tiptap/react';
 
 interface AISidebarPanelProps {
-  documentId: string | null;
+  workspaceId: string | null;
   taskId?: string | null;
   editor: Editor | null;
   width?: string;
 }
 
 export function AISidebarPanel({
-  documentId,
+  workspaceId,
   taskId,
   editor,
   width = 'var(--right-panel-width)',
 }: AISidebarPanelProps) {
-  if (!documentId && !taskId) return null;
+  if (!workspaceId && !taskId) return null;
 
   return (
     <div
@@ -50,7 +50,7 @@ export function AISidebarPanel({
           border: '0px rgba(0, 0, 0, 0)',
         } as React.CSSProperties}
       >
-        <AISidebar documentId={documentId} taskId={taskId} editor={editor} />
+        <AISidebar workspaceId={workspaceId} taskId={taskId} editor={editor} />
       </div>
     </div>
   );

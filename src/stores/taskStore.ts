@@ -7,6 +7,7 @@ import type { Task, TaskStatus } from '../types';
 import { TASK_TITLE_MAX_LENGTH } from '../types';
 import { db } from '../services/db';
 import * as fsAdapter from '../services/fs-adapter';
+import { isTauriRuntime } from '../services/runtime';
 import { useUIStore } from './uiStore';
 
 function showError(err: unknown, fallback: string): void {
@@ -48,6 +49,7 @@ interface TaskStore {
   getTasksByProject: (projectId: string | null) => Task[];
   getTasksByStatus: (status: TaskStatus) => Task[];
   getSubtasks: (parentId: string) => Task[];
+  reorderSubtasks: (parentId: string, orderedIds: string[]) => Promise<void>;
   getDeletedTasks: () => Task[];
   fetchDeletedTasks: () => Promise<Task[]>;
   getLastSubtaskDate: (parentId: string) => number | null;
@@ -65,7 +67,7 @@ function todayIso(): string {
 
 // Helper to sync task to markdown file
 async function syncTaskToFile(task: Task): Promise<void> {
-  if (!task.projectId) return;
+  if (!isTauriRuntime() || !task.projectId) return;
   
   const project = await db.projects.get(task.projectId);
   if (!project) return;
@@ -84,7 +86,7 @@ async function syncTaskToFile(task: Task): Promise<void> {
 
 // Helper to delete task markdown file
 async function deleteTaskFile(task: Task): Promise<void> {
-  if (!task.projectId) return;
+  if (!isTauriRuntime() || !task.projectId) return;
   
   const project = await db.projects.get(task.projectId);
   if (!project) return;
@@ -101,6 +103,7 @@ async function deleteTaskFile(task: Task): Promise<void> {
 
 // Helper to regenerate INDEX.md for a project
 async function regenerateProjectIndex(projectId: string): Promise<void> {
+  if (!isTauriRuntime()) return;
   const project = await db.projects.get(projectId);
   if (!project) return;
   
@@ -482,6 +485,23 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   },
 
   getSubtasks: (parentId) => get().tasks.filter((t) => t.parentId === parentId && !t.deletedAt),
+
+  reorderSubtasks: async (_parentId, orderedIds) => {
+    const now = Date.now();
+    const updates = orderedIds.map((id, index) => ({ id, order: index, updatedAt: now }));
+    // Optimistic local update.
+    set((s) => ({
+      tasks: s.tasks.map((t) => {
+        const u = updates.find((x) => x.id === t.id);
+        return u ? { ...t, order: u.order, updatedAt: u.updatedAt } : t;
+      }),
+    }));
+    try {
+      await Promise.all(updates.map((u) => db.tasks.update(u.id, { order: u.order })));
+    } catch (err) {
+      showError(err, 'Failed to reorder subtasks.');
+    }
+  },
 
   getDeletedTasks: () => {
     return [] as Task[]; // Sync placeholder — use fetchDeletedTasks() instead

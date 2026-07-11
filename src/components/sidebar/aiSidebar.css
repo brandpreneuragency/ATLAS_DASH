@@ -110,7 +110,7 @@
 
 /*CHAT INPUT*/
 #chat-input-card {
-  background: var(--c-background-2);
+  background: var(--c-background-3);
   border-radius: 8px;
   border: none;
   padding: 0;
@@ -141,7 +141,7 @@
   right: 0;
   width: 16px;
   height: 14px;
-  margin: 6px 6px 6px 12px;
+  margin: 8px 16px;
   cursor: ns-resize;
   display: flex;
   align-items: center;
@@ -290,5 +290,53 @@
 }
 :root .user-message-bubble {
   color: #fff;
+}
+
+/* File/folder attachment chips + drag-to-attach dropzone */
+.composer-dropzone {
+  transition: outline-color 0.12s ease, background-color 0.12s ease;
+}
+.composer-dropzone--active {
+  outline: 2px dashed var(--c-accent-2);
+  outline-offset: -4px;
+  background: var(--c-background-4);
+}
+.composer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 8px;
+  border-radius: 6px;
+  background: var(--c-background-4);
+  border: 1px solid var(--c-border-1);
+  font-size: var(--fs-xs);
+  max-width: 240px;
+}
+.composer-chip-icon {
+  flex-shrink: 0;
+  color: var(--c-accent-2);
+}
+.composer-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.composer-chip-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--c-text-1);
+  color: #fff;
+  flex-shrink: 0;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+.chat-mention-dropup {
+  z-index: 50;
 }
 

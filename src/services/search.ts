@@ -1,19 +1,111 @@
-import { invoke, isTauri } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api/core';
 import type { SearchConfig, SearchResult } from '../types';
+import { isTauriRuntime } from './runtime';
+import { runtimeFetch } from './http';
 
 export async function invokeWebSearch(
   query: string,
   config: Pick<SearchConfig, 'exaKey' | 'tavilyKey' | 'searchProvider'>,
 ): Promise<SearchResult[]> {
-  if (!isTauri()) throw new Error('Web search requires the TABS desktop app.');
-  return invoke<SearchResult[]>('search_web', {
-    args: {
+  if (isTauriRuntime()) {
+    return invoke<SearchResult[]>('search_web', {
+      args: {
+        query,
+        exaKey: config.exaKey,
+        tavilyKey: config.tavilyKey,
+        provider: config.searchProvider,
+      },
+    });
+  }
+  return searchInBrowser(query, config);
+}
+
+async function searchInBrowser(
+  query: string,
+  config: Pick<SearchConfig, 'exaKey' | 'tavilyKey' | 'searchProvider'>,
+): Promise<SearchResult[]> {
+  const q = query.trim();
+  if (!q) throw new Error('Search query is empty.');
+
+  const provider = (config.searchProvider ?? '').toLowerCase();
+  const chosen =
+    provider === 'exa' && config.exaKey
+      ? 'exa'
+      : provider === 'tavily' && config.tavilyKey
+        ? 'tavily'
+        : config.tavilyKey
+          ? 'tavily'
+          : config.exaKey
+            ? 'exa'
+            : null;
+
+  if (!chosen) {
+    throw new Error(
+      'No search API key configured. Add a Tavily or Exa key in Settings.',
+    );
+  }
+
+  if (chosen === 'tavily') return searchTavily(q, config.tavilyKey!);
+  return searchExa(q, config.exaKey!);
+}
+
+async function searchTavily(query: string, apiKey: string): Promise<SearchResult[]> {
+  const resp = await runtimeFetch('https://api.tavily.com/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      api_key: apiKey,
       query,
-      exaKey: config.exaKey,
-      tavilyKey: config.tavilyKey,
-      provider: config.searchProvider,
-    },
+      max_results: 5,
+      search_depth: 'basic',
+      include_answer: false,
+    }),
   });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(`Tavily returned ${resp.status}: ${text}`);
+  }
+  const data = (await resp.json()) as {
+    results?: Array<{ title?: string; url?: string; content?: string }>;
+  };
+  return (data.results ?? []).map((r) => ({
+    title: r.title ?? r.url ?? '',
+    url: r.url ?? '',
+    snippet: r.content ?? '',
+  }));
+}
+
+async function searchExa(query: string, apiKey: string): Promise<SearchResult[]> {
+  const resp = await runtimeFetch('https://api.exa.ai/search', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+    },
+    body: JSON.stringify({
+      query,
+      numResults: 5,
+      useAutoprompt: false,
+      contents: { text: { maxCharacters: 800 } },
+    }),
+  });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(`Exa returned ${resp.status}: ${text}`);
+  }
+  const data = (await resp.json()) as {
+    results?: Array<{
+      title?: string;
+      url?: string;
+      text?: string;
+      highlights?: string[];
+    }>;
+  };
+  return (data.results ?? []).map((r) => ({
+    title: r.title ?? r.url ?? '',
+    url: r.url ?? '',
+    snippet: r.highlights?.[0] ?? r.text ?? '',
+  }));
 }
 
 export function formatSearchResultsAsContext(results: SearchResult[]): string {

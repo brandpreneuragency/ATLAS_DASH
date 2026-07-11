@@ -1,19 +1,23 @@
 import Dexie, { type Table } from 'dexie';
-import type { Document, ChatMessage, Agent, AIProviderConfig, AppSettings, QuickPrompt, ActionGroup, Task, Project, TaskComment, TaskAIChangeBatch, ChatThreadMeta } from '../types';
+import type { Document, Workspace, ChatMessage, Agent, AIProviderConfig, AppSettings, QuickPrompt, ActionGroup, Task, Project, TaskComment, TaskAIChangeBatch, ChatThreadMeta } from '../types';
 
+/** @deprecated Removed in v12 — folders now live inside Workspace objects. */
 export interface FileHandleRecord {
   key: string;
   path: string;
 }
 
 class ZenEditorDB extends Dexie {
+  /** @deprecated Replaced by workspaces in v12. */
   documents!: Table<Document>;
+  workspaces!: Table<Workspace>;
   chatMessages!: Table<ChatMessage>;
   agents!: Table<Agent>;
   providerConfigs!: Table<AIProviderConfig>;
   settings!: Table<AppSettings>;
   quickPrompts!: Table<QuickPrompt>;
   actionGroups!: Table<ActionGroup>;
+  /** @deprecated Removed in v12 — folders live inside Workspace objects. */
   fileHandles!: Table<FileHandleRecord>;
   tasks!: Table<Task>;
   projects!: Table<Project>;
@@ -179,6 +183,30 @@ class ZenEditorDB extends Dexie {
       taskComments: 'id, taskId, createdAt',
       taskAIChangeBatches: 'id, taskId, createdAt, expiresAt',
       chatThreads: 'id, mode, updatedAt, documentId, taskId, settingsTab',
+    });
+    // v12: Workspace pivot — tabs become workspaces with isolated folders.
+    // Drops `documents` and `fileHandles` tables, adds `workspaces` table,
+    // and swaps `documentId` indexes for `workspaceId` on chat tables.
+    // Start-fresh strategy: old chat data is cleared.
+    this.version(12).stores({
+      documents: null, // drop table
+      fileHandles: null, // drop table
+      workspaces: 'id, name, updatedAt, order',
+      chatMessages: 'id, threadId, mode, agentId, timestamp, settingsTab, workspaceId',
+      chatThreads: 'id, mode, updatedAt, workspaceId, taskId, settingsTab',
+      agents: 'id, name, isDefault, scope',
+      providerConfigs: 'id, provider, isActive',
+      settings: 'key',
+      quickPrompts: 'id, createdAt, scope, groupId, order',
+      actionGroups: 'id, scope, order',
+      tasks: 'id, title, updatedAt, order, projectId, status, parentId',
+      projects: 'id, name',
+      taskComments: 'id, taskId, createdAt',
+      taskAIChangeBatches: 'id, taskId, createdAt, expiresAt',
+    }).upgrade(async (tx) => {
+      // Start fresh: clear old chat data (user chose this migration strategy)
+      await tx.table('chatThreads').clear();
+      await tx.table('chatMessages').clear();
     });
   }
 }

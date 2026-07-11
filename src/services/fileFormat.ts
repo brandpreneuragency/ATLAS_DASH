@@ -1,6 +1,6 @@
 import { serializeMdString } from './export';
 
-export const SUPPORTED_EXTENSIONS = ['md', 'markdown', 'txt', 'json', 'mjs', 'cjs', 'js', 'ts', 'tsx', 'jsx', 'env', 'local', 'gitignore', 'yaml', 'yml', 'toml', 'html', 'htm', 'css', 'scss', 'xml', 'csv'];
+export const SUPPORTED_EXTENSIONS = ['md', 'markdown', 'txt', 'doc', 'json', 'mjs', 'cjs', 'js', 'ts', 'tsx', 'jsx', 'env', 'local', 'gitignore', 'yaml', 'yml', 'toml', 'html', 'htm', 'css', 'scss', 'xml', 'csv'];
 
 export const TEXT_AS_IS_EXTENSIONS = new Set(['mjs', 'cjs', 'js', 'ts', 'tsx', 'jsx', 'env', 'local', 'gitignore', 'yaml', 'yml', 'toml', 'html', 'htm', 'css', 'scss', 'xml', 'csv']);
 
@@ -113,7 +113,7 @@ export function parseJson(text: string): object {
 
 export function parseByExt(text: string, ext: string): object {
   if (ext === 'md' || ext === 'markdown') return parseMarkdown(text);
-  if (ext === 'txt') return parseTxt(text);
+  if (ext === 'txt' || ext === 'doc') return parseTxt(text);
   if (ext === 'json') {
     try { return parseJson(text); } catch { return parseTxt(text); }
   }
@@ -123,7 +123,7 @@ export function parseByExt(text: string, ext: string): object {
 
 export function serialize(json: object, ext: string): string {
   if (ext === 'md' || ext === 'markdown') return serializeMdString(JSON.stringify(json));
-  if (ext === 'txt') {
+  if (ext === 'txt' || ext === 'doc') {
     const doc = json as any;
     return (doc.content ?? [])
       .map((n: any) => (n.content ?? []).map((c: any) => c.text ?? '').join(''))

@@ -4,7 +4,6 @@ import { ActionsSection } from './ActionsSection';
 import { AppearanceSection } from './AppearanceSection';
 import { AgentsSection } from './AgentsSection';
 import { ToolsSection } from './ToolsSection';
-import { SettingsAISidebar } from './SettingsAISidebar';
 import './settings.css';
 
 export function SettingsDocument() {
@@ -14,39 +13,19 @@ export function SettingsDocument() {
     <div className="settings-document">
       <div className="settings-document-body">
         {activeSettingsSubTab === 'models' && (
-          <ModelsSection
-            rightHeader={<SettingsAISidebar.Header tab="models" />}
-            rightMain={<SettingsAISidebar.Body tab="models" />}
-            rightFooter={<SettingsAISidebar.Footer tab="models" />}
-          />
+          <ModelsSection />
         )}
         {activeSettingsSubTab === 'actions' && (
-          <ActionsSection
-            rightHeader={<SettingsAISidebar.Header tab="actions" />}
-            rightMain={<SettingsAISidebar.Body tab="actions" />}
-            rightFooter={<SettingsAISidebar.Footer tab="actions" />}
-          />
+          <ActionsSection />
         )}
         {activeSettingsSubTab === 'appearance' && (
-          <AppearanceSection
-            rightHeader={<SettingsAISidebar.Header tab="appearance" />}
-            rightMain={<SettingsAISidebar.Body tab="appearance" />}
-            rightFooter={<SettingsAISidebar.Footer tab="appearance" />}
-          />
+          <AppearanceSection />
         )}
         {activeSettingsSubTab === 'agents' && (
-          <AgentsSection
-            rightHeader={<SettingsAISidebar.Header tab="agents" />}
-            rightMain={<SettingsAISidebar.Body tab="agents" />}
-            rightFooter={<SettingsAISidebar.Footer tab="agents" />}
-          />
+          <AgentsSection />
         )}
         {activeSettingsSubTab === 'tools' && (
-          <ToolsSection
-            rightHeader={<SettingsAISidebar.Header tab="tools" />}
-            rightMain={<SettingsAISidebar.Body tab="tools" />}
-            rightFooter={<SettingsAISidebar.Footer tab="tools" />}
-          />
+          <ToolsSection />
         )}
       </div>
     </div>

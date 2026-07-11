@@ -9,13 +9,13 @@ export function LeftResizableHandle() {
       onMouseDown={onMouseDown}
       className="resize-handle shrink-0 relative workspace-handle"
       style={{
-        minWidth: 1,
+        minWidth: 6,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'col-resize',
         userSelect: 'none',
-        backgroundColor: 'var(--c-border-1)',
+        backgroundColor: 'var(--c-background-1)',
         height: '100%',
         zIndex: 1,
       }}

@@ -37,7 +37,7 @@ export type DocActiveView = 'document' | 'settings';
 
 interface UIStore {
   sidebarOpen: boolean;
-  sidebarWidth: number; // vw 15-40
+  sidebarWidth: number; // vw 15-75
   sidebarTab: SidebarTab;
   selectedText: SelectionState | null;
   activeModal:
@@ -87,8 +87,6 @@ interface UIStore {
   /** Active sub-tab inside the Settings document. */
   activeSettingsSubTab: SettingsSubTab;
 
-  splitEditorWidth: number;
-
   /** Panels swapped state (AI panel on left, center panel on right) */
   panelsSwapped: boolean;
 
@@ -106,6 +104,10 @@ interface UIStore {
   centerPanelOpen: boolean;
   contextWindowOpen: boolean;
   contextWindowCollapsed: boolean;
+
+  /** Terminal panel (bottom, VS Code-style) visibility + height. */
+  terminalPanelOpen: boolean;
+  terminalPanelHeight: number;
 
   toasts: Toast[];
   showToast: (message: string, type?: Toast['type']) => void;
@@ -142,7 +144,6 @@ interface UIStore {
   setActiveTaskId: (id: string | null) => void;
   setTaskListOpen: (v: boolean) => void;
   setSubtasksOpen: (v: boolean) => void;
-  setSplitEditorWidth: (w: number) => void;
   setPanelsSwapped: (v: boolean) => void;
   setTheme: (theme: Theme) => void;
   openFileViewer: (file: FileViewerItem) => void;
@@ -154,6 +155,8 @@ interface UIStore {
   toggleRightPanel: () => void;
   setContextWindowOpen: (v: boolean) => void;
   setContextWindowCollapsed: (v: boolean) => void;
+  setTerminalPanelOpen: (v: boolean) => void;
+  setTerminalPanelHeight: (h: number) => void;
   loadUISettings: () => Promise<void>;
 }
 
@@ -229,7 +232,6 @@ export const useUIStore = create<UIStore>((set, get) => ({
   activeTaskPage: 'list',
   activeView: 'document',
   activeSettingsSubTab: 'models',
-  splitEditorWidth: 30,
 
   panelsSwapped: false,
 
@@ -245,13 +247,16 @@ export const useUIStore = create<UIStore>((set, get) => ({
   contextWindowOpen: false,
   contextWindowCollapsed: true,
 
+  terminalPanelOpen: false,
+  terminalPanelHeight: 240,
+
   setSidebarOpen: (v) => {
     set({ sidebarOpen: v });
     db.settings.put({ key: 'sidebarOpen', value: v });
   },
 
   setSidebarWidth: (w) => {
-    const clamped = Math.min(40, Math.max(15, w));
+    const clamped = Math.min(75, Math.max(15, w));
     set({ sidebarWidth: clamped });
     db.settings.put({ key: 'sidebarWidth', value: clamped });
   },
@@ -381,12 +386,6 @@ export const useUIStore = create<UIStore>((set, get) => ({
 
   setSubtasksOpen: (v) => set({ subtasksOpen: v }),
 
-  setSplitEditorWidth: (w) => {
-    const clamped = Math.min(50, Math.max(20, w));
-    set({ splitEditorWidth: clamped });
-    db.settings.put({ key: 'splitEditorWidth', value: clamped });
-  },
-
   setPanelsSwapped: (v: boolean) => {
     if (!selectCanSwapPanels(get())) return;
     set({ panelsSwapped: v });
@@ -468,6 +467,16 @@ export const useUIStore = create<UIStore>((set, get) => ({
     db.settings.put({ key: 'contextWindowCollapsed', value: v });
   },
 
+  setTerminalPanelOpen: (v) => {
+    set({ terminalPanelOpen: v });
+    db.settings.put({ key: 'terminalPanelOpen', value: v });
+  },
+  setTerminalPanelHeight: (h) => {
+    const clamped = Math.min(window.innerHeight * 0.7, Math.max(120, h));
+    set({ terminalPanelHeight: clamped });
+    db.settings.put({ key: 'terminalPanelHeight', value: clamped });
+  },
+
   loadUISettings: async () => {
     const sidebarOpen = await db.settings.get('sidebarOpen');
     const sidebarWidth = await db.settings.get('sidebarWidth');
@@ -481,12 +490,13 @@ export const useUIStore = create<UIStore>((set, get) => ({
     const taskMode = await db.settings.get('taskMode');
     const lastActiveTaskId = await db.settings.get('lastActiveTaskId');
     const taskListOpen = await db.settings.get('taskListOpen');
-    const splitEditorWidth = await db.settings.get('splitEditorWidth');
     const panelsSwapped = await db.settings.get('panelsSwapped');
     const aiSidebarOpen = await db.settings.get('aiSidebarOpen');
     const centerPanelOpen = await db.settings.get('centerPanelOpen');
     const themeSetting = await db.settings.get('theme');
     const contextWindowCollapsed = await db.settings.get('contextWindowCollapsed');
+    const terminalPanelOpen = await db.settings.get('terminalPanelOpen');
+    const terminalPanelHeight = await db.settings.get('terminalPanelHeight');
     const crmModeSetting = await db.settings.get('crmMode');
     const formsModeSetting = await db.settings.get('formsMode');
     const activeCRMPageSetting = await db.settings.get('activeCRMPage');
@@ -538,7 +548,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
 
     set({
       sidebarOpen: sidebarOpen ? Boolean(sidebarOpen.value) : true,
-      sidebarWidth: Math.min(40, Math.max(15, sidebarWidth ? Number(sidebarWidth.value) : 25)),
+      sidebarWidth: Math.min(75, Math.max(15, sidebarWidth ? Number(sidebarWidth.value) : 25)),
       sidebarTab: (sidebarTab ? String(sidebarTab.value) : 'chat') as SidebarTab,
       fileExplorerOpen: fileExplorerOpen ? Boolean(fileExplorerOpen.value) : false,
       fileExplorerWidth: Math.min(40, Math.max(15, fileExplorerWidth ? Number(fileExplorerWidth.value) : 20)),
@@ -549,13 +559,14 @@ export const useUIStore = create<UIStore>((set, get) => ({
       taskMode: taskModeValue,
       activeTaskId: lastActiveTaskId ? String(lastActiveTaskId.value) : null,
       taskListOpen: taskListOpen ? Boolean(taskListOpen.value) : true,
-      splitEditorWidth: splitEditorWidth ? Number(splitEditorWidth.value) : 30,
       panelsSwapped: panelsSwapped ? Boolean(panelsSwapped.value) : false,
       theme,
       aiSidebarOpen: aiSidebarOpen ? Boolean(aiSidebarOpen.value) : true,
       centerPanelOpen: centerPanelOpen ? Boolean(centerPanelOpen.value) : true,
       contextWindowOpen: false,
       contextWindowCollapsed: contextWindowCollapsed ? Boolean(contextWindowCollapsed.value) : true,
+      terminalPanelOpen: terminalPanelOpen ? Boolean(terminalPanelOpen.value) : false,
+      terminalPanelHeight: terminalPanelHeight ? Number(terminalPanelHeight.value) : 240,
       crmMode,
       activeCRMPage,
       activeFormsPage,

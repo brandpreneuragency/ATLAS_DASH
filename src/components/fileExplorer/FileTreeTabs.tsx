@@ -1,12 +1,14 @@
-import { Plus, Monitor, ChevronDown } from 'lucide-react';
+import { Plus, ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useFileSystemStore } from '../../stores/fileSystemStore';
+import { useWorkspaceStore } from '../../stores/workspaceStore';
 
 export function FileTreeTabs() {
   const { t } = useTranslation();
-  const { connectedFolders, activeFolderId, setActiveFolderId, openFolder, folderCapability } = useFileSystemStore();
-  const nativeAvailable = folderCapability === 'available';
+  const {
+    activeWorkspaceId,
+    connectFolderInWorkspace,
+  } = useWorkspaceStore();
 
   return (
     <div
@@ -30,47 +32,15 @@ export function FileTreeTabs() {
         borderBottom: 'none',
       }}
     >
-      {nativeAvailable ? (
-        <button
-          type="button"
-          onClick={openFolder}
-          title={t('explorer.openFolder')}
-          className="tbar-btn"
-        >
-          <Plus size={14} />
-        </button>
-      ) : (
-        <span
-          title={t('explorer.desktopRequired')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            fontSize: 'var(--fs-xs)',
-            color: 'var(--c-text-2)',
-            padding: '0 4px',
-            cursor: 'default',
-          }}
-        >
-          <Monitor size={13} />
-        </span>
-      )}
-      {nativeAvailable ? (
-        <FolderDropdown />
-      ) : (
-        <span
-          style={{
-            fontSize: 'var(--fs-xs)',
-            color: 'var(--c-text-2)',
-            padding: '0 4px',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {t('explorer.desktopRequired')}
-        </span>
-      )}
+      <button
+        type="button"
+        onClick={() => { if (activeWorkspaceId) void connectFolderInWorkspace(activeWorkspaceId); }}
+        title={t('explorer.openFolder')}
+        className="tbar-btn"
+      >
+        <Plus size={14} />
+      </button>
+      <FolderDropdown />
     </div>
   );
 }
@@ -84,7 +54,14 @@ export function FileTreeTabs() {
  */
 function FolderDropdown() {
   const { t } = useTranslation();
-  const { connectedFolders, activeFolderId, setActiveFolderId } = useFileSystemStore();
+  const {
+    activeWorkspaceId,
+    getActiveConnectedFolders,
+    getActiveFolderId,
+    setActiveFolderInWorkspace,
+  } = useWorkspaceStore();
+  const connectedFolders = getActiveConnectedFolders();
+  const activeFolderId = getActiveFolderId();
   const [open, setOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState<number>(-1);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -115,7 +92,7 @@ function FolderDropdown() {
   }, [open, activeFolderId, connectedFolders]);
 
   const select = (id: string) => {
-    setActiveFolderId(id);
+    if (activeWorkspaceId) setActiveFolderInWorkspace(activeWorkspaceId, id);
     setOpen(false);
     triggerRef.current?.focus();
   };

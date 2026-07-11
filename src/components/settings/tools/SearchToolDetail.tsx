@@ -95,7 +95,7 @@ export function SearchToolDetail({ providerId }: SearchToolDetailProps) {
       <div className="col gap-3">
         <div className="col gap-1">
           <div className="label-sm">{t(meta.keyLabelKey)}</div>
-          <p className="subtle" style={{ fontSize: 'var(--fs-xs)', margin: 0 }}>
+          <p className="subtle" style={{ fontSize: 'var(--fs-base)', margin: 0 }}>
             {t(meta.keyHintKey)}
           </p>
         </div>
@@ -106,7 +106,7 @@ export function SearchToolDetail({ providerId }: SearchToolDetailProps) {
             onChange={(e) => { setDraftKey(e.target.value); setSaved(false); }}
             placeholder={meta.placeholder}
             className="ctrl ctrl--mono flex-1"
-            style={{ fontSize: 'var(--fs-xs)', backgroundColor: 'rgba(194, 194, 194, 0)' }}
+            style={{ fontSize: 'var(--fs-base)', backgroundColor: 'rgba(194, 194, 194, 0)' }}
           />
           <button type="button" onClick={() => setShowKey((v) => !v)} className="btn-icon">
             {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -139,7 +139,7 @@ export function SearchToolDetail({ providerId }: SearchToolDetailProps) {
           className="row gap-2"
           style={{ alignItems: 'center', justifyContent: 'space-between' }}
         >
-          <span className="subtle" style={{ fontSize: 'var(--fs-xs)' }}>
+          <span className="subtle" style={{ fontSize: 'var(--fs-base)' }}>
             {isEnabled ? t('settings.enabled') : t('settings.disabled')}
           </span>
           <button

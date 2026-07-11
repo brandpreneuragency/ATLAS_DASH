@@ -1,3 +1,4 @@
+/** @deprecated Replaced by Workspace. Kept temporarily for migration. */
 export interface Document {
   id: string;
   title: string;
@@ -7,20 +8,73 @@ export interface Document {
   order: number;
   sourcePath?: string;
   isDirty?: boolean;
-  splitEditorOpen?: boolean;
   colorIndex?: number; // 0-5 for rainbow colors
+}
+
+/** A file currently open in a workspace's editor. */
+export interface WorkspaceFile {
+  /** Absolute disk path (forward slashes). */
+  path: string;
+  /** Display name (filename with extension). */
+  name: string;
+  /** TipTap JSON serialized as string. */
+  content: string;
+  /** Has unsaved changes vs disk. */
+  isDirty: boolean;
+}
+
+/** A workspace — the new tab entity. Each workspace has its own connected
+ *  folders, one file open in the editor at a time, and its own chat history. */
+export interface Workspace {
+  id: string;
+  /** Tab label (folder name or custom name). */
+  name: string;
+  /** Per-workspace connected folders (isolated from other workspaces). */
+  connectedFolders: ConnectedFolderRef[];
+  /** Which folder's tree is currently shown. */
+  activeFolderId: string | null;
+  /** The file open in the editor (null = empty workspace). */
+  currentFile: WorkspaceFile | null;
+  /** Per-workspace tree expansion state (display paths). */
+  expandedPaths: string[];
+  /** Per-workspace tree selection (display path). */
+  selectedTreePath: string | null;
+  createdAt: number;
+  updatedAt: number;
+  order: number;
+  /** 0-5 rainbow color. */
+  colorIndex?: number;
+}
+
+/** Lightweight folder reference stored inside a Workspace.
+ *  The full TreeNode is rebuilt on load (not persisted). */
+export interface ConnectedFolderRef {
+  id: string;
+  /** Absolute path of the folder root. */
+  path: string;
 }
 
 export interface Attachment {
   name: string;
-  dataUrl: string;
+  /** Present for image attachments (base64 data URL). Absent for file/folder
+   *  context attachments, whose contents are read fresh at send time. */
+  dataUrl?: string;
   mimeType: string;
+  /** Attachment flavour. `undefined` is treated as a legacy image attachment. */
+  kind?: 'image' | 'file' | 'folder';
+  /** Absolute workspace path for file/folder (and image) attachments. */
+  path?: string;
+  /** Workspace-relative path used for the chip label and inline @token. */
+  displayPath?: string;
 }
 
 export interface ChatThreadMeta {
   id: string;
   mode: 'writer' | 'task';
+  /** @deprecated Use workspaceId instead. */
   documentId?: string;
+  /** Workspace this thread belongs to (replaces documentId). */
+  workspaceId?: string;
   taskId?: string;
   /** Identifier for the Settings sub-tab (e.g. "models", "actions"). When
    *  set, the thread is scoped to the Settings AI sidebar instead of a
@@ -29,6 +83,8 @@ export interface ChatThreadMeta {
   title: string;
   createdAt: number;
   updatedAt: number;
+  /** AI tool permission mode for this thread. Defaults to 'ask' on read. */
+  permissionMode?: 'ask' | 'bypass';
 }
 
 export interface MessageUsage {
@@ -40,16 +96,38 @@ export interface MessageUsage {
   cacheWriteTokens?: number;
 }
 
+/** A single tool call rendered as a chat bubble (frontend-synthetic). Distinct
+ *  from OpenAI's `role: 'tool'` which carries the *result* of a call. */
+export interface ToolCallPayload {
+  /** Stable id matching the OpenAI `tool_call_id` once dispatched. */
+  toolCallId: string;
+  name: string;
+  /** Pretty-printed arguments (JSON). */
+  args: string;
+  /** 'pending' = awaiting approval (ask mode); 'approved'/'rejected' = resolved;
+   *  'done' = executed (bypass or after approval). */
+  status: 'pending' | 'approved' | 'rejected' | 'done';
+  /** Short human summary of the result, shown once executed. */
+  resultSummary?: string;
+  /** True when the call errored/rejected and halted the loop. */
+  isError?: boolean;
+}
+
 export interface ChatMessage {
   id: string;
   threadId: string;
   mode: 'writer' | 'task';
+  /** @deprecated Use workspaceId instead. */
   documentId?: string;
+  /** Workspace this message belongs to (replaces documentId). */
+  workspaceId?: string;
   taskId?: string;
   settingsTab?: string;
   agentId: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'tool_call' | 'system';
   content: string;
+  /** Present on `role: 'tool_call'` bubbles. */
+  toolCall?: ToolCallPayload;
   selectedText?: string;
   selectionFrom?: number;
   selectionTo?: number;
@@ -164,6 +242,12 @@ export interface ModelItem {
   reasoning?: ModelReasoning;
   /** Current picked reasoning value for this model (an option's `value`). */
   selectedReasoning?: string;
+  /**
+   * Whether this model supports the OpenAI-compatible `tools` / `tool_calls`
+   * function-calling surface used by the embedded AI tools feature.
+   * Defaults to `true` when unset.
+   */
+  supportsTools?: boolean;
 }
 
 export interface ReasoningOption {
@@ -218,7 +302,7 @@ export interface ProviderImportUiState {
 
 export interface AppSettings {
   key: string;
-  value: string | number | boolean;
+  value: string | number | boolean | Record<string, unknown>;
 }
 
 export interface QuickPrompt {

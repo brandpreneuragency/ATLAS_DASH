@@ -90,7 +90,7 @@ export function SubtaskDueDatePicker({
                 onChange(opt.value);
                 onClose();
               }}
-              style={{ fontSize: 'var(--fs-sm)' }}
+              style={{ fontSize: 'var(--fs-base)' }}
             >
               {opt.label}
             </button>
@@ -105,7 +105,7 @@ export function SubtaskDueDatePicker({
                 dateInputRef.current?.click();
               }
             }}
-            style={{ fontSize: 'var(--fs-sm)' }}
+            style={{ fontSize: 'var(--fs-base)' }}
           >
             Custom...
           </button>

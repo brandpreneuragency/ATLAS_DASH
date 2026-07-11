@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Calendar,
   CalendarDays,
   CheckCircle2,
   FolderPlus,
@@ -10,10 +11,12 @@ import {
 } from 'lucide-react';
 import '../crm/crm.css';
 import './taskProjectsKanban.css';
+import './taskDetail.css';
+import { dateOptions } from './TaskMetadataControls';
 import { useTaskStore } from '../../stores/taskStore';
 import { useProjectStore } from '../../stores/projectStore';
 import { KPICard, CRMEmptyState } from '../crm/components';
-import type { Task, TaskStatus } from '../../types';
+import type { Task } from '../../types';
 
 const PROJECT_DOT_COLORS: Record<string, string> = {
   'text-blue-500': '#3b82f6',
@@ -26,22 +29,10 @@ const PROJECT_DOT_COLORS: Record<string, string> = {
   'text-pink-500': '#ec4899',
 };
 
-const STATUS_META: Record<TaskStatus, { label: string; cls: string }> = {
-  pending: { label: 'Pending', cls: 'task-kanban-status--pending' },
-  in_progress: { label: 'In progress', cls: 'task-kanban-status--in_progress' },
-  completed: { label: 'Completed', cls: 'task-kanban-status--completed' },
-};
-
 const UNCATEGORIZED_ID = '__none__';
 
 function projectDotColor(color?: string): string {
   return (color && PROJECT_DOT_COLORS[color]) || 'var(--c-text-3)';
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 function isOverdue(t: Task): boolean {
@@ -63,13 +54,25 @@ interface Column {
 interface TaskKanbanCardProps {
   task: Task;
   isActive: boolean;
-  overdue: boolean;
   onClick: (taskId: string) => void;
 }
 
-function TaskKanbanCard({ task, isActive, overdue, onClick }: TaskKanbanCardProps) {
+function TaskKanbanCard({ task, isActive, onClick }: TaskKanbanCardProps) {
+  const updateTask = useTaskStore((s) => s.updateTask);
   const [isDragging, setIsDragging] = useState(false);
-  const status = STATUS_META[task.status];
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const dateRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showDatePicker) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (dateRef.current && !dateRef.current.contains(e.target as Node)) {
+        setShowDatePicker(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [showDatePicker]);
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.dataTransfer.effectAllowed = 'move';
@@ -94,23 +97,56 @@ function TaskKanbanCard({ task, isActive, overdue, onClick }: TaskKanbanCardProp
       onDragStart={handleDragStart}
       onDragEnd={() => setIsDragging(false)}
     >
-      <div className="crm-kanban-card-drag" title="Drag to move project">
+      <div
+        className="crm-kanban-card-drag"
+        title="Drag to move project"
+        draggable
+        onClick={(e) => e.stopPropagation()}
+        onDragStart={(e) => {
+          e.stopPropagation();
+          handleDragStart(e);
+        }}
+      >
         <GripVertical size={12} />
       </div>
       <div className="crm-kanban-card-header">
         <span className="crm-kanban-card-title">{task.title}</span>
       </div>
-      <div className="task-kanban-card-status-row">
-        <span className={`task-kanban-status ${status.cls}`}>{status.label}</span>
-        <span className={`task-dot-${task.importance}`} title={`${task.importance} importance`} />
-      </div>
       <div className="crm-kanban-card-meta">
-        <span className="crm-kanban-card-meta-item">
-          <CalendarDays size={11} />
-          <span className={overdue ? 'task-kanban-overdue' : ''}>
-            {task.date ? formatDate(task.date) : 'No date'}
-          </span>
-        </span>
+        <div
+          ref={dateRef}
+          className="tdp-meta-field"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="tdp-meta-field-btn"
+            onClick={() => setShowDatePicker(!showDatePicker)}
+            title={task.date ? `Due: ${task.date}` : 'Set due date'}
+            style={{ color: task.date ? 'var(--c-text-1)' : 'var(--c-text-2)' }}
+          >
+            <Calendar size={12} />
+            <span className="tdp-meta-field-label">
+              {task.date ? task.date : 'No due date'}
+            </span>
+          </button>
+          {showDatePicker && (
+            <div className="drop" style={{ position: 'absolute', top: '100%', left: 0, minWidth: 160, marginTop: 2, zIndex: 1000 }}>
+              {dateOptions().map((opt) => (
+                <button
+                  key={opt.value || '__empty__'}
+                  type="button"
+                  className="drop-item"
+                  onClick={() => { updateTask(task.id, { date: opt.value }); setShowDatePicker(false); }}
+                  style={{ fontSize: 'var(--fs-base)' }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         {task.assignees.length > 0 && (
           <span className="crm-kanban-card-meta-item">
             <Users size={11} />
@@ -187,11 +223,11 @@ export function TaskProjectsKanban() {
     cancelAddProject();
   };
 
-  const handleMove = (taskId: string, columnId: string) => {
+  const handleMove = async (taskId: string, columnId: string) => {
     const target = columnId === UNCATEGORIZED_ID ? null : columnId;
     const task = rootTasks.find((t) => t.id === taskId);
     if (!task || task.projectId === target) return;
-    void updateTask(taskId, { projectId: target });
+    await updateTask(taskId, { projectId: target });
   };
 
   const newProjectForm = addingProject ? (
@@ -309,7 +345,8 @@ export function TaskProjectsKanban() {
                     setDropTarget(col.id);
                   }}
                   onDragLeave={(e) => {
-                    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                    const nextTarget = e.relatedTarget;
+                    if (!(nextTarget instanceof Node) || !e.currentTarget.contains(nextTarget)) {
                       setDropTarget((cur) => (cur === col.id ? null : cur));
                     }
                   }}
@@ -319,7 +356,11 @@ export function TaskProjectsKanban() {
                       e.dataTransfer.getData('application/x-task-card') ||
                       e.dataTransfer.getData('text/plain');
                     setDropTarget(null);
-                    if (taskId) handleMove(taskId, col.id);
+                    if (taskId) {
+                      void handleMove(taskId, col.id).catch((err) => {
+                        console.error('[TaskProjectsKanban] Failed to move task:', err);
+                      });
+                    }
                   }}
                 >
                   {col.tasks.length === 0 && (
@@ -330,7 +371,6 @@ export function TaskProjectsKanban() {
                       key={t.id}
                       task={t}
                       isActive={t.id === activeTaskId}
-                      overdue={isOverdue(t)}
                       onClick={openTaskInActiveTab}
                     />
                   ))}

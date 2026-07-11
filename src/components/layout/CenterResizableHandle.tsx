@@ -8,7 +8,7 @@ export function CenterResizableHandle() {
       onMouseDown={onMouseDown}
       className="resize-handle center-resize-handle"
       style={{
-        minWidth: 4,
+        minWidth: 6,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -22,7 +22,7 @@ export function CenterResizableHandle() {
         style={{
           width: 1,
           height: '100%',
-          background: 'var(--c-border-1)',
+          background: 'var(--c-background-1)',
         }}
       />
     </div>

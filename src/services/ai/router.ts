@@ -1,7 +1,6 @@
-// AI provider router. Used by the dormant Tauri desktop build. The
-// browser web build routes through `aiRepository.streamChat()` which
-// hits the server, so this file is unused at runtime in the web build
-// but its API is kept stable for the desktop re-merge.
+// AI provider router. Providers are only ever added as OpenAI-compatible
+// endpoints (see ConnectProviderPanel), so every config routes through
+// the OpenAI-compatible streamer.
 
 import type { AIProviderConfig } from '../../types';
 import type { ChatMessage, StreamChunk } from './types';

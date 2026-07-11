@@ -1,19 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
-import type { MouseEvent, ReactNode } from 'react';
+import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import { Copy, Minus, Square, X } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { isTauriRuntime } from '../../services/runtime';
 
 interface AppTitlebarProps {
   children: ReactNode;
 }
 
 export function AppTitlebar({ children }: AppTitlebarProps) {
-  const isTauriWindow = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+  const isTauriWindow = isTauriRuntime();
   const [isMaximized, setIsMaximized] = useState(false);
-  const headerRef = useRef<HTMLHeaderElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    if (!isTauriWindow) return;
+    if (!isTauriWindow) {
+      const onFsChange = () => setIsMaximized(Boolean(document.fullscreenElement));
+      document.addEventListener('fullscreenchange', onFsChange);
+      return () => document.removeEventListener('fullscreenchange', onFsChange);
+    }
 
     const appWindow = getCurrentWindow();
     let unlistenResize: (() => void) | null = null;
@@ -53,7 +58,6 @@ export function AppTitlebar({ children }: AppTitlebarProps) {
         '.tab-active',
         '.tab-passive',
         '.tab',
-        '.tabs-row',
         '.ai-toggle-btn',
         '.app-titlebar__window-control',
         '.app-titlebar__window-controls',
@@ -81,27 +85,49 @@ export function AppTitlebar({ children }: AppTitlebarProps) {
     };
   }, [isTauriWindow]);
 
-  const stopWindowDrag = (event: MouseEvent<HTMLButtonElement>) => {
+  const stopWindowDrag = (event: ReactMouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
   };
 
   const handleMinimize = () => {
-    if (!isTauriWindow) return;
-    void getCurrentWindow().minimize();
+    if (isTauriWindow) {
+      void getCurrentWindow().minimize();
+      return;
+    }
+    // Browser has no minimize; blur is the closest equivalent.
+    window.blur();
   };
 
   const handleToggleMaximize = () => {
-    if (!isTauriWindow) return;
+    if (isTauriWindow) {
+      void (async () => {
+        const appWindow = getCurrentWindow();
+        await appWindow.toggleMaximize();
+        setIsMaximized(await appWindow.isMaximized());
+      })();
+      return;
+    }
     void (async () => {
-      const appWindow = getCurrentWindow();
-      await appWindow.toggleMaximize();
-      setIsMaximized(await appWindow.isMaximized());
+      try {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen();
+          setIsMaximized(false);
+        } else {
+          await document.documentElement.requestFullscreen();
+          setIsMaximized(true);
+        }
+      } catch {
+        // Fullscreen may be blocked by the browser.
+      }
     })();
   };
 
   const handleClose = () => {
-    if (!isTauriWindow) return;
-    void getCurrentWindow().close();
+    if (isTauriWindow) {
+      void getCurrentWindow().close();
+      return;
+    }
+    window.close();
   };
 
   return (
@@ -110,42 +136,40 @@ export function AppTitlebar({ children }: AppTitlebarProps) {
         {children}
       </div>
 
-      {isTauriWindow && (
-        <div className="app-titlebar__window-controls">
-          <button
-            type="button"
-            className="app-titlebar__window-control"
-            onMouseDown={stopWindowDrag}
-            onClick={handleMinimize}
-            aria-label="Minimize window"
-            title="Minimize"
-          >
-            <Minus size={14} />
-          </button>
+      <div className="app-titlebar__window-controls">
+        <button
+          type="button"
+          className="app-titlebar__window-control"
+          onMouseDown={stopWindowDrag}
+          onClick={handleMinimize}
+          aria-label="Minimize window"
+          title="Minimize"
+        >
+          <Minus size={14} />
+        </button>
 
-          <button
-            type="button"
-            className="app-titlebar__window-control"
-            onMouseDown={stopWindowDrag}
-            onClick={handleToggleMaximize}
-            aria-label={isMaximized ? 'Restore window' : 'Maximize window'}
-            title={isMaximized ? 'Restore' : 'Maximize'}
-          >
-            {isMaximized ? <Copy size={13} /> : <Square size={13} />}
-          </button>
+        <button
+          type="button"
+          className="app-titlebar__window-control"
+          onMouseDown={stopWindowDrag}
+          onClick={handleToggleMaximize}
+          aria-label={isMaximized ? 'Restore window' : 'Maximize window'}
+          title={isMaximized ? 'Restore' : 'Maximize'}
+        >
+          {isMaximized ? <Copy size={13} /> : <Square size={13} />}
+        </button>
 
-          <button
-            type="button"
-            className="app-titlebar__window-control app-titlebar__window-control--close"
-            onMouseDown={stopWindowDrag}
-            onClick={handleClose}
-            aria-label="Close window"
-            title="Close"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
+        <button
+          type="button"
+          className="app-titlebar__window-control app-titlebar__window-control--close"
+          onMouseDown={stopWindowDrag}
+          onClick={handleClose}
+          aria-label="Close window"
+          title="Close"
+        >
+          <X size={14} />
+        </button>
+      </div>
     </header>
   );
 }

@@ -50,7 +50,7 @@ export function ReasoningDropup() {
               key={opt.value || 'off'}
               onClick={() => { setModelReasoning(config.id, model.id, opt.value); setOpen(false); }}
               className={`drop-item${opt.value === current.value ? ' header-dropdown-item--active' : ''}`}
-              style={{ fontSize: 'var(--fs-xs)' }}
+              style={{ fontSize: 'var(--fs-base)' }}
             >
               <span className="med">{opt.label}</span>
             </button>

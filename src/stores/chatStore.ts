@@ -7,8 +7,8 @@ import { db } from '../services/db';
 import { nanoid } from 'nanoid';
 
 /** Context key for lastViewedPerContext map. */
-function contextKey(params: { documentId?: string; taskId?: string; settingsTab?: string }): string | null {
-  if (params.documentId) return `doc:${params.documentId}`;
+function contextKey(params: { workspaceId?: string; taskId?: string; settingsTab?: string }): string | null {
+  if (params.workspaceId) return `ws:${params.workspaceId}`;
   if (params.taskId) return `task:${params.taskId}`;
   if (params.settingsTab) return `settings:${params.settingsTab}`;
   return null;
@@ -22,12 +22,12 @@ interface ChatStore {
   isStreaming: boolean;
 
   // Context tracking
-  currentContext: { documentId?: string; taskId?: string; settingsTab?: string } | null;
+  currentContext: { workspaceId?: string; taskId?: string; settingsTab?: string } | null;
   lastViewedPerContext: Record<string, string>;
 
-  loadThreadsForContext: (params: { documentId?: string; taskId?: string; settingsTab?: string }) => Promise<void>;
-  setActiveContext: (params: { documentId?: string; taskId?: string; settingsTab?: string }) => void;
-  newChat: (params: { mode: 'writer' | 'task'; documentId?: string; taskId?: string; settingsTab?: string }) => Promise<void>;
+  loadThreadsForContext: (params: { workspaceId?: string; taskId?: string; settingsTab?: string }) => Promise<void>;
+  setActiveContext: (params: { workspaceId?: string; taskId?: string; settingsTab?: string }) => void;
+  newChat: (params: { mode: 'writer' | 'task'; workspaceId?: string; taskId?: string; settingsTab?: string }) => Promise<void>;
   selectThread: (threadId: string) => Promise<void>;
   deleteThread: (id: string) => Promise<void>;
   addMessage: (msg: ChatMessage) => Promise<void>;
@@ -36,6 +36,8 @@ interface ChatStore {
   setStreamingMessageId: (id: string | null) => void;
   setIsStreaming: (v: boolean) => void;
   getActiveThreadMessages: () => ChatMessage[];
+  /** Set the AI tool permission mode for a thread (persisted). */
+  setPermissionMode: (threadId: string, mode: 'ask' | 'bypass') => void;
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
@@ -50,10 +52,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   loadThreadsForContext: async (params) => {
     try {
       let threads: ChatThreadMeta[] = [];
-      if (params.documentId) {
+      if (params.workspaceId) {
         threads = await db.chatThreads
-          .where('documentId')
-          .equals(params.documentId)
+          .where('workspaceId')
+          .equals(params.workspaceId)
           .toArray();
       } else if (params.taskId) {
         threads = await db.chatThreads
@@ -110,7 +112,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const current = get().currentContext;
     const changed =
       !current ||
-      current.documentId !== params.documentId ||
+      current.workspaceId !== params.workspaceId ||
       current.taskId !== params.taskId ||
       current.settingsTab !== params.settingsTab;
     if (changed) {
@@ -130,12 +132,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const optimistic: ChatThreadMeta = {
       id,
       mode: params.mode,
-      documentId: params.documentId ?? undefined,
+      workspaceId: params.workspaceId ?? undefined,
       taskId: params.taskId ?? undefined,
       settingsTab: params.settingsTab ?? undefined,
       title,
       createdAt: nowMs,
       updatedAt: nowMs,
+      permissionMode: 'ask',
     };
     set((s) => ({
       threads: [optimistic, ...s.threads],
@@ -357,7 +360,24 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   getActiveThreadMessages: () => {
     const { activeThreadId, messagesByThread } = get();
-    return activeThreadId ? messagesByThread[activeThreadId] ?? [] : [];
+    if (!activeThreadId) return [];
+    const messages = messagesByThread[activeThreadId] ?? [];
+    // Dexie's `.where('threadId').equals().toArray()` returns rows in index
+    // order, not insertion/chronological order, which interleaves user and
+    // assistant bubbles incorrectly. Sort by timestamp (stable on ties) so the
+    // conversation always renders oldest -> newest.
+    return [...messages].sort((a, b) => a.timestamp - b.timestamp);
+  },
+
+  setPermissionMode: (threadId, mode) => {
+    set((s) => ({
+      threads: s.threads.map((t) => (t.id === threadId ? { ...t, permissionMode: mode } : t)),
+    }));
+    try {
+      void db.chatThreads.update(threadId, { permissionMode: mode });
+    } catch {
+      /* ignore */
+    }
   },
 }));
 

@@ -32,6 +32,9 @@ export interface FolderConnector {
   /** Read a text file. */
   readTextFile(path: string): Promise<string>;
 
+  /** Read a file's raw bytes (used for image attachments). */
+  readBinaryFile(path: string): Promise<Uint8Array>;
+
   /** Write a text file (creates or overwrites). */
   writeTextFile(path: string, content: string): Promise<void>;
 

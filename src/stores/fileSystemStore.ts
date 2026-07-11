@@ -95,7 +95,7 @@ async function buildChildren(
   );
 }
 
-function findNodeByFullPath(node: TreeNode | null, fullPath: string): TreeNode | null {
+export function findNodeByFullPath(node: TreeNode | null, fullPath: string): TreeNode | null {
   if (!node) return null;
   if (node.fullPath === fullPath) return node;
   if (node.children) {
@@ -189,6 +189,22 @@ function validateName(name: string, siblings: TreeNode[]): string | null {
     return `"${trimmed}" already exists.`;
   }
   return null;
+}
+
+/** Flatten every descendant of `root` (excluding the root folder itself) into
+ *  a list — used to power the composer's @-mention file/folder filter. */
+export function flattenTree(root: TreeNode | null): TreeNode[] {
+  if (!root) return [];
+  const out: TreeNode[] = [];
+  const walk = (node: TreeNode) => {
+    if (!node.children) return;
+    for (const child of node.children) {
+      out.push(child);
+      walk(child);
+    }
+  };
+  walk(root);
+  return out;
 }
 
 function collectAllFullPaths(node: TreeNode): string[] {

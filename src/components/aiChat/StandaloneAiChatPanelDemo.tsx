@@ -119,7 +119,7 @@ export function StandaloneAiChatPanelDemo() {
           type="button"
           onClick={() => { setShowEmpty(false); setShowLongMessage(false); setMessages(MOCK_MESSAGES); }}
           className="drop-item"
-          style={{ fontSize: 'var(--fs-sm)' }}
+          style={{ fontSize: 'var(--fs-base)' }}
         >
           Default
         </button>
@@ -127,7 +127,7 @@ export function StandaloneAiChatPanelDemo() {
           type="button"
           onClick={() => { setShowEmpty(true); }}
           className="drop-item"
-          style={{ fontSize: 'var(--fs-sm)' }}
+          style={{ fontSize: 'var(--fs-base)' }}
         >
           Empty
         </button>
@@ -135,7 +135,7 @@ export function StandaloneAiChatPanelDemo() {
           type="button"
           onClick={() => { setShowLongMessage(true); setShowEmpty(false); }}
           className="drop-item"
-          style={{ fontSize: 'var(--fs-sm)' }}
+          style={{ fontSize: 'var(--fs-base)' }}
         >
           Long Message
         </button>
@@ -143,7 +143,7 @@ export function StandaloneAiChatPanelDemo() {
           type="button"
           onClick={() => setShowError((v) => !v)}
           className="drop-item"
-          style={{ fontSize: 'var(--fs-sm)', color: showError ? '#e53e3e' : undefined }}
+          style={{ fontSize: 'var(--fs-base)', color: showError ? '#e53e3e' : undefined }}
         >
           {showError ? 'Clear Error' : 'Show Error'}
         </button>
@@ -151,7 +151,7 @@ export function StandaloneAiChatPanelDemo() {
           type="button"
           onClick={() => setShowDisabled((v) => !v)}
           className="drop-item"
-          style={{ fontSize: 'var(--fs-sm)' }}
+          style={{ fontSize: 'var(--fs-base)' }}
         >
           {showDisabled ? 'Enable' : 'Disable Input'}
         </button>
@@ -168,7 +168,7 @@ export function StandaloneAiChatPanelDemo() {
             setIsSending(true);
           }}
           className="drop-item"
-          style={{ fontSize: 'var(--fs-sm)' }}
+          style={{ fontSize: 'var(--fs-base)' }}
         >
           Loading State
         </button>

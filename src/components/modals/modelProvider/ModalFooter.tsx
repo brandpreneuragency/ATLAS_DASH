@@ -14,7 +14,6 @@ export function ModalFooter({ hasChanges, ready, saving, saved, onSave }: ModalF
       className="row"
       style={{
         padding: '12px 16px',
-        borderTop: '1px solid var(--c-border-1)',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexShrink: 0,

@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
 import { Plus, User, UserCog } from 'lucide-react';
 import { useAIStore } from '../../stores/aiStore';
 import { SettingsPanels } from './SettingsPanels';
@@ -7,13 +6,7 @@ import { AgentEditorForm } from './AgentEditorForm';
 
 type AgentScope = 'writer' | 'task';
 
-interface AgentsSectionProps {
-  rightHeader?: ReactNode;
-  rightMain?: ReactNode;
-  rightFooter?: ReactNode;
-}
-
-export function AgentsSection({ rightHeader, rightMain, rightFooter }: AgentsSectionProps = {}) {
+export function AgentsSection() {
   const agents = useAIStore((s) => s.agents);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [newScope, setNewScope] = useState<AgentScope | null>(null);
@@ -29,7 +22,7 @@ export function AgentsSection({ rightHeader, rightMain, rightFooter }: AgentsSec
   const renderGroup = (label: string, icon: React.ReactNode, list: typeof writers, scope: AgentScope) => (
     <div style={{ marginBottom: 8 }}>
       <div className="settings-list-head" style={{ padding: '6px 4px', borderBottom: 'none' }}>
-        <span className="semibold" style={{ fontSize: 'var(--fs-xs)', color: 'var(--c-text-2)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <span className="semibold" style={{ fontSize: 'var(--fs-base)', color: 'var(--c-text-2)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           {icon} {label} ({list.length})
         </span>
         <button className="btn-icon" title={`New ${scope} agent`} onClick={() => startNew(scope)}>
@@ -70,13 +63,10 @@ export function AgentsSection({ rightHeader, rightMain, rightFooter }: AgentsSec
 
   return (
     <SettingsPanels
-      leftHeader={<div className="settings-list-head"><h3>Agents</h3><span className="subtle" style={{ fontSize: 'var(--fs-xs)' }}>{agents.length}</span></div>}
+      leftHeader={<div className="settings-list-head"><h3>Agents</h3><span className="subtle" style={{ fontSize: 'var(--fs-base)' }}>{agents.length}</span></div>}
       leftMain={leftMain}
       centerHeader={<div className="settings-list-head"><h3>{selected ? 'Edit agent' : newScope ? 'New agent' : 'Agents'}</h3></div>}
       centerMain={centerMain}
-      rightHeader={rightHeader}
-      rightMain={rightMain}
-      rightFooter={rightFooter}
     />
   );
 }

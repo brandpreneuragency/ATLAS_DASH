@@ -2,11 +2,11 @@ import { useCallback, useRef } from 'react';
 import { useUIStore, selectIsMainRowSwapped } from '../stores/uiStore';
 
 const RIGHT_PANEL_MIN_WIDTH = 320;
-// No hard max — the center panel's 260px minimum is the only constraint.
+// No hard max — the center panel's min-width is the only layout constraint.
 // The grid track (auto) in #main-row will give the panel as much space
 // as the center panel is willing to give up.
 const RIGHT_PANEL_MAX_WIDTH = Number.POSITIVE_INFINITY;
-const CENTER_PANEL_MIN_WIDTH = 260;
+const CENTER_PANEL_MIN_WIDTH = 140;
 
 export function useResizable() {
   const setSidebarWidth = useUIStore((s) => s.setSidebarWidth);

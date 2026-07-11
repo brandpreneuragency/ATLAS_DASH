@@ -37,11 +37,10 @@ body {
 
 /* ---------------------------------------------------------------
  * .workspace Ã¢â‚¬â€ Agent 4
- * The actual DOM has up to 4 children at the workspace level:
- *   1. .sidebar-panel  Ã¢â€ â€™ narrow left rail (always visible)
- *   2. .task-list-panel Ã¢â€ â€™ settings / file-tree / task-list
- *   3. .workspace-handle Ã¢â€ â€™ optional left resize handle
- *   4. .main-panel    Ã¢â€ â€™ flexible centre area (header + main-row + modals)
+ * The actual DOM has up to 3 children at the workspace level:
+ *   1. .sidebar-panel     Ã¢â€ â€™ narrow left rail (always visible)
+ *   2. .workspace-panels  Ã¢â€ â€™ flex row: task-list / file-tree / handle / main
+ *   3. .terminal-panel    Ã¢â€ â€™ optional bottom terminal (when open)
  * The right detail-panel lives INSIDE #main-row, not at this level,
  * so it does not occupy a column here. Column widths are `auto`
  * for the side panels because the actual panels carry their own
@@ -57,10 +56,16 @@ body {
   display: grid;
   grid-template-columns:
     var(--sidebar-width)
-    auto
-    auto
     minmax(var(--main-panel-min-width), 1fr);
+  grid-template-rows: 1fr auto;
   overflow: hidden;
+}
+
+.terminal-panel {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  justify-self: stretch;
 }
 
 /* Direct children of .workspace Ã¢â‚¬â€ shrink-safety + explicit column. */
@@ -85,6 +90,29 @@ body {
   height: 100%;
 }
 
+.workspace-panels {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  grid-column: 2;
+  padding-right: 6px;
+  padding-bottom: 6px;
+  background-color: var(--c-background-4);
+}
+
+.workspace-content {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  flex: 1 1 auto;
+  border: 3px solid var(--c-accent-1);
+  border-radius: 8px;
+}
+
 .task-list-panel {
   min-width: 0;
   min-height: 0;
@@ -92,7 +120,6 @@ body {
   flex-direction: column;
   overflow: hidden;
   flex-shrink: 0;
-  grid-column: 2;
   /* Agent 8: container context for task cards / filters /
    * quick-create behavior. The query targets the
    * task-list panel width (default 280-420px). */
@@ -104,7 +131,6 @@ body {
   min-width: 0;
   min-height: 0;
   flex-shrink: 0;
-  grid-column: 3;
 }
 
 .main-panel {
@@ -113,7 +139,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  grid-column: 4;
+  flex: 1 1 auto;
   /* Agent 8: container context for the centre panel.
    * The editor + chat composer + right detail column
    * all read the panel width to adapt. */
@@ -237,8 +263,6 @@ body {
   .workspace {
     grid-template-columns:
       var(--sidebar-width)
-      auto
-      auto
       minmax(var(--main-panel-min-width), 1fr);
   }
 
@@ -283,8 +307,6 @@ body {
   .workspace {
     grid-template-columns:
       var(--sidebar-width)
-      auto
-      auto
       minmax(0, 1fr);
   }
 
@@ -614,6 +636,7 @@ body {
  * not set min-width, so the inline style still wins. */
 .panel#center-panel {
   width: 100%;
+  background-color: var(--c-background-1);
 }
 
 /* Center panel body: wraps the editor / task detail panel. */

@@ -128,6 +128,22 @@ export class BrowserFolderConnector implements FolderConnector {
     }
   }
 
+  async readBinaryFile(path: string): Promise<Uint8Array> {
+    const parentPath = path.substring(0, path.lastIndexOf('/'));
+    const fileName = path.substring(path.lastIndexOf('/') + 1);
+
+    const parentHandle = await this.getHandleAtPath(parentPath);
+    if (!parentHandle) throw new Error('Parent directory not found.');
+
+    try {
+      const fileHandle = await parentHandle.getFileHandle(fileName);
+      const file = await fileHandle.getFile();
+      return new Uint8Array(await file.arrayBuffer());
+    } catch (err) {
+      throw new Error(`Failed to read file: ${getErrorMessage(err)}`);
+    }
+  }
+
   async writeTextFile(path: string, content: string): Promise<void> {
     const parentPath = path.substring(0, path.lastIndexOf('/'));
     const fileName = path.substring(path.lastIndexOf('/') + 1);

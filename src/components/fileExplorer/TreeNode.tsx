@@ -5,9 +5,7 @@ import {
   MoreHorizontal, FilePlus, FolderPlus, Pencil, Trash2,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useUIStore } from '../../stores/uiStore';
-import { useFileSystemStore, type TreeNode as TreeNodeType } from '../../stores/fileSystemStore';
-import { useDocumentStore } from '../../stores/documentStore';
+import { useWorkspaceStore, type TreeNode as TreeNodeType } from '../../stores/workspaceStore';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 
 interface TreeNodeProps {
@@ -27,9 +25,28 @@ interface InlineInput {
 
 export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
   const { t } = useTranslation();
-  const { expandedPaths, toggleExpandedPath, setExpandedPaths, setSelectedTreePath, selectedTreePath } = useUIStore();
-  const { ensureChildrenLoaded, createFile, createDirectory, rename, remove, move } = useFileSystemStore();
-  const { openFileFromTree, renameDocumentBySourcePath, deleteDocumentsBySourcePaths, renameDocumentBySourcePath: moveDocumentPath } = useDocumentStore();
+  const {
+    workspaces,
+    activeWorkspaceId,
+    toggleExpandedPath,
+    setExpandedPaths,
+    setSelectedTreePath,
+    ensureChildrenLoaded,
+    createFileInWorkspace,
+    createDirectoryInWorkspace,
+    renameInWorkspace,
+    removeInWorkspace,
+    moveInWorkspace,
+    swapFileInWorkspace,
+    saveCurrentFile,
+    createWorkspace,
+    connectFolderInWorkspace,
+    renameWorkspace,
+  } = useWorkspaceStore();
+
+  const activeWs = workspaces.find((w) => w.id === activeWorkspaceId);
+  const expandedPaths = activeWs?.expandedPaths ?? [];
+  const selectedTreePath = activeWs?.selectedTreePath ?? null;
 
   const expanded = (searchActive && node.kind === 'directory') || expandedPaths.includes(node.path);
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
@@ -38,6 +55,7 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showKebab, setShowKebab] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [confirmSwap, setConfirmSwap] = useState<{ fileName: string; targetNode: TreeNodeType } | null>(null);
 
   const contextRef = useRef<HTMLDivElement>(null);
   const kebabRef = useRef<HTMLButtonElement>(null);
@@ -83,13 +101,13 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
     if (inlineInput?.mode === 'rename') return;
     if (node.kind === 'directory') {
       if (!expanded && node.children === undefined) {
-        await ensureChildrenLoaded(node.fullPath);
+        await ensureChildrenLoaded(activeWorkspaceId!, node.fullPath);
       }
-      toggleExpandedPath(node.path);
+      toggleExpandedPath(activeWorkspaceId!, node.path);
     }
-    setSelectedTreePath(node.path);
+    setSelectedTreePath(activeWorkspaceId!, node.path);
     if (node.kind === 'file') {
-      await openFileFromTree(node, false);
+      await handleFileSwap(node);
     }
   };
 
@@ -115,11 +133,11 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
       next?.focus();
     } else if (e.key === 'ArrowRight' && node.kind === 'directory' && !expanded) {
       e.preventDefault();
-      if (node.children === undefined) await ensureChildrenLoaded(node.fullPath);
-      toggleExpandedPath(node.path);
+      if (node.children === undefined) await ensureChildrenLoaded(activeWorkspaceId!, node.fullPath);
+      toggleExpandedPath(activeWorkspaceId!, node.path);
     } else if (e.key === 'ArrowLeft' && node.kind === 'directory' && expanded) {
       e.preventDefault();
-      toggleExpandedPath(node.path);
+      toggleExpandedPath(activeWorkspaceId!, node.path);
     }
   };
 
@@ -138,14 +156,14 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
   const startNewFile = () => {
     setContextMenu(null);
     // expand directory first if not expanded
-    if (!expanded) toggleExpandedPath(node.path);
+    if (!expanded) toggleExpandedPath(activeWorkspaceId!, node.path);
     setInlineInput({ mode: 'new-file' });
     setInputValue('');
   };
 
   const startNewFolder = () => {
     setContextMenu(null);
-    if (!expanded) toggleExpandedPath(node.path);
+    if (!expanded) toggleExpandedPath(activeWorkspaceId!, node.path);
     setInlineInput({ mode: 'new-folder' });
     setInputValue('');
   };
@@ -160,9 +178,8 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
     if (inlineInput.mode === 'rename') {
       if (val === node.name) return;
       const oldDisplayPath = node.path;
-      const result = await rename(node.fullPath, val);
+      const result = await renameInWorkspace(activeWorkspaceId!, node.fullPath, val);
       if (result) {
-        await renameDocumentBySourcePath(result.oldPath, result.newPath, val);
         // update expanded paths if it was a directory
         if (result.kind === 'directory') {
           const parentDisplay = oldDisplayPath.includes('/')
@@ -174,13 +191,13 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
           const updated = expandedPaths
             .filter((p) => p !== oldDisplayPath && !p.startsWith(oldDisplayPath + '/'))
             .concat(expanded ? [newDisplayPath] : []);
-          setExpandedPaths(updated);
+          setExpandedPaths(activeWorkspaceId!, updated);
         }
       }
     } else if (inlineInput.mode === 'new-file') {
-      await createFile(node.fullPath, val);
+      await createFileInWorkspace(activeWorkspaceId!, node.fullPath, val);
     } else if (inlineInput.mode === 'new-folder') {
-      await createDirectory(node.fullPath, val);
+      await createDirectoryInWorkspace(activeWorkspaceId!, node.fullPath, val);
     }
   };
 
@@ -191,20 +208,75 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
 
   const handleDelete = async () => {
     setConfirmDelete(false);
-    const removedPaths = await remove(node.fullPath);
-    await deleteDocumentsBySourcePaths(removedPaths);
+    await removeInWorkspace(activeWorkspaceId!, node.fullPath);
     // clean up expanded paths (expandedPaths uses display paths)
     const ownDisplayPath = node.path;
-    setExpandedPaths(expandedPaths.filter(
+    setExpandedPaths(activeWorkspaceId!, expandedPaths.filter(
       (p) => p !== ownDisplayPath && !p.startsWith(ownDisplayPath + '/')
     ));
+  };
+
+  // ── File swap with unsaved-changes prompt ──
+  const handleFileSwap = async (targetNode: TreeNodeType) => {
+    if (!activeWs || !activeWorkspaceId) return;
+
+    const currentFile = activeWs.currentFile;
+
+    // No current file or not dirty → swap immediately
+    if (!currentFile || !currentFile.isDirty) {
+      await swapFileInWorkspace(activeWorkspaceId, targetNode, { skipPrompt: true });
+      return;
+    }
+
+    // Dirty file → show confirm dialog
+    setConfirmSwap({ fileName: currentFile.name, targetNode });
+  };
+
+  const onSwapSave = async () => {
+    if (!confirmSwap || !activeWorkspaceId) return;
+    await saveCurrentFile(activeWorkspaceId);
+    await swapFileInWorkspace(activeWorkspaceId, confirmSwap.targetNode, { skipPrompt: true });
+    setConfirmSwap(null);
+  };
+
+  const onSwapDiscard = async () => {
+    if (!confirmSwap || !activeWorkspaceId) return;
+    await swapFileInWorkspace(activeWorkspaceId, confirmSwap.targetNode, { skipPrompt: true });
+    setConfirmSwap(null);
+  };
+
+  const onSwapCancel = () => {
+    setConfirmSwap(null);
+  };
+
+  // ── Middle-click: open new workspace ──
+  const handleAuxClick = async (e: React.MouseEvent) => {
+    if (node.kind !== 'file') return;
+    e.preventDefault();
+    // Create new workspace, connect parent folder, load file
+    const parentPath = node.fullPath.substring(0, node.fullPath.lastIndexOf('/'));
+    const newWs = await createWorkspace();
+    if (parentPath) {
+      await connectFolderInWorkspace(newWs.id, parentPath);
+    }
+    await swapFileInWorkspace(newWs.id, node, { skipPrompt: true });
+    const folderName = parentPath.split('/').pop() || 'Workspace';
+    renameWorkspace(newWs.id, folderName);
   };
 
   // ── Drag-and-drop handlers ──────────────────────────────────────────
   const handleDragStart = (e: React.DragEvent) => {
     e.stopPropagation();
-    e.dataTransfer.effectAllowed = 'move';
+    // 'copy' as well as 'move' so the chat composer can accept the drop as a
+    // context attachment without triggering the tree's move-drop semantics.
+    e.dataTransfer.effectAllowed = 'copyMove';
     e.dataTransfer.setData('text/plain', node.fullPath);
+    // App-specific payload the composer reads to attach the file/folder as
+    // AI context (carries kind + display path so no tree lookup is needed).
+    e.dataTransfer.setData(
+      'application/x-tabs-tree-node',
+      JSON.stringify({ fullPath: node.fullPath, kind: node.kind, path: node.path })
+    );
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -226,16 +298,10 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
     if (node.kind !== 'directory') return;
     const srcPath = e.dataTransfer.getData('text/plain');
     if (!srcPath || srcPath === node.fullPath) return;
-    const result = await move(srcPath, node.fullPath);
+    const result = await moveInWorkspace(activeWorkspaceId!, srcPath, node.fullPath);
     if (result) {
-      // Update any open document whose sourcePath was under the moved item
-      for (const oldPath of result.oldPaths) {
-        const newPath = result.newBasePath + oldPath.slice(srcPath.length);
-        const name = oldPath.split('/').pop() ?? oldPath;
-        await moveDocumentPath(oldPath, newPath, name);
-      }
       // Auto-expand target folder (expandedPaths uses display paths)
-      if (!expandedPaths.includes(node.path)) toggleExpandedPath(node.path);
+      if (!expandedPaths.includes(node.path)) toggleExpandedPath(activeWorkspaceId!, node.path);
     }
   };
 
@@ -253,8 +319,8 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
                 borderRadius: 8,
                 paddingLeft: 0,
                 paddingRight: 0,
-                paddingTop: 6,
-                paddingBottom: 6,
+                paddingTop: 0,
+                paddingBottom: 0,
               }
             : {
                 borderRadius: 0,
@@ -268,7 +334,7 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
           color: 'var(--c-text-1)',
           cursor: 'default',
           ...(isDragOver ? { outline: '2px solid var(--c-accent-center-panel)', outlineOffset: -2 } : {}),
-        } as React.CSSProperties}
+        } as unknown as React.CSSProperties}
         draggable
         onKeyDown={handleKeyDown}
         onContextMenu={handleContextMenu}
@@ -285,7 +351,7 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
           paddingLeft: 6,
         }}
           onClick={handleClick}
-          onAuxClick={(e) => { if (node.kind === 'file') { e.preventDefault(); openFileFromTree(node, true); } }}
+          onAuxClick={handleAuxClick}
         >
           {node.kind === 'directory' ? (
             <>
@@ -435,6 +501,15 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
           message={`${t('explorer.delete')} "${node.name}"${node.kind === 'directory' ? ' and all its contents' : ''}?`}
           onConfirm={handleDelete}
           onCancel={() => setConfirmDelete(false)}
+        />
+      )}
+
+      {confirmSwap && (
+        <ConfirmDialog
+          message={`Save changes to "${confirmSwap.fileName}" before switching files?`}
+          onConfirm={onSwapDiscard}
+          onCancel={onSwapCancel}
+          onSave={onSwapSave}
         />
       )}
     </>

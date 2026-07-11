@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { useThemeStore, getTokenDisplayValue } from '../../stores/themeStore';
 import { useTheme } from '../../hooks/useTheme';
@@ -12,13 +11,7 @@ const GENERAL_CATEGORY_ID = 'general';
 
 const isHex = (v: string) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
 
-interface AppearanceSectionProps {
-  rightHeader?: ReactNode;
-  rightMain?: ReactNode;
-  rightFooter?: ReactNode;
-}
-
-export function AppearanceSection({ rightHeader, rightMain, rightFooter }: AppearanceSectionProps = {}) {
+export function AppearanceSection() {
   const tokens = useThemeStore((s) => s.tokens);
   const setToken = useThemeStore((s) => s.setToken);
   const resetToken = useThemeStore((s) => s.resetToken);
@@ -53,7 +46,7 @@ export function AppearanceSection({ rightHeader, rightMain, rightFooter }: Appea
       {active.id === GENERAL_CATEGORY_ID && (
         <>
           <div>
-            <label className="semibold" style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--c-text-2)', marginBottom: 8 }}>Theme</label>
+            <label className="semibold" style={{ display: 'block', fontSize: 'var(--fs-base)', color: 'var(--c-text-2)', marginBottom: 8 }}>Theme</label>
             <div className="settings-scope-toggle">
               {available.map((th) => (
                 <button key={th.id} className={theme === th.id ? 'is-active' : ''} onClick={() => setTheme(th.id)}>
@@ -64,10 +57,10 @@ export function AppearanceSection({ rightHeader, rightMain, rightFooter }: Appea
           </div>
           <SettingsContent />
           <div>
-            <label className="semibold" style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--c-text-2)', marginBottom: 8 }}>Editor font</label>
+            <label className="semibold" style={{ display: 'block', fontSize: 'var(--fs-base)', color: 'var(--c-text-2)', marginBottom: 8 }}>Editor font</label>
             <div className="row gap-3" style={{ gap: 12, alignItems: 'flex-end' }}>
               <div style={{ flex: 1 }}>
-                <select className="ctrl w-full" style={{ fontSize: 'var(--fs-sm)' }} value={editorFontFamily} onChange={(e) => setEditorFontFamily(e.target.value)}>
+                <select className="ctrl w-full" style={{ fontSize: 'var(--fs-base)' }} value={editorFontFamily} onChange={(e) => setEditorFontFamily(e.target.value)}>
                   {['Inter', 'Arial', 'Times New Roman', 'Georgia', 'Courier New'].map((f) => <option key={f} value={f}>{f}</option>)}
                 </select>
               </div>
@@ -79,10 +72,10 @@ export function AppearanceSection({ rightHeader, rightMain, rightFooter }: Appea
             </div>
           </div>
           <div>
-            <button className="btn" style={{ fontSize: 'var(--fs-sm)' }} onClick={() => resetAll()}>
+            <button className="btn" style={{ fontSize: 'var(--fs-base)' }} onClick={() => resetAll()}>
               <RotateCcw size={14} style={{ marginRight: 6, verticalAlign: '-2px' }} /> Reset all token overrides
             </button>
-            <p className="subtle" style={{ fontSize: 'var(--fs-xs)', marginTop: 6 }}>
+            <p className="subtle" style={{ fontSize: 'var(--fs-base)', marginTop: 6 }}>
               {Object.keys(tokens).length} override(s) active. Defaults come from the CSS.
             </p>
           </div>
@@ -91,7 +84,7 @@ export function AppearanceSection({ rightHeader, rightMain, rightFooter }: Appea
 
       {active.id !== GENERAL_CATEGORY_ID && (
         <>
-          <p className="subtle" style={{ fontSize: 'var(--fs-xs)', margin: '0 0 4px' }}>{active.hint}</p>
+          <p className="subtle" style={{ fontSize: 'var(--fs-base)', margin: '0 0 4px' }}>{active.hint}</p>
           {active.tokens.map((tok) => (
             <TokenRow
               key={tok.name}
@@ -112,9 +105,6 @@ export function AppearanceSection({ rightHeader, rightMain, rightFooter }: Appea
       leftMain={leftMain}
       centerHeader={<div className="settings-list-head"><h3>{active.label}</h3></div>}
       centerMain={centerMain}
-      rightHeader={rightHeader}
-      rightMain={rightMain}
-      rightFooter={rightFooter}
     />
   );
 }
@@ -149,7 +139,7 @@ function TokenRow({ token, overridden, onSet, onReset }: {
       {token.type === 'font' ? (
         <select
           className="ctrl settings-token-input"
-          style={{ fontSize: 'var(--fs-sm)' }}
+          style={{ fontSize: 'var(--fs-base)' }}
           value={overridden ? current : ''}
           onChange={(e) => onSet(e.target.value)}
         >
@@ -159,7 +149,7 @@ function TokenRow({ token, overridden, onSet, onReset }: {
       ) : (
         <input
           className="ctrl settings-token-input"
-          style={{ fontSize: 'var(--fs-sm)' }}
+          style={{ fontSize: 'var(--fs-base)' }}
           defaultValue={overridden ? current : ''}
           placeholder={current || '—'}
           onBlur={(e) => onSet(e.target.value)}

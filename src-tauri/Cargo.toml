@@ -26,3 +26,9 @@ tauri-plugin-http = { version = "2", features = ["unsafe-headers"] }
 keyring = { version = "3", features = ["windows-native"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tauri-plugin-updater = "2"
+portable-pty = "0.8"
+base64 = "0.22"
+glob = "0.3"
+grep-searcher = "0.1"
+grep-regex = "0.1"
+tempfile = "3"

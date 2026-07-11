@@ -106,6 +106,12 @@ export async function readTextFile(path: string): Promise<string> {
   return connector.readTextFile(path);
 }
 
+/** Read a file's raw bytes. Throws if native FS is unavailable. */
+export async function readBinaryFile(path: string): Promise<Uint8Array> {
+  const connector = await getFolderConnector();
+  return connector.readBinaryFile(path);
+}
+
 /** Write a UTF-8 text file. Creates the file if it does not exist;
  *  overwrites if it does. Throws if native FS is unavailable. */
 export async function writeTextFile(path: string, content: string): Promise<void> {

@@ -9,7 +9,9 @@ import {
   type DialogFilter,
 } from '@tauri-apps/plugin-dialog';
 import {
+  BaseDirectory,
   readDir as tauriReadDir,
+  readFile as tauriReadFile,
   readTextFile as tauriReadTextFile,
   writeTextFile as tauriWriteTextFile,
   mkdir as tauriMkdir,
@@ -31,6 +33,15 @@ function normalize(p: string): string {
 
 function join(parent: string, name: string): string {
   return normalize(parent).replace(/\/+$/, '') + '/' + name;
+}
+
+function isAbsolutePath(path: string): boolean {
+  const normalized = normalize(path);
+  return normalized.startsWith('/') || normalized.startsWith('//') || /^[A-Za-z]:\//.test(normalized);
+}
+
+function baseDir(path: string): BaseDirectory | undefined {
+  return isAbsolutePath(path) ? undefined : BaseDirectory.AppLocalData;
 }
 
 export class TauriFolderConnector implements FolderConnector {
@@ -72,7 +83,7 @@ export class TauriFolderConnector implements FolderConnector {
   }
 
   async readDir(path: string): Promise<FolderDirEntry[]> {
-    const entries = await tauriReadDir(path);
+    const entries = await tauriReadDir(path, { baseDir: baseDir(path) });
     return entries.map((e) => ({
       name: e.name,
       path: join(path, e.name),
@@ -81,31 +92,38 @@ export class TauriFolderConnector implements FolderConnector {
   }
 
   async readTextFile(path: string): Promise<string> {
-    return await tauriReadTextFile(path);
+    return await tauriReadTextFile(path, { baseDir: baseDir(path) });
+  }
+
+  async readBinaryFile(path: string): Promise<Uint8Array> {
+    return await tauriReadFile(path, { baseDir: baseDir(path) });
   }
 
   async writeTextFile(path: string, content: string): Promise<void> {
-    await tauriWriteTextFile(path, content);
+    await tauriWriteTextFile(path, content, { baseDir: baseDir(path) });
   }
 
   async mkdir(path: string, recursive = false): Promise<void> {
-    await tauriMkdir(path, { recursive });
+    await tauriMkdir(path, { recursive, baseDir: baseDir(path) });
   }
 
   async remove(path: string, recursive = false): Promise<void> {
-    await tauriRemove(path, { recursive });
+    await tauriRemove(path, { recursive, baseDir: baseDir(path) });
   }
 
   async rename(from: string, to: string): Promise<void> {
-    await tauriRename(from, to);
+    await tauriRename(from, to, {
+      oldPathBaseDir: baseDir(from),
+      newPathBaseDir: baseDir(to),
+    });
   }
 
   async exists(path: string): Promise<boolean> {
-    return await tauriExists(path);
+    return await tauriExists(path, { baseDir: baseDir(path) });
   }
 
   async getMetadata(path: string): Promise<FolderMetadata> {
-    const info = await tauriStat(path);
+    const info = await tauriStat(path, { baseDir: baseDir(path) });
     return {
       size: info.size,
       modifiedAt: info.mtime ?? null,

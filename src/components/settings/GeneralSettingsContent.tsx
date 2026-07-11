@@ -34,24 +34,24 @@ export function SettingsContent() {
         <div>
           <div style={{ marginBottom: 12 }}>
             <div className="row" style={{ justifyContent: 'space-between', padding: '2px 0' }}>
-              <label className="subtle" style={{ fontSize: 'var(--fs-xs)' }}>{t('settings.textSize')}</label>
+              <label className="subtle" style={{ fontSize: 'var(--fs-base)' }}>{t('settings.textSize')}</label>
               <div className="row-xs" style={{ border: '1px solid var(--c-border-1)', borderRadius: 9999, padding: '2px 4px' }}>
                 <button
                   type="button"
                   disabled={editorFontSize <= 12}
                   onClick={() => setEditorFontSize((editorFontSize - 2) as 12 | 14 | 16)}
                   className="btn-icon"
-                  style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)', borderRadius: 9999, fontSize: 'var(--fs-sm)', lineHeight: 1, opacity: editorFontSize <= 12 ? 0.3 : 1, cursor: editorFontSize <= 12 ? 'not-allowed' : 'pointer' }}
+                  style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)', borderRadius: 9999, fontSize: 'var(--fs-base)', lineHeight: 1, opacity: editorFontSize <= 12 ? 0.3 : 1, cursor: editorFontSize <= 12 ? 'not-allowed' : 'pointer' }}
                 >
                   −
                 </button>
-                <span className="nowrap" style={{ fontSize: 'var(--fs-xs)', color: 'var(--c-text-1)', width: 32, textAlign: 'center' }}>{editorFontSize}px</span>
+                <span className="nowrap" style={{ fontSize: 'var(--fs-base)', color: 'var(--c-text-1)', width: 32, textAlign: 'center' }}>{editorFontSize}px</span>
                 <button
                   type="button"
                   disabled={editorFontSize >= 16}
                   onClick={() => setEditorFontSize((editorFontSize + 2) as 12 | 14 | 16)}
                   className="btn-icon"
-                  style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)', borderRadius: 9999, fontSize: 'var(--fs-sm)', lineHeight: 1, opacity: editorFontSize >= 16 ? 0.3 : 1, cursor: editorFontSize >= 16 ? 'not-allowed' : 'pointer' }}
+                  style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)', borderRadius: 9999, fontSize: 'var(--fs-base)', lineHeight: 1, opacity: editorFontSize >= 16 ? 0.3 : 1, cursor: editorFontSize >= 16 ? 'not-allowed' : 'pointer' }}
                 >
                   +
                 </button>
@@ -61,13 +61,13 @@ export function SettingsContent() {
 
           {/* Font Family — full width */}
           <div style={{ marginBottom: 12 }}>
-            <label className="subtle" style={{ fontSize: 'var(--fs-xs)', display: 'block', marginBottom: 6 }}>{t('settings.fontFamily')}</label>
+            <label className="subtle" style={{ fontSize: 'var(--fs-base)', display: 'block', marginBottom: 6 }}>{t('settings.fontFamily')}</label>
             <div ref={fontRef} className="relative">
               <button
                 type="button"
                 onClick={() => setFontOpen((v) => !v)}
                 className="btn w-full"
-                style={{ padding: 10, borderRadius: 12, fontSize: 'var(--fs-sm)', justifyContent: 'space-between' }}
+                style={{ padding: 10, borderRadius: 12, fontSize: 'var(--fs-base)', justifyContent: 'space-between' }}
               >
                 <span style={{ fontFamily: editorFontFamily }}>{editorFontFamily}</span>
                 <ChevronDown size={14} className="subtle" style={{ transform: fontOpen ? 'rotate(180deg)' : undefined, transition: 'transform 0.15s' }} />
@@ -82,7 +82,7 @@ export function SettingsContent() {
                       className="drop-item"
                       style={{
                         fontFamily: font,
-                        fontSize: 'var(--fs-sm)',
+                        fontSize: 'var(--fs-base)',
                         background: editorFontFamily === font ? 'var(--c-background-4)' : undefined,
                         color: editorFontFamily === font ? 'var(--c-accent-center-panel)' : undefined,
                       }}
@@ -97,7 +97,7 @@ export function SettingsContent() {
 
           {/* Language */}
           <div className="row" style={{ justifyContent: 'space-between', padding: '2px 0' }}>
-            <label className="subtle" style={{ fontSize: 'var(--fs-xs)' }}>{t('settings.language')}</label>
+            <label className="subtle" style={{ fontSize: 'var(--fs-base)' }}>{t('settings.language')}</label>
             <div className="row-xs" style={{ border: '1px solid var(--c-border-1)', borderRadius: 9999, padding: '2px 4px' }}>
               {(['en', 'tr'] as const).map((lang) => (
                 <button
@@ -108,7 +108,7 @@ export function SettingsContent() {
                   style={{
                     padding: '2px 10px',
                     borderRadius: 9999,
-                    fontSize: 'var(--fs-xs)',
+                    fontSize: 'var(--fs-base)',
                     border: 'none',
                     cursor: 'pointer',
                     background: language === lang ? 'var(--c-accent-center-panel)' : 'transparent',

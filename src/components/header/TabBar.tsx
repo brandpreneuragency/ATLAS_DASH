@@ -1,9 +1,9 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useDocumentStore } from '../../stores/documentStore';
+import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { useUIStore } from '../../stores/uiStore';
-import { Tab } from './Tab';
+import { WorkspaceTab } from './WorkspaceTab';
 import { CRM_HEADER_TABS, SETTINGS_HEADER_TABS, TASK_HEADER_TABS } from './moduleNav';
 import type { CRMHeaderTab } from './moduleNav';
 import type { LucideIcon } from 'lucide-react';
@@ -51,13 +51,13 @@ export function TabBar() {
     setActiveTaskPage,
   } = useUIStore();
   const {
-    documents,
-    activeDocumentId,
-    setActiveDocument,
-    deleteDocument,
-    updateDocument,
-    createDocument,
-  } = useDocumentStore();
+    workspaces,
+    activeWorkspaceId,
+    setActiveWorkspace,
+    deleteWorkspace,
+    renameWorkspace,
+    createWorkspace,
+  } = useWorkspaceStore();
 
   const tabsRowRef = useRef<HTMLDivElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -76,7 +76,7 @@ export function TabBar() {
       ro.disconnect();
       window.removeEventListener('resize', checkOverflow);
     };
-  }, [documents, taskMode, crmMode, activeCRMPage, activeFormsPage, activeTaskPage, activeView, activeSettingsSubTab]);
+  }, [workspaces, taskMode, crmMode, activeCRMPage, activeFormsPage, activeTaskPage, activeView, activeSettingsSubTab]);
 
   if (!taskMode && !crmMode && activeView === 'settings') {
     return (
@@ -153,24 +153,24 @@ export function TabBar() {
       className="tabs-row"
       data-overflowing={isOverflowing ? 'true' : 'false'}
     >
-      {documents.map((doc) => (
-        <Tab
-          key={doc.id}
-          doc={doc}
-          isActive={doc.id === activeDocumentId}
-          onSelect={() => setActiveDocument(doc.id)}
-          onClose={() => deleteDocument(doc.id)}
-          onRename={(newTitle) => updateDocument(doc.id, { title: newTitle })}
+      {workspaces.map((ws) => (
+        <WorkspaceTab
+          key={ws.id}
+          workspace={ws}
+          isActive={ws.id === activeWorkspaceId}
+          onSelect={() => setActiveWorkspace(ws.id)}
+          onClose={() => deleteWorkspace(ws.id)}
+          onRename={(newName) => renameWorkspace(ws.id, newName)}
           charLimit={24}
-          colorIndex={doc.colorIndex ?? 0}
+          colorIndex={ws.colorIndex ?? 0}
         />
       ))}
       <button
         id="tab-plus-button"
         type="button"
-        title={t('tabs.newDocument') ?? 'New document'}
+        title={t('tabs.newDocument') ?? 'New workspace'}
         onMouseDown={(event) => event.stopPropagation()}
-        onClick={() => createDocument()}
+        onClick={() => createWorkspace()}
       >
         <Plus size={12} />
       </button>

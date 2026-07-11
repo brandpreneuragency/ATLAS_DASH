@@ -636,7 +636,7 @@
   height: 40px;
   padding: 0 18px;
   border: none;
-  border-radius: var(--tabs-form-radius);
+  border-radius: 100px;
   background: var(--tabs-form-primary);
   color: #fff;
   font-size: var(--tabs-form-font-size);

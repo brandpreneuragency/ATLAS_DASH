@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAIStore } from '../../stores/aiStore';
 import { SettingsPanels } from './SettingsPanels';
@@ -10,13 +9,7 @@ import type { SearchProvider } from '../../types';
 
 const SEARCH_PROVIDER_IDS: string[] = ['tavily', 'exa', 'firecrawl', 'brave'];
 
-interface ToolsSectionProps {
-  rightHeader?: ReactNode;
-  rightMain?: ReactNode;
-  rightFooter?: ReactNode;
-}
-
-export function ToolsSection({ rightHeader, rightMain, rightFooter }: ToolsSectionProps) {
+export function ToolsSection() {
   const { t } = useTranslation();
   const searchConfig = useAIStore((s) => s.searchConfig);
   const [focusToolId, setFocusToolId] = useState<string | null>(null);
@@ -24,11 +17,6 @@ export function ToolsSection({ rightHeader, rightMain, rightFooter }: ToolsSecti
   const focusedTool = SEARCH_PROVIDER_IDS.includes(focusToolId ?? '')
     ? (focusToolId as SearchProvider)
     : null;
-
-  const toolLabel = focusedTool
-    ? t(`settings.${focusedTool}` as const)
-    : null;
-
   const connected = focusedTool
     ? Boolean(searchConfig[`${focusedTool}Key` as keyof typeof searchConfig]?.toString().trim())
     : false;
@@ -41,7 +29,14 @@ export function ToolsSection({ rightHeader, rightMain, rightFooter }: ToolsSecti
         </div>
       }
       leftMain={<ToolsList focusToolId={focusToolId} onSelectTool={setFocusToolId} />}
-      centerHeader={<ToolDetailPanel toolLabel={toolLabel} connected={connected} />}
+      centerHeader={
+        focusedTool ? (
+          <ToolDetailPanel
+            toolLabel={t(`settings.${focusedTool}` as const)}
+            connected={connected}
+          />
+        ) : undefined
+      }
       centerMain={
         <div className="settings-detail-body">
           {focusedTool ? (
@@ -53,9 +48,6 @@ export function ToolsSection({ rightHeader, rightMain, rightFooter }: ToolsSecti
           )}
         </div>
       }
-      rightHeader={rightHeader}
-      rightMain={rightMain}
-      rightFooter={rightFooter}
     />
   );
 }

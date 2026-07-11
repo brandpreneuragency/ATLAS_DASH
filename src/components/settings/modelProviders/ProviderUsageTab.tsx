@@ -14,8 +14,8 @@ export function ProviderUsageTab({ provider }: ProviderUsageTabProps) {
       <div className="col gap-2">
         <div className="label-sm">{t('models.usageTitle')}</div>
         <div className="row gap-2 settings-usage-card">
-          <span className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>{t('models.usageMonth')}</span>
-          <span className="med" style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-text-2)' }}>
+          <span className="subtle" style={{ fontSize: 'var(--fs-base)' }}>{t('models.usageMonth')}</span>
+          <span className="med" style={{ fontSize: 'var(--fs-base)', color: 'var(--c-text-2)' }}>
             {t('models.usageEstimatedCost')}: {t('models.usageNotTracked')}
           </span>
         </div>
@@ -51,7 +51,7 @@ export function ProviderUsageTab({ provider }: ProviderUsageTabProps) {
 
       <div className="col settings-coming-soon-card">
         <span className="label-sm" style={{ color: 'var(--c-text-2)' }}>{t('models.usageTitle')}</span>
-        <p className="subtle" style={{ fontSize: 'var(--fs-sm)', maxWidth: 420, margin: 0 }}>
+        <p className="subtle" style={{ fontSize: 'var(--fs-base)', maxWidth: 420, margin: 0 }}>
           {t('models.usageNoData')}
         </p>
       </div>

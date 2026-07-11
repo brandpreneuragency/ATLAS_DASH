@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Calendar, ChevronDown, Folder } from 'lucide-react';
+import { Calendar, Folder } from 'lucide-react';
 import {
   ComposerCard,
   ComposerTextarea,
@@ -198,7 +198,7 @@ export function QuickCreateInput({
         onMouseDown={(event) => event.stopPropagation()}
         style={{ left: 0, bottom: '100%', minWidth: 120, marginBottom: 2 }}
       >
-        <button type="button" className="drop-item" onClick={() => handleProjectPick('')} style={{ fontSize: 'var(--fs-sm)' }}>
+        <button type="button" className="drop-item" onClick={() => handleProjectPick('')} style={{ fontSize: 'var(--fs-base)' }}>
           No project
         </button>
         {projects.map((p) => (
@@ -207,7 +207,7 @@ export function QuickCreateInput({
             type="button"
             className="drop-item"
             onClick={() => handleProjectPick(p.name)}
-            style={{ fontSize: 'var(--fs-sm)' }}
+            style={{ fontSize: 'var(--fs-base)' }}
           >
             {p.name}
           </button>
@@ -225,7 +225,7 @@ export function QuickCreateInput({
         onMouseDown={(event) => event.stopPropagation()}
         style={{ left: 0, bottom: '100%', minWidth: 140, marginBottom: 2 }}
       >
-        <button type="button" className="drop-item" onClick={() => handleDatePick('')} style={{ fontSize: 'var(--fs-sm)' }}>
+        <button type="button" className="drop-item" onClick={() => handleDatePick('')} style={{ fontSize: 'var(--fs-base)' }}>
           No date
         </button>
         {['Today', 'Tomorrow', 'Next week', 'Next month'].map((label) => (
@@ -241,7 +241,7 @@ export function QuickCreateInput({
               handleDatePick(d.toISOString().slice(0, 10));
               setShowDatePicker(false);
             }}
-            style={{ fontSize: 'var(--fs-sm)' }}
+            style={{ fontSize: 'var(--fs-base)' }}
           >
             {label}
           </button>
@@ -257,7 +257,7 @@ export function QuickCreateInput({
             }
             setShowDatePicker(false);
           }}
-          style={{ fontSize: 'var(--fs-sm)' }}
+          style={{ fontSize: 'var(--fs-base)' }}
         >
           Custom...
         </button>
@@ -287,7 +287,7 @@ export function QuickCreateInput({
           {/* Row 2: Left dropups + right send button */}
           <ComposerRow className="task-quick-create-bottom-row">
             <div ref={projectRef} className="task-quick-create-actions">
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 2 }}>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <button
                   type="button"
                   onClick={() => setShowProjectPicker(!showProjectPicker)}
@@ -301,7 +301,6 @@ export function QuickCreateInput({
                 >
                   <Folder size={12} className="task-quick-create-dropup-icon" />
                   <span className="trunc med task-quick-create-dropup-label">{projectButtonLabel}</span>
-                  <ChevronDown size={12} className="task-quick-create-dropup-chevron" />
                 </button>
                 <ProjectDropdown />
               </div>
@@ -319,7 +318,6 @@ export function QuickCreateInput({
                 >
                   <Calendar size={12} className="task-quick-create-dropup-icon" />
                   <span className="trunc med task-quick-create-dropup-label">{dateButtonLabel}</span>
-                  <ChevronDown size={12} className="task-quick-create-dropup-chevron" />
                 </button>
                 <DateDropdown />
                 <input

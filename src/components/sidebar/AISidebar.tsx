@@ -9,14 +9,14 @@ import { useChatStore } from '../../stores/chatStore';
 import type { ChatMessage } from '../../types';
 
 interface AISidebarProps {
-  documentId: string | null;
+  workspaceId: string | null;
   taskId?: string | null;
   /** Identifier for the Settings sub-tab this sidebar is mounted under. */
   settingsTab?: string | null;
   editor: Editor | null;
 }
 
-export function AISidebar({ documentId, taskId, settingsTab, editor }: AISidebarProps) {
+export function AISidebar({ workspaceId, taskId, settingsTab, editor }: AISidebarProps) {
   const { t } = useTranslation();
   const {
     activeThreadId,
@@ -29,22 +29,22 @@ export function AISidebar({ documentId, taskId, settingsTab, editor }: AISidebar
   const isTaskMode = Boolean(taskId);
   const isSettingsMode = Boolean(settingsTab);
   const mode = isTaskMode ? 'task' : 'writer';
-  const hasContext = Boolean(documentId || taskId || settingsTab);
+  const hasContext = Boolean(workspaceId || taskId || settingsTab);
 
-  // Auto-swap on context change: when documentId/taskId/settingsTab changes,
+  // Auto-swap on context change: when workspaceId/taskId/settingsTab changes,
   // load threads for that context.
   useEffect(() => {
     const context = taskId
       ? { taskId }
-      : documentId
-      ? { documentId }
+      : workspaceId
+      ? { workspaceId }
       : settingsTab
       ? { settingsTab }
       : null;
     if (context) {
       setActiveContext(context);
     }
-  }, [documentId, taskId, settingsTab, setActiveContext]);
+  }, [workspaceId, taskId, settingsTab, setActiveContext]);
 
   // Empty state: no active thread or thread has no messages
   const activeMessages = getActiveThreadMessages();
@@ -104,7 +104,7 @@ export function AISidebar({ documentId, taskId, settingsTab, editor }: AISidebar
               </div>
             ) : (
               <ChatThread
-                documentId={documentId}
+                workspaceId={workspaceId}
                 taskId={taskId}
                 editor={editor}
                 onReplyMessage={setReplyToMessage}
@@ -119,7 +119,7 @@ export function AISidebar({ documentId, taskId, settingsTab, editor }: AISidebar
           <ChatInput
             mode={mode}
             threadId={activeThreadId ?? ''}
-            documentId={documentId}
+            workspaceId={workspaceId}
             taskId={taskId}
             settingsTab={settingsTab}
             replyToMessage={replyToMessage}

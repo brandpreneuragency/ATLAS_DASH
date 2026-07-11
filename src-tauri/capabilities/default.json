@@ -11,9 +11,11 @@
     "core:window:allow-minimize",
     "core:window:allow-toggle-maximize",
     "core:window:allow-close",
+    "core:window:allow-start-dragging",
     "notification:default",
     "global-shortcut:default",
     "fs:default",
+    "fs:allow-read-file",
     "fs:allow-read-text-file",
     "fs:allow-write-text-file",
     "fs:allow-read-dir",
@@ -22,6 +24,10 @@
     "fs:allow-rename",
     "fs:allow-exists",
     "fs:allow-stat",
+    {
+      "identifier": "fs:scope",
+      "allow": ["**"]
+    },
     "dialog:default",
     "http:default",
     "updater:default",

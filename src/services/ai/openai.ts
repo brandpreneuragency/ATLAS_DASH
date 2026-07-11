@@ -1,11 +1,11 @@
 // OpenAI-compatible streaming. All connected providers are added as
-// OpenAI-compatible endpoints (see ConnectProviderDrawer), so this is
+// OpenAI-compatible endpoints (see ConnectProviderPanel), so this is
 // the only streamer used by the router.
 
 import type { AIProviderConfig, MessageUsage } from '../../types';
 import { runtimeFetch } from '../http';
 import { buildReasoningPayload, resolveReasoning } from './reasoning';
-import type { ChatMessage, StreamChunk } from './types';
+import type { ChatMessage, StreamChunk, StreamOptions } from './types';
 
 function normalizeUsage(usage: unknown): MessageUsage | undefined {
   if (!usage || typeof usage !== 'object') return undefined;
@@ -24,7 +24,8 @@ function normalizeUsage(usage: unknown): MessageUsage | undefined {
 export async function* streamOpenAI(
   messages: ChatMessage[],
   config: AIProviderConfig,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options?: StreamOptions
 ): AsyncGenerator<StreamChunk, void, unknown> {
   const baseUrl = (config.baseUrl || 'https://api.openai.com/v1').replace(/\/+$/, '');
   const apiKey = config.apiKey?.trim();
@@ -55,6 +56,11 @@ export async function* streamOpenAI(
       stream: true,
       stream_options: { include_usage: true },
       ...reasoningPayload,
+      // Only include tool params when the caller supplies them, so
+      // text-only requests stay byte-identical to the previous behaviour.
+      ...(options?.tools && options.tools.length > 0
+        ? { tools: options.tools, tool_choice: options.toolChoice ?? 'auto' }
+        : {}),
     }),
     signal,
   });
@@ -69,6 +75,11 @@ export async function* streamOpenAI(
   let buffer = '';
   let reasoningStarted = false;
   let reasoningClosed = false;
+
+  // Tool-call accumulation: keyed by delta index. Each entry collects the
+  // streamed id / name / arguments fragments for one tool call.
+  type AccumTool = { id: string; name: string; args: string };
+  const toolAcc: Record<number, AccumTool> = {};
 
   while (true) {
     const { done, value } = await reader.read();
@@ -88,9 +99,29 @@ export async function* streamOpenAI(
           yield { content: '', usage };
           continue;
         }
-        const delta = json.choices?.[0]?.delta;
+        const choice = json.choices?.[0];
+        const delta = choice?.delta;
         const reasoning = delta?.reasoning ?? delta?.reasoning_content ?? '';
         const content = delta?.content ?? '';
+
+        // Accumulate streamed tool calls (OpenAI-compatible `tool_calls[]`).
+        const toolCalls = delta?.tool_calls;
+        if (Array.isArray(toolCalls)) {
+          for (const tc of toolCalls) {
+            const idx = tc.index;
+            if (idx === undefined || idx === null) continue;
+            const entry = (toolAcc[idx] ??= { id: '', name: '', args: '' });
+            if (tc.id) entry.id = tc.id;
+            if (tc.function?.name) entry.name = tc.function.name;
+            if (typeof tc.function?.arguments === 'string') {
+              entry.args += tc.function.arguments;
+              yield {
+                content: '',
+                toolCallDelta: { index: idx, argumentsChunk: tc.function.arguments },
+              };
+            }
+          }
+        }
 
         if (reasoning) {
           if (!reasoningStarted) { yield { content: '<think>' }; reasoningStarted = true; }
@@ -99,6 +130,21 @@ export async function* streamOpenAI(
         if (content) {
           if (reasoningStarted && !reasoningClosed) { yield { content: '</think>' }; reasoningClosed = true; }
           yield { content };
+        }
+
+        // Assistant turn finished requesting tool execution.
+        const finish = choice?.finish_reason;
+        if (finish === 'tool_calls') {
+          const calls = Object.values(toolAcc).map((e) => {
+            let args: Record<string, unknown> = {};
+            try {
+              args = e.args.trim() ? JSON.parse(e.args) : {};
+            } catch {
+              args = {};
+            }
+            return { id: e.id, name: e.name, args };
+          });
+          yield { content: '', toolCallReady: { calls } };
         }
       } catch {
         // skip malformed chunks

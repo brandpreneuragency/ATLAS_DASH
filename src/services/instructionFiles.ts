@@ -1,6 +1,6 @@
 // Instruction config files. Persisted to `.tabs/` under the active root folder
 // using absolute paths via the Tauri fs adapter (Phase 3).
-import { useFileSystemStore } from '../stores/fileSystemStore';
+import { useWorkspaceStore } from '../stores/workspaceStore';
 import {
   exists as fsExists,
   readTextFile,
@@ -38,7 +38,7 @@ const DEFAULT_TASK_INSTRUCTIONS = `# Task Summarizing Agent Instructions
 4. **Be Concise**: Focus on what matters. Omit redundant or trivial details.`;
 
 function getConfigDir(): string | null {
-  const rootNode = useFileSystemStore.getState().rootNode;
+  const rootNode = useWorkspaceStore.getState().getActiveRootNode();
   if (!rootNode) return null;
   return joinPath(rootNode.fullPath, CONFIG_DIR);
 }

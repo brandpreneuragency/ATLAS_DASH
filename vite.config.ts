@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// In dev, the Vite web build runs on :5173 and the API on :4000. We proxy
+// In dev, the Vite web build runs on :1420 and the API on :4000. We proxy
 // `/api/*` from Vite to the API so the frontend can use a same-origin base
 // URL (`/api`) and the browser sends the session cookie without CORS.
 //
@@ -13,7 +13,9 @@ export default defineConfig({
   plugins: [react()],
   clearScreen: false,
   server: {
-    port: 5173,
+    // Dedicated port so another Vite app on :5173 (e.g. component-website-builder)
+    // cannot steal Tauri's http://localhost:* webview.
+    port: 1420,
     strictPort: true,
     host: true,
     proxy: {

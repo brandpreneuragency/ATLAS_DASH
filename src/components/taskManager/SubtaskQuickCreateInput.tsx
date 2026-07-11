@@ -8,6 +8,7 @@ import {
   ComposerSendButton,
 } from '../ui/Composer';
 import { useTaskStore } from '../../stores/taskStore';
+import { useUIStore } from '../../stores/uiStore';
 import { useThemedPlaceholder } from '../../utils/placeholders';
 import { parseTaskInput } from '../../services/nlpParser';
 import { getTodayIso, getTomorrowIso } from '../../services/taskFormat';
@@ -23,6 +24,7 @@ export function SubtaskQuickCreateInput({ parentTaskId }: SubtaskQuickCreateInpu
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [assignedDate, setAssignedDate] = useState<string | null>(null);
   const { createSubtask, tasks } = useTaskStore();
+  const { setSubtasksOpen } = useUIStore();
   const parentTask = tasks.find((t) => t.id === parentTaskId) ?? null;
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -71,7 +73,9 @@ export function SubtaskQuickCreateInput({ parentTaskId }: SubtaskQuickCreateInpu
   const handleSend = async () => {
     const title = parsed?.title?.trim();
     if (!title || !parentTask) return;
-    await createSubtask(parentTask.id, title, undefined, effectiveDate ?? parentTask.date);
+    const subtask = await createSubtask(parentTask.id, title, undefined, effectiveDate ?? parentTask.date);
+    if (!subtask) return;
+    setSubtasksOpen(true);
     setValue('');
     setAssignedDate(null);
   };
@@ -103,7 +107,7 @@ export function SubtaskQuickCreateInput({ parentTaskId }: SubtaskQuickCreateInpu
         onMouseDown={(event) => event.stopPropagation()}
         style={{ left: 0, bottom: '100%', minWidth: 140, marginBottom: 2 }}
       >
-        <button type="button" className="drop-item" onClick={() => handleDatePick('')} style={{ fontSize: 'var(--fs-sm)' }}>
+        <button type="button" className="drop-item" onClick={() => handleDatePick('')} style={{ fontSize: 'var(--fs-base)' }}>
           No date
         </button>
         {['Today', 'Tomorrow', 'Next week', 'Next month'].map((label) => (
@@ -118,7 +122,7 @@ export function SubtaskQuickCreateInput({ parentTaskId }: SubtaskQuickCreateInpu
               else if (label === 'Next month') d.setMonth(d.getMonth() + 1);
               handleDatePick(d.toISOString().slice(0, 10));
             }}
-            style={{ fontSize: 'var(--fs-sm)' }}
+            style={{ fontSize: 'var(--fs-base)' }}
           >
             {label}
           </button>
@@ -134,7 +138,7 @@ export function SubtaskQuickCreateInput({ parentTaskId }: SubtaskQuickCreateInpu
             }
             setShowDatePicker(false);
           }}
-          style={{ fontSize: 'var(--fs-sm)' }}
+          style={{ fontSize: 'var(--fs-base)' }}
         >
           Custom...
         </button>

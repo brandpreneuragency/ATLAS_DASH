@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Search, Download, RefreshCw } from 'lucide-react';
+import { Search, Download, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AIProviderConfig, ModelItem, ModelReasoning } from '../../../types';
 import { ModelSwitch } from '../../modals/modelProvider/ModelSwitch';
@@ -75,15 +75,30 @@ export function ProviderModelsTab({
     if (rect) setHoveredModel({ model, rect });
   };
 
-  const FILTER_BUTTONS: { id: FilterType; labelKey: string }[] = [
+  const PRIMARY_FILTERS: { id: FilterType; labelKey: string }[] = [
     { id: 'all', labelKey: 'models.filterAll' },
     { id: 'enabled', labelKey: 'models.filterEnabled' },
+  ];
+
+  const ADVANCED_FILTERS: { id: FilterType; labelKey: string }[] = [
     { id: 'disabled', labelKey: 'models.filterDisabled' },
     { id: 'custom', labelKey: 'models.filterCustom' },
     { id: 'vision', labelKey: 'models.filterVision' },
     { id: 'tool_use', labelKey: 'models.filterToolUse' },
     { id: 'reasoning', labelKey: 'models.filterReasoning' },
   ];
+
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [expandedModels, setExpandedModels] = useState<Set<string>>(new Set());
+
+  const toggleModelExpanded = (modelId: string) => {
+    setExpandedModels((prev) => {
+      const next = new Set(prev);
+      if (next.has(modelId)) next.delete(modelId);
+      else next.add(modelId);
+      return next;
+    });
+  };
 
   const handleRefreshCapabilities = async () => {
     setRefreshingCapabilities(true);
@@ -135,14 +150,14 @@ export function ProviderModelsTab({
           <RefreshCw size={12} className={refreshingCapabilities ? 'settings-spin' : undefined} />
           <span>{t('models.refreshCapabilities')}</span>
         </button>
-        <span className="subtle" style={{ fontSize: 'var(--fs-xs)', whiteSpace: 'nowrap' }}>
+        <span className="subtle" style={{ fontSize: 'var(--fs-base)', whiteSpace: 'nowrap' }}>
           {t('models.modelCount', { count: models.length })}
         </span>
       </div>
 
       {/* Filters */}
       <div className="row gap-1 settings-filter-bar">
-        {FILTER_BUTTONS.map((filter) => (
+        {PRIMARY_FILTERS.map((filter) => (
           <button
             key={filter.id}
             type="button"
@@ -152,6 +167,35 @@ export function ProviderModelsTab({
             {t(filter.labelKey)}
           </button>
         ))}
+        <div className="settings-advanced-filter-wrap">
+          <button
+            type="button"
+            onClick={() => setShowAdvancedFilters((v) => !v)}
+            className={`btn-xs settings-filter-btn ${showAdvancedFilters || !PRIMARY_FILTERS.some((f) => f.id === activeFilter) ? 'settings-filter-btn--active' : 'settings-filter-btn--inactive'}`}
+          >
+            {activeFilter !== 'all' && activeFilter !== 'enabled'
+              ? t(ADVANCED_FILTERS.find((f) => f.id === activeFilter)?.labelKey ?? 'models.filterAll')
+              : t('models.moreFilters')}
+            <ChevronDown size={10} style={{ marginLeft: 2 }} />
+          </button>
+          {showAdvancedFilters && (
+            <div className="settings-advanced-filter-menu">
+              {ADVANCED_FILTERS.map((filter) => (
+                <button
+                  key={filter.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveFilter(filter.id);
+                    setShowAdvancedFilters(false);
+                  }}
+                  className={activeFilter === filter.id ? 'settings-advanced-filter-item--active' : ''}
+                >
+                  {t(filter.labelKey)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Model table */}
@@ -165,11 +209,9 @@ export function ProviderModelsTab({
             {/* Table header */}
             <div className="row settings-model-table-header">
               <span style={{ flex: 2 }}>{t('models.colModelName')}</span>
-              <span style={{ flex: 2 }}>{t('models.colModelId')}</span>
               <span style={{ flex: 2 }}>{t('models.colCapabilities')}</span>
-              <span style={{ flex: 1 }}>{t('models.colSource')}</span>
               <span style={{ width: 48, textAlign: 'center' }}>{t('models.colEnabled')}</span>
-              <span style={{ width: 64, textAlign: 'center' }}>{t('models.colTools')}</span>
+              <span style={{ width: 32 }}></span>
             </div>
 
             {/* Table rows */}
@@ -200,17 +242,14 @@ export function ProviderModelsTab({
                     onFocus={() => handleMouseEnter(model)}
                     onBlur={() => setHoveredModel(null)}
                   >
-                    <span className="settings-model-name">
+                    <span className="settings-model-name" title={model.id}>
                       {model.name}
-                    </span>
-                    <span className="settings-model-id">
-                      {model.id}
+                      {model.custom && <span className="settings-model-custom-badge">{t('models.sourceCustom')}</span>}
                     </span>
                     <span className="settings-model-caps">
-                      {capItems.length > 0 ? capItems.join(', ') : t('models.capUnknown')}
-                    </span>
-                    <span className={`settings-model-source ${model.custom ? 'settings-model-source--custom' : 'settings-model-source--synced'}`}>
-                      {model.custom ? t('models.sourceCustom') : t('models.sourceSynced')}
+                      {capItems.map((cap) => (
+                        <span key={cap} className="settings-cap-badge">{cap}</span>
+                      ))}
                     </span>
                     <span className="settings-model-toggle-cell">
                       <ModelSwitch
@@ -219,112 +258,118 @@ export function ProviderModelsTab({
                         ariaLabel={`${enabled ? t('models.hideFromSelector', { model: model.name }) : t('models.showInSelector', { model: model.name })}`}
                       />
                     </span>
-                    <span className="settings-model-toggle-cell">
-                      <input
-                        type="checkbox"
-                        checked={model.supportsTools ?? true}
-                        onChange={(e) => onToggleModelTools(provider.id, model.id, e.target.checked)}
-                        aria-label={t('models.toggleTools', { model: model.name })}
-                      />
-                    </span>
+                    <button
+                      type="button"
+                      className="btn-icon settings-model-expand-btn"
+                      onClick={() => toggleModelExpanded(model.id)}
+                      aria-label={expandedModels.has(model.id) ? t('models.collapse') : t('models.expand', { provider: model.name })}
+                      aria-expanded={expandedModels.has(model.id)}
+                    >
+                      {expandedModels.has(model.id) ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    </button>
                   </div>
 
-                  <div className="settings-model-reasoning-row">
-                    <label className="settings-model-reasoning-toggle">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(manualReasoning)}
-                        onChange={(e) => {
-                          if (!e.target.checked) {
-                            onSetModelReasoningDescriptor(provider.id, model.id, undefined);
-                            return;
-                          }
-                          onSetModelReasoningDescriptor(provider.id, model.id, {
-                            param: resolvedReasoning?.param ?? 'reasoning_effort',
-                            source: 'manual',
-                            options: resolvedReasoning?.options ?? [
-                              { label: 'Off', value: '' },
-                              { label: 'Low', value: 'low' },
-                              { label: 'Medium', value: 'medium' },
-                              { label: 'High', value: 'high' },
-                            ],
-                          });
-                        }}
-                      />
-                      <span>{t('models.supportsThinking')}</span>
-                    </label>
-
-                    {manualReasoning ? (
-                      <>
-                        <select
-                          className="settings-model-reasoning-select"
-                          value={manualParam}
-                          onChange={(e) => {
-                            const nextParam = e.target.value as ModelReasoning['param'];
-                            const options = nextParam === 'thinking'
-                              ? [
-                                  { label: 'Off', value: '', budgetTokens: 0 },
-                                  { label: 'Low', value: 'low', budgetTokens: 4000 },
-                                  { label: 'Medium', value: 'medium', budgetTokens: 12000 },
-                                  { label: 'High', value: 'high', budgetTokens: 24000 },
-                                ]
-                              : nextParam === 'reasoning_enabled'
-                                ? [
-                                    { label: 'Off', value: '' },
-                                    { label: 'On', value: 'on' },
-                                  ]
-                                : manualReasoning.options;
-                            onSetModelReasoningDescriptor(provider.id, model.id, {
-                              ...manualReasoning,
-                              param: nextParam,
-                              options,
-                            });
-                          }}
-                        >
-                          <option value="reasoning_effort">reasoning_effort</option>
-                          <option value="reasoning">reasoning.effort</option>
-                          <option value="reasoning_enabled">reasoning.enabled</option>
-                          <option value="thinking">thinking.budget</option>
-                        </select>
+                  {/* Expanded: Tools and Thinking overrides */}
+                  {expandedModels.has(model.id) && (
+                    <div className="settings-model-reasoning-row settings-model-expanded-panel">
+                      <label className="settings-model-reasoning-toggle">
                         <input
-                          type="text"
-                          className="settings-model-reasoning-input"
-                          value={manualLevels}
-                          title={t('models.thinkingLevelsHint')}
-                          placeholder={t('models.thinkingLevelsHint')}
+                          type="checkbox"
+                          checked={model.supportsTools ?? true}
+                          onChange={(e) => onToggleModelTools(provider.id, model.id, e.target.checked)}
+                          aria-label={t('models.toggleTools', { model: model.name })}
+                        />
+                        <span>{t('models.capToolUse')}</span>
+                      </label>
+
+                      <label className="settings-model-reasoning-toggle">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(manualReasoning)}
                           onChange={(e) => {
-                            const parts = e.target.value
-                              .split(',')
-                              .map((value) => value.trim())
-                              .filter(Boolean);
-                            if (parts.length === 0) {
+                            if (!e.target.checked) {
+                              onSetModelReasoningDescriptor(provider.id, model.id, undefined);
                               return;
                             }
-                            const options = manualParam === 'thinking'
-                              ? parts.map((label, index) => ({
-                                  label,
-                                  value: index === 0 ? '' : label.toLowerCase(),
-                                  budgetTokens: index === 0 ? 0 : index === 1 ? 4000 : index === 2 ? 12000 : 24000,
-                                }))
-                              : parts.map((label, index) => ({
-                                  label,
-                                  value: index === 0 ? '' : label.toLowerCase(),
-                                }));
                             onSetModelReasoningDescriptor(provider.id, model.id, {
-                              ...manualReasoning,
-                              options,
+                              param: resolvedReasoning?.param ?? 'reasoning_effort',
+                              source: 'manual',
+                              options: resolvedReasoning?.options ?? [
+                                { label: 'Off', value: '' },
+                                { label: 'Low', value: 'low' },
+                                { label: 'Medium', value: 'medium' },
+                                { label: 'High', value: 'high' },
+                              ],
                             });
                           }}
                         />
-                      </>
-                    ) : (
-                      <span className="settings-model-reasoning-hint">
-                        {resolvedReasoning
-                          ? resolvedReasoning.options.map((opt) => opt.label).join(' / ')
-                          : t('models.thinkingLevelsHint')}
-                      </span>
-                    )}
-                  </div>
+                        <span>{t('models.supportsThinking')}</span>
+                      </label>
+
+                      {manualReasoning && (
+                        <>
+                          <select
+                            className="settings-model-reasoning-select"
+                            value={manualParam}
+                            onChange={(e) => {
+                              const nextParam = e.target.value as ModelReasoning['param'];
+                              const options = nextParam === 'thinking'
+                                ? [
+                                    { label: 'Off', value: '', budgetTokens: 0 },
+                                    { label: 'Low', value: 'low', budgetTokens: 4000 },
+                                    { label: 'Medium', value: 'medium', budgetTokens: 12000 },
+                                    { label: 'High', value: 'high', budgetTokens: 24000 },
+                                  ]
+                                : nextParam === 'reasoning_enabled'
+                                  ? [
+                                      { label: 'Off', value: '' },
+                                      { label: 'On', value: 'on' },
+                                    ]
+                                  : manualReasoning.options;
+                              onSetModelReasoningDescriptor(provider.id, model.id, {
+                                ...manualReasoning,
+                                param: nextParam,
+                                options,
+                              });
+                            }}
+                          >
+                            <option value="reasoning_effort">reasoning_effort</option>
+                            <option value="reasoning">reasoning.effort</option>
+                            <option value="reasoning_enabled">reasoning.enabled</option>
+                            <option value="thinking">thinking.budget</option>
+                          </select>
+                          <input
+                            type="text"
+                            className="settings-model-reasoning-input"
+                            value={manualLevels}
+                            title={t('models.thinkingLevelsHint')}
+                            placeholder={t('models.thinkingLevelsHint')}
+                            onChange={(e) => {
+                              const parts = e.target.value
+                                .split(',')
+                                .map((value) => value.trim())
+                                .filter(Boolean);
+                              if (parts.length === 0) return;
+                              const options = manualParam === 'thinking'
+                                ? parts.map((label, index) => ({
+                                    label,
+                                    value: index === 0 ? '' : label.toLowerCase(),
+                                    budgetTokens: index === 0 ? 0 : index === 1 ? 4000 : index === 2 ? 12000 : 24000,
+                                  }))
+                                : parts.map((label, index) => ({
+                                    label,
+                                    value: index === 0 ? '' : label.toLowerCase(),
+                                  }));
+                              onSetModelReasoningDescriptor(provider.id, model.id, {
+                                ...manualReasoning,
+                                options,
+                              });
+                            }}
+                          />
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

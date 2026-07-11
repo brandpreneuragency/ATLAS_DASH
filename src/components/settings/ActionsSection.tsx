@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
 import { Plus, FolderPlus, Trash2, GripVertical, Folder, FolderOpen } from 'lucide-react';
 import { useActionsStore } from '../../stores/actionsStore';
 import { SettingsPanels } from './SettingsPanels';
@@ -9,13 +8,7 @@ interface DragData { actionId: string }
 interface DropTarget { groupId: string | null; index: number }
 interface ContextMenu { x: number; y: number; actionId: string }
 
-interface ActionsSectionProps {
-  rightHeader?: ReactNode;
-  rightMain?: ReactNode;
-  rightFooter?: ReactNode;
-}
-
-export function ActionsSection({ rightHeader, rightMain, rightFooter }: ActionsSectionProps = {}) {
+export function ActionsSection() {
   const { scope, actions, groups, setScope, reload, saveAction, deleteAction, createGroup, renameGroup, deleteGroup, moveAction, reorderActions } = useActionsStore();
 
   useEffect(() => { void reload(); }, [reload, scope]);
@@ -116,7 +109,7 @@ export function ActionsSection({ rightHeader, rightMain, rightFooter }: ActionsS
                   onBlur={() => { void renameGroup(g.id, renameValue); setRenamingGroupId(null); }}
                   onKeyDown={(e) => { if (e.key === 'Enter') { void renameGroup(g.id, renameValue); setRenamingGroupId(null); } }}
                   className="ctrl"
-                  style={{ fontSize: 'var(--fs-xs)', padding: '2px 6px', flex: 1 }}
+                  style={{ fontSize: 'var(--fs-base)', padding: '2px 6px', flex: 1 }}
                 />
               ) : (
                 <span
@@ -138,7 +131,7 @@ export function ActionsSection({ rightHeader, rightMain, rightFooter }: ActionsS
               <div className="settings-action-group-body">
                 {items.map((a, i) => renderActionRow(a, g.id, i))}
                 {items.length === 0 && (
-                  <div className="subtle" style={{ fontSize: 'var(--fs-xs)', padding: '6px 10px' }}>Drag actions here</div>
+                  <div className="subtle" style={{ fontSize: 'var(--fs-base)', padding: '6px 10px' }}>Drag actions here</div>
                 )}
               </div>
             )}
@@ -171,13 +164,10 @@ export function ActionsSection({ rightHeader, rightMain, rightFooter }: ActionsS
   return (
     <>
       <SettingsPanels
-        leftHeader={<div className="settings-list-head"><h3>Actions</h3><span className="subtle" style={{ fontSize: 'var(--fs-xs)' }}>{actions.length}</span></div>}
+        leftHeader={<div className="settings-list-head"><h3>Actions</h3><span className="subtle" style={{ fontSize: 'var(--fs-base)' }}>{actions.length}</span></div>}
         leftMain={leftMain}
         centerHeader={<div className="settings-list-head"><h3>{selected ? 'Edit action' : 'Actions'}</h3></div>}
         centerMain={centerMain}
-        rightHeader={rightHeader}
-        rightMain={rightMain}
-        rightFooter={rightFooter}
       />
       {menu && (
         <div
@@ -231,28 +221,28 @@ function ActionDetail({ action, groups, onSave, onDelete }: ActionDetailProps) {
   return (
     <div className="settings-detail-body">
       <div>
-        <label className="semibold" style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--c-text-2)', marginBottom: 6 }}>Title</label>
-        <input className="ctrl w-full" style={{ fontSize: 'var(--fs-sm)' }} value={title} onChange={(e) => setTitle(e.target.value)} />
+        <label className="semibold" style={{ display: 'block', fontSize: 'var(--fs-base)', color: 'var(--c-text-2)', marginBottom: 6 }}>Title</label>
+        <input className="ctrl w-full" style={{ fontSize: 'var(--fs-base)' }} value={title} onChange={(e) => setTitle(e.target.value)} />
       </div>
       <div>
-        <label className="semibold" style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--c-text-2)', marginBottom: 6 }}>Prompt</label>
-        <textarea className="ctrl w-full" rows={8} style={{ fontSize: 'var(--fs-sm)', resize: 'vertical', lineHeight: 1.625 }} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
+        <label className="semibold" style={{ display: 'block', fontSize: 'var(--fs-base)', color: 'var(--c-text-2)', marginBottom: 6 }}>Prompt</label>
+        <textarea className="ctrl w-full" rows={8} style={{ fontSize: 'var(--fs-base)', resize: 'vertical', lineHeight: 1.625 }} value={prompt} onChange={(e) => setPrompt(e.target.value)} />
       </div>
       <div className="row gap-3" style={{ gap: 12 }}>
         <div style={{ flex: 1 }}>
-          <label className="semibold" style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--c-text-2)', marginBottom: 6 }}>Icon (lucide name)</label>
-          <input className="ctrl w-full" style={{ fontSize: 'var(--fs-sm)' }} value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="e.g. Zap" />
+          <label className="semibold" style={{ display: 'block', fontSize: 'var(--fs-base)', color: 'var(--c-text-2)', marginBottom: 6 }}>Icon (lucide name)</label>
+          <input className="ctrl w-full" style={{ fontSize: 'var(--fs-base)' }} value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="e.g. Zap" />
         </div>
         <div style={{ flex: 1 }}>
-          <label className="semibold" style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--c-text-2)', marginBottom: 6 }}>Group</label>
-          <select className="ctrl w-full" style={{ fontSize: 'var(--fs-sm)' }} value={groupId ?? ''} onChange={(e) => setGroupId(e.target.value || undefined)}>
+          <label className="semibold" style={{ display: 'block', fontSize: 'var(--fs-base)', color: 'var(--c-text-2)', marginBottom: 6 }}>Group</label>
+          <select className="ctrl w-full" style={{ fontSize: 'var(--fs-base)' }} value={groupId ?? ''} onChange={(e) => setGroupId(e.target.value || undefined)}>
             <option value="">— None —</option>
             {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
         </div>
       </div>
       <div className="row gap-2">
-        <button className="btn-brand flex-1" style={{ fontSize: 'var(--fs-sm)', padding: '8px 12px' }} onClick={() => void onSave({ title, prompt, icon, groupId })}>
+        <button className="btn-brand flex-1" style={{ fontSize: 'var(--fs-base)', padding: '8px 12px' }} onClick={() => void onSave({ title, prompt, icon, groupId })}>
           Save Changes
         </button>
         <button className="btn-icon" style={{ width: 40, border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: 'var(--c-danger)' }} onClick={() => void onDelete()}>

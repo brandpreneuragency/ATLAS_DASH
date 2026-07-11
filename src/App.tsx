@@ -20,11 +20,10 @@ import { CRMWorkspace } from './components/layout/CRMWorkspace';
 import { CRMListPanel } from './components/crm/CRMListPanel';
 import { FormsListPanel } from './components/forms/FormsListPanel';
 import { CRMAISidebar } from './components/sidebar/CRMAISidebar';
-import { useDocumentStore } from './stores/documentStore';
+import { useWorkspaceStore } from './stores/workspaceStore';
 import { useUIStore } from './stores/uiStore';
 import type { CRMPage, FormsPage } from './stores/uiStore';
 import { useAIStore } from './stores/aiStore';
-import { useFileSystemStore } from './stores/fileSystemStore';
 import { useTaskStore } from './stores/taskStore';
 import { useProjectStore } from './stores/projectStore';
 import { useCrmStore } from './stores/crmStore';
@@ -36,7 +35,7 @@ import { loadReasoningOverlay } from './services/ai/reasoning';
 export default function App() {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
-  const { loadDocuments, activeDocumentId, isLoaded: docsLoaded, setActiveDocument } = useDocumentStore();
+  const { loadWorkspaces, activeWorkspaceId, isLoaded: docsLoaded, setActiveWorkspace } = useWorkspaceStore();
   const {
     loadUISettings,
     taskMode,
@@ -49,7 +48,6 @@ export default function App() {
     activeView,
   } = useUIStore();
   const { loadAISettings } = useAIStore();
-  const { loadFileSystemSettings } = useFileSystemStore();
   const { loadThemeTokens } = useThemeStore();
   const { loadTasks, isLoaded: tasksLoaded, activeTaskId: storeActiveTaskId, setActiveTask, tasks } = useTaskStore();
   const { loadProjects, isLoaded: projectsLoaded } = useProjectStore();
@@ -65,10 +63,9 @@ export default function App() {
 
   useEffect(() => {
     void Promise.all([
-      loadDocuments(),
+      loadWorkspaces(),
       loadUISettings(),
       loadAISettings(),
-      loadFileSystemSettings(),
       loadTasks(),
       loadProjects(),
       useCrmStore.getState().loadCrm(),
@@ -80,10 +77,9 @@ export default function App() {
     // Load any runtime-refreshed reasoning catalog override from Dexie.
     void loadReasoningOverlay();
   }, [
-    loadDocuments,
+    loadWorkspaces,
     loadUISettings,
     loadAISettings,
-    loadFileSystemSettings,
     loadTasks,
     loadProjects,
     loadThemeTokens,
@@ -101,7 +97,7 @@ export default function App() {
         unlisten = await mod.listen<string>('tabs://open-file', (e) => {
           const payload = typeof e.payload === 'string' ? e.payload : '';
           if (!payload) return;
-          void useDocumentStore.getState().openFileByPath(payload);
+          void useWorkspaceStore.getState().openFileByPath(payload);
         });
       } catch {
         // Not running in Tauri — ignore.
@@ -121,13 +117,13 @@ export default function App() {
           const lastTaskId = tasks[0]?.id ?? null;
           if (lastTaskId) setActiveTask(lastTaskId);
         } else {
-          if (activeDocumentId) setActiveDocument(activeDocumentId);
+          if (activeWorkspaceId) setActiveWorkspace(activeWorkspaceId);
         }
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [taskMode, setTaskMode, tasks, activeDocumentId, setActiveTask, setActiveDocument]);
+  }, [taskMode, setTaskMode, tasks, activeWorkspaceId, setActiveWorkspace, setActiveTask]);
 
   // Keyboard shortcut: Ctrl/Cmd + J toggles the terminal panel.
   useEffect(() => {
@@ -216,7 +212,7 @@ export default function App() {
     ? null
     : (
       <AISidebar
-        documentId={taskMode ? '' : activeDocumentId}
+        workspaceId={taskMode ? '' : activeWorkspaceId}
         taskId={taskMode ? effectiveTaskId ?? '' : ''}
         editor={editor}
       />

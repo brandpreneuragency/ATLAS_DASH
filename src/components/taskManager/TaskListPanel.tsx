@@ -93,7 +93,7 @@ export function TaskListPanel() {
 
   return (
     <div id="task-list-panel" className="panel flex-col h-full overflow-hidden" style={{ marginLeft: '0px', marginRight: '0px' }}>
-      <div id="task-list-main-wrapper" className="panel-body" style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column', borderRadius: '0px', backgroundColor: 'var(--c-background-2)', border: 'none' }}>
+      <div id="task-list-main-wrapper" className="panel-body" style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column', borderRadius: '0px', backgroundColor: 'var(--c-background-1)', border: 'none' }}>
         {activeTab === 'list' && (
           <div
             id="task-list-content"
@@ -111,30 +111,7 @@ export function TaskListPanel() {
               verticalAlign: 'middle',
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                verticalAlign: 'middle',
-                fontSize: 'var(--fs-xs)',
-                fontWeight: 600,
-                color: 'var(--c-text-3)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                textAlign: 'center',
-                height: '20px',
-                backgroundColor: 'var(--c-background-3)',
-                paddingTop: '6px',
-                paddingBottom: '6px',
-                paddingLeft: '0px',
-                paddingRight: '0px',
-                marginTop: '0px',
-                marginBottom: '6px',
-                borderRadius: '8px',
-              }}
-            >
+            <div className="task-list-clock-header">
               {clockLabel}
             </div>
             {filteredTasks.length === 0 && (
@@ -145,30 +122,7 @@ export function TaskListPanel() {
             )}
             {categoriesWithTasks.map((category) => (
               <React.Fragment key={category}>
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    verticalAlign: 'middle',
-                    fontSize: 'var(--fs-xs)',
-                    fontWeight: 600,
-                    color: 'var(--c-text-3)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    textAlign: 'center',
-                    height: '20px',
-                    backgroundColor: 'var(--c-background-3)',
-                    paddingTop: '6px',
-                    paddingBottom: '6px',
-                    paddingLeft: '0px',
-                    paddingRight: '0px',
-                    marginTop: '6px',
-                    marginBottom: '6px',
-                    borderRadius: '8px',
-                  }}
-                >
+                <div className="task-list-category-header">
                   {getCategoryLabel(category)}
                 </div>
                 {groupedTasks[category].map((task) => (

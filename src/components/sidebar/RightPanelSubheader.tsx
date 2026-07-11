@@ -2,7 +2,7 @@ import { Clock, Plus, X, ArrowLeftRight } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import { useUIStore, selectCanSwapPanels } from '../../stores/uiStore';
-import { useDocumentStore } from '../../stores/documentStore';
+import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { ContextWindowPanel, ContextWindowSummaryTooltip, ContextWindowRing } from '../contextWindow';
 
 interface RightPanelSubheaderProps {
@@ -12,8 +12,8 @@ interface RightPanelSubheaderProps {
    * otherwise 'writer'). Settings sub-tabs should pass `mode: 'writer'`.
    */
   mode?: 'writer' | 'task';
-  /** Optional override for the document context (when not in task mode). */
-  documentId?: string | null;
+  /** Optional override for the workspace context (when not in task mode). */
+  workspaceId?: string | null;
   /** Optional override for the task context (task mode). */
   taskId?: string | null;
   /** Optional Settings sub-tab id — when set, threads are scoped per tab. */
@@ -28,7 +28,7 @@ interface RightPanelSubheaderProps {
 
 export function RightPanelSubheader({
   mode: modeOverride,
-  documentId: documentIdOverride,
+  workspaceId: workspaceIdOverride,
   taskId: taskIdOverride,
   settingsTab,
   hideSwapButton = false,
@@ -45,7 +45,7 @@ export function RightPanelSubheader({
   } = useUIStore();
   const canSwapPanels = useUIStore(selectCanSwapPanels);
   const layoutSwapped = canSwapPanels && panelsSwapped && !settingsTab;
-  const { activeDocumentId } = useDocumentStore();
+  const { activeWorkspaceId } = useWorkspaceStore();
   const [historyOpen, setHistoryOpen] = useState(false);
   const [contextSummaryOpen, setContextSummaryOpen] = useState(false);
   const historyRef = useRef<HTMLDivElement>(null);
@@ -57,11 +57,11 @@ export function RightPanelSubheader({
   const mode: 'writer' | 'task' = modeOverride ?? (taskMode ? 'task' : 'writer');
   const contextDocId = taskIdOverride
     ? null
-    : documentIdOverride !== undefined
-    ? documentIdOverride
+    : workspaceIdOverride !== undefined
+    ? workspaceIdOverride
     : taskMode
     ? null
-    : activeDocumentId;
+    : activeWorkspaceId;
   const contextTaskId = taskIdOverride !== undefined
     ? taskIdOverride
     : taskMode
@@ -97,7 +97,7 @@ export function RightPanelSubheader({
   const handleNewChat = async () => {
     await newChat({
       mode,
-      documentId: contextDocId || undefined,
+      workspaceId: contextDocId || undefined,
       taskId: contextTaskId || undefined,
       settingsTab: settingsTab || undefined,
     });

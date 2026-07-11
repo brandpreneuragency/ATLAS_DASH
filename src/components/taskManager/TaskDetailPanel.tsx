@@ -1,15 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import './taskDetail.css';
-import { Check } from 'lucide-react';
+import { CheckCircle2, Circle, GripVertical } from 'lucide-react';
 import { useTaskStore } from '../../stores/taskStore';
 import { useTaskCommentStore } from '../../stores/taskCommentStore';
 import { useUIStore } from '../../stores/uiStore';
 import { TaskCommentThread } from './TaskCommentThread';
 import { TaskCommentInput } from './TaskCommentInput';
 import { SubtaskDueDatePicker } from './SubtaskDueDatePicker';
-import { SubtaskQuickCreateInput } from './SubtaskQuickCreateInput';
 import type { TaskComment, TaskStatus } from '../../types';
-import { useThemedPlaceholder } from '../../utils/placeholders';
 import { TASK_TITLE_MAX_LENGTH } from '../../types';
 
 export function TaskDetailPanel() {
@@ -17,12 +15,11 @@ export function TaskDetailPanel() {
     getActiveTask,
     updateTask,
     deleteTask,
-    createSubtask,
     getSubtasks,
+    reorderSubtasks,
   } = useTaskStore();
   const { loadComments, getComments } = useTaskCommentStore();
-  const { subtasksOpen, showToast } = useUIStore();
-  const addSubtaskPlaceholder = useThemedPlaceholder('addSubtask');
+  const { subtasksOpen } = useUIStore();
 
   const task = getActiveTask();
   const [title, setTitle] = useState(task?.title ?? '');
@@ -30,14 +27,15 @@ export function TaskDetailPanel() {
   const taskRef = useRef(task);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const threadRef = useRef<HTMLDivElement>(null);
-  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
-  const newSubtaskInputRef = useRef<HTMLInputElement>(null);
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
   const [editingSubtaskTitle, setEditingSubtaskTitle] = useState('');
   const editingSubtaskInputRef = useRef<HTMLInputElement>(null);
   const [replyToComment, setReplyToComment] = useState<TaskComment | null>(null);
   const [openDueDateSubtaskId, setOpenDueDateSubtaskId] = useState<string | null>(null);
-  const subtasks = task ? getSubtasks(task.id) : [];
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [dragOverPos, setDragOverPos] = useState<'above' | 'below'>('above');
+  const subtasks = task ? [...getSubtasks(task.id)].sort((a, b) => a.order - b.order) : [];
 
   useEffect(() => {
     if (task) {
@@ -74,30 +72,43 @@ export function TaskDetailPanel() {
     updateTask(id, { status: next });
   };
 
-  const handleNewSubtaskSubmit = async () => {
-    const trimmed = newSubtaskTitle.trim();
-    if (!trimmed || !task) return;
-
-    setNewSubtaskTitle('');
-
-    try {
-      await createSubtask(task.id, trimmed);
-    } catch (err) {
-      setNewSubtaskTitle(trimmed);
-      showToast(err instanceof Error ? err.message : 'Failed to add subtask.', 'error');
-      return;
-    }
-
-    requestAnimationFrame(() => {
-      newSubtaskInputRef.current?.focus();
-    });
+  const handleSubtaskDragStart = (e: React.DragEvent, id: string) => {
+    setDragId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
   };
 
-  const handleNewSubtaskKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleNewSubtaskSubmit();
-    }
+  const handleSubtaskDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (id !== dragOverId) setDragOverId(id);
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const pos = e.clientY < rect.top + rect.height / 2 ? 'above' : 'below';
+    setDragOverPos(pos);
+  };
+
+  const handleSubtaskDrop = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    const fromId = dragId ?? e.dataTransfer.getData('text/plain');
+    const pos = dragOverPos;
+    setDragId(null);
+    setDragOverId(null);
+    setDragOverPos('above');
+    if (!fromId || fromId === id || !task) return;
+    const ordered = subtasks.map((s) => s.id);
+    const fromIndex = ordered.indexOf(fromId);
+    const toIndex = ordered.indexOf(id);
+    if (fromIndex === -1 || toIndex === -1) return;
+    const [moved] = ordered.splice(fromIndex, 1);
+    const insertAt = pos === 'below' ? toIndex + 1 : toIndex;
+    ordered.splice(insertAt, 0, moved);
+    void reorderSubtasks(task.id, ordered);
+  };
+
+  const handleSubtaskDragEnd = () => {
+    setDragId(null);
+    setDragOverId(null);
+    setDragOverPos('above');
   };
 
   if (!task) {
@@ -112,16 +123,46 @@ export function TaskDetailPanel() {
 
   return (
     <div id="task-detail-panel" className="panel flex-col flex-1 min-h-0" style={{ background: 'rgba(233, 233, 233, 0)' }}>
-      {subtasksOpen ? (
-        <>
-          <div className="tdp-subtasks-bar">
-          <div className="col" style={{ gap: '6px', padding: '10px 0px', borderRadius: 8, height: 'fit-content', border: 'none' }}>
+      {/* Comments + subtasks overlay region (relative so the dropdown overlays only this area) */}
+      <div className="tdp-overlay-region">
+        {/* Subtasks dropdown overlay - covers the comments section only, toggled by SubtasksToggleBar */}
+        {subtasksOpen && (
+          <div className="tdp-subtasks-dropdown">
+            <div className="tdp-subtasks-header">SUBTASKS</div>
+            <div className="tdp-subtasks-bar">
+            <div className="col" style={{ gap: '6px', padding: '0px 0px', borderRadius: 8, height: 'fit-content', border: 'none' }}>
             {subtasks.map((sub) => (
-              <div key={sub.id} className="row-xs items-center" style={{ gap: 8, height: 16, verticalAlign: 'middle', marginLeft: 0, marginRight: 0, padding: '12px' }}>
+              <div
+                key={sub.id}
+                className={`row-xs items-center subtask-row${sub.status === 'completed' ? ' subtask-row--completed' : ''}${dragId === sub.id ? ' subtask-row--dragging' : ''}${dragOverId === sub.id && dragId !== sub.id ? ` subtask-row--drag-over subtask-row--drag-over-${dragOverPos}` : ''}`}
+                style={{ gap: 8, height: 16, verticalAlign: 'middle', marginLeft: 0, marginRight: 0, padding: '14px 12px', borderRadius: '8px' }}
+                draggable
+                onDragStart={(e) => handleSubtaskDragStart(e, sub.id)}
+                onDragOver={(e) => handleSubtaskDragOver(e, sub.id)}
+                onDrop={(e) => handleSubtaskDrop(e, sub.id)}
+                onDragEnd={handleSubtaskDragEnd}
+              >
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="subtask-drag-handle"
+                  title="Drag to reorder"
+                  aria-label="Drag to reorder"
+                  draggable
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    handleSubtaskDragStart(e, sub.id);
+                  }}
+                >
+                  <GripVertical size={12} />
+                </span>
                 <button
                   onClick={() => cycleSubtaskStatus(sub.id, sub.status)}
                   className={`subtask-status-btn${sub.status === 'completed' ? ' subtask-status-btn--completed' : sub.status === 'in_progress' ? ' subtask-status-btn--active' : ''}`}
-                />
+                  aria-label={sub.status === 'completed' ? 'Mark as incomplete' : 'Mark as completed'}
+                >
+                  {sub.status === 'completed' ? <CheckCircle2 size={10} /> : <Circle size={10} />}
+                </button>
                 {editingSubtaskId === sub.id ? (
                   <input
                     ref={editingSubtaskInputRef}
@@ -168,7 +209,7 @@ export function TaskDetailPanel() {
                     }}
                     className="txt-xs flex-1 subtask-title"
                     style={{
-                      color: sub.status === 'completed' ? 'var(--c-border-1)' : undefined,
+                      color: sub.status === 'completed' ? 'var(--c-text-3)' : undefined,
                     }}
                     title="Click to edit"
                   >
@@ -189,23 +230,18 @@ export function TaskDetailPanel() {
             ))}
           </div>
         </div>
-        <div id="subtask-quick-create-footer" className="panel-footer">
-          <SubtaskQuickCreateInput parentTaskId={task.id} />
         </div>
-      </>
-      ) : (
-        <>
-          {/* Task Chat Area - flex-1, fills remaining space */}
-          <div id="tdc-thread" ref={threadRef} className="panel-body ai-scroll flex-1 overflow-y-a" style={{ padding: 0 }}>
-            <TaskCommentThread comments={comments} onReplyComment={setReplyToComment} />
-          </div>
-
-          {/* Bottom Comment Input - fixed at bottom of panel */}
-          <div className="tdp-comment-footer panel-footer">
-            <TaskCommentInput replyToComment={replyToComment} onClearReply={() => setReplyToComment(null)} />
-          </div>
-        </>
       )}
+        {/* Comments panel - always rendered (base layer) */}
+        <div id="tdc-thread" ref={threadRef} className="panel-body ai-scroll flex-1 overflow-y-a" style={{ padding: 0 }}>
+          <TaskCommentThread comments={comments} onReplyComment={setReplyToComment} />
+        </div>
+      </div>
+
+      {/* Bottom Comment Input - fixed at bottom of panel, outside the overlay */}
+      <div className="tdp-comment-footer panel-footer">
+        <TaskCommentInput replyToComment={replyToComment} onClearReply={() => setReplyToComment(null)} />
+      </div>
     </div>
   );
 }

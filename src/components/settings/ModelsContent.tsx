@@ -1,25 +1,17 @@
 // ModelManagementContent extracted from the (now removed) ModelManagementModal
 // so it can be reused inline inside Settings → Models and by PageTemplatePage.
-// Added an optional `focusProviderId` so a left-rail provider list can expand a
-// specific provider's accordion (master-detail feel) without rebuilding state.
+// Uses `selectedProviderId` to show a specific provider's detail panel.
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { ReactNode } from 'react';
-import { X, RefreshCw, Plus, Layers, Database, Image } from 'lucide-react';
+
+import { X, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useUIStore } from '../../stores/uiStore';
 import { useAIStore } from '../../stores/aiStore';
 import { secureStorage } from '../../services/secureStorage';
 import type { AIProviderConfig, ModelItem, ModelReasoning, ProviderImportPhase } from '../../types';
 import { ProviderDetailPanel } from './modelProviders/ProviderDetailPanel';
-import { ConnectProviderDrawer } from '../modals/modelProvider/ConnectProviderDrawer';
-import { ModalFooter } from '../modals/modelProvider/ModalFooter';
-import {
-  EMBEDDINGS_GROUP_ID,
-  IMAGE_GROUP_ID,
-  VECTOR_GROUP_ID,
-  isPlaceholderGroupId,
-} from './modelProviderGroups';
+
 
 function providerApiKeyName(providerId: string): string {
   return `providerApiKey_${providerId}`;
@@ -43,33 +35,6 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
   });
-}
-
-function renderComingSoonSection({
-  icon,
-  title,
-  hint,
-  t,
-}: {
-  icon: ReactNode;
-  title: string;
-  hint: string;
-  t: (key: string) => string;
-}) {
-  return (
-    <div className="col gap-3">
-      <div className="row gap-2" style={{ padding: '0 4px 8px' }}>
-        {icon}
-        <span className="label-sm">{title}</span>
-      </div>
-      <div className="col settings-coming-soon-card">
-        <span className="label-sm">{t('settings.comingSoon')}</span>
-        <p className="subtle" style={{ fontSize: 'var(--fs-sm)', maxWidth: 420, margin: 0 }}>
-          {hint}
-        </p>
-      </div>
-    </div>
-  );
 }
 
 interface PersistDraftOptions {
@@ -100,11 +65,13 @@ async function verifySavedProviderKey(
 interface ModelManagementContentProps {
   isInline?: boolean;
   onClose?: () => void;
-  /** Provider id to expand in the accordion (master-detail focus). */
-  focusProviderId?: string | null;
+  /** Provider id to show in the detail panel. */
+  selectedProviderId?: string | null;
+  /** Callback when a provider should be deleted. */
+  onDeleteProvider?: (id: string) => void;
 }
 
-export function ModelManagementContent({ isInline = false, onClose, focusProviderId }: ModelManagementContentProps) {
+export function ModelManagementContent({ isInline = false, onClose, selectedProviderId, onDeleteProvider }: ModelManagementContentProps) {
   const { t } = useTranslation();
   const { activeModal, setActiveModal } = useUIStore();
   const {
@@ -138,10 +105,8 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
   const [testConnectionState, setTestConnectionState] = useState<Record<string, { phase: 'idle' | 'testing' | 'success' | 'error'; message?: string }>>({});
   const [syncState, setSyncState] = useState<Record<string, { phase: 'idle' | 'syncing' | 'success' | 'error'; message?: string }>>({});
 
-  const [connectDrawerOpen, setConnectDrawerOpen] = useState(false);
   const [draftsReady, setDraftsReady] = useState(false);
-  const [manualSaving, setManualSaving] = useState(false);
-  const [manualSaved, setManualSaved] = useState(false);
+
 
   useEffect(() => {
     if (!isOpen) {
@@ -232,9 +197,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     return false;
   })();
   const hiddenChanged = JSON.stringify(draftHiddenModels) !== JSON.stringify(hiddenModels);
-  const keysChanged = JSON.stringify(draftKeys) !== JSON.stringify(initialDraftKeys);
   const hasNonCredentialChanges = providersChanged || baseUrlsChanged || hiddenChanged;
-  const hasChanges = hasNonCredentialChanges || keysChanged;
 
   const persistDrafts = useCallback(async ({ includeKeys = false }: PersistDraftOptions = {}) => {
     for (const provider of draftProviders) {
@@ -336,21 +299,6 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     if (onClose) onClose();
     else setActiveModal(null);
   }, [draftsReady, hasNonCredentialChanges, handleSave, onClose, setActiveModal, t]);
-
-  const handleManualSave = useCallback(async () => {
-    setManualSaving(true);
-    setManualSaved(false);
-    try {
-      await handleSave({ includeKeys: true });
-      setManualSaved(true);
-      useUIStore.getState().showToast(t('settings.modelSettingsSaved'), 'info');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : t('settings.failedToSaveModelSettings');
-      useUIStore.getState().showToast(message, 'error');
-    } finally {
-      setManualSaving(false);
-    }
-  }, [handleSave, t]);
 
   const latestPersistRef = useRef(persistDrafts);
   const shouldPersistOnUnmountRef = useRef(false);
@@ -554,12 +502,10 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     await useAIStore.getState().refreshAllProviderStatuses();
   };
 
-  const focusedProviders =
-    focusProviderId && !isPlaceholderGroupId(focusProviderId)
-      ? draftProviders.filter((p) => p.id === focusProviderId)
-      : draftProviders;
-
-  const selectedProvider = focusedProviders.length > 0 ? focusedProviders[0] : null;
+  const selectedProvider =
+    selectedProviderId
+      ? draftProviders.find((p) => p.id === selectedProviderId) ?? null
+      : null;
 
   const providerDetailPanel = selectedProvider ? (
     <ProviderDetailPanel
@@ -580,7 +526,11 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
       onSetModelReasoningDescriptor={setModelReasoningDescriptor}
       onAddCustomModel={addCustomModel}
       onDeleteProvider={(id) => {
-        void useAIStore.getState().deleteCustomProvider(id);
+        if (onDeleteProvider) {
+          onDeleteProvider(id);
+        } else {
+          void useAIStore.getState().deleteCustomProvider(id);
+        }
       }}
       onSaveProviderBaseUrl={(id, baseUrl) => {
         void useAIStore.getState().saveProviderConfig({ id, baseUrl });
@@ -588,62 +538,14 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
     />
   ) : (
     <div className="col settings-empty-provider">
-      <p className="med" style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-text-1)', marginBottom: 4 }}>
+      <p className="med" style={{ fontSize: 'var(--fs-base)', color: 'var(--c-text-1)', marginBottom: 4 }}>
         {t('models.noCustomProviders')}
       </p>
-      <p className="subtle" style={{ fontSize: 'var(--fs-xs)', marginBottom: 16 }}>
+      <p className="subtle" style={{ fontSize: 'var(--fs-base)', marginBottom: 16 }}>
         {t('models.noCustomProvidersHint')}
       </p>
-      <button
-        type="button"
-        onClick={() => setConnectDrawerOpen(true)}
-        className="connect-provider-btn"
-      >
-        <Plus size={16} />
-        {t('models.connectProvider')}
-      </button>
     </div>
   );
-
-  const handleProviderConnected = (providerId: string, apiKey: string) => {
-    const updated = useAIStore.getState().providerConfigs.find((p) => p.id === providerId);
-    if (updated) {
-      const persistedKey = apiKey.trim();
-      setDraftProviders((prev) => [
-        ...prev.filter((provider) => provider.id !== providerId),
-        updated,
-      ]);
-      setDraftKeys((prev) => ({ ...prev, [providerId]: persistedKey }));
-      setInitialDraftKeys((prev) => ({ ...prev, [providerId]: persistedKey }));
-      setDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
-      setInitialDraftBaseUrls((prev) => ({ ...prev, [providerId]: updated.baseUrl }));
-    }
-  };
-
-
-  const placeholderGroupSection =
-    focusProviderId === EMBEDDINGS_GROUP_ID
-      ? renderComingSoonSection({
-          icon: <Layers size={14} style={{ color: 'var(--c-accent-center-panel)' }} />,
-          title: t('settings.groupEmbeddings'),
-          hint: t('settings.embeddingsHint'),
-          t,
-        })
-      : focusProviderId === VECTOR_GROUP_ID
-        ? renderComingSoonSection({
-            icon: <Database size={14} style={{ color: 'var(--c-accent-center-panel)' }} />,
-            title: t('settings.groupVector'),
-            hint: t('settings.vectorHint'),
-            t,
-          })
-        : focusProviderId === IMAGE_GROUP_ID
-          ? renderComingSoonSection({
-              icon: <Image size={14} style={{ color: 'var(--c-accent-center-panel)' }} />,
-              title: t('settings.groupImageModels'),
-              hint: t('settings.comingSoon'),
-              t,
-            })
-          : null;
 
   if (isInline) {
     return (
@@ -653,7 +555,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
         id="model-management-inline"
       >
         <div className="settings-models-toolbar row gap-2 settings-models-inline-toolbar">
-          <span className="subtle" style={{ fontSize: 'var(--fs-xs)' }}>{t('models.subtitle')}</span>
+          <span className="subtle" style={{ fontSize: 'var(--fs-base)' }}>{t('models.subtitle')}</span>
           <button
             type="button"
             onClick={handleRefresh}
@@ -665,22 +567,8 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
           </button>
         </div>
         <div className="model-provider-body flex-1 col gap-2 settings-models-inline-body">
-          {placeholderGroupSection ?? providerDetailPanel}
+          {providerDetailPanel}
         </div>
-
-        <ModalFooter
-          hasChanges={hasChanges}
-          ready={draftsReady}
-          saving={manualSaving}
-          saved={manualSaved}
-          onSave={() => { void handleManualSave(); }}
-        />
-
-        <ConnectProviderDrawer
-          open={connectDrawerOpen}
-          onClose={() => setConnectDrawerOpen(false)}
-          onConnected={handleProviderConnected}
-        />
       </div>
     );
   }
@@ -707,7 +595,7 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
             <h2 id="model-management-title" style={{ margin: 0, fontSize: 'var(--fs-base)', fontWeight: 600 }}>
               {t('models.title')}
             </h2>
-            <p className="subtle" style={{ fontSize: 'var(--fs-xs)', marginTop: 2, marginBottom: 0 }}>
+            <p className="subtle" style={{ fontSize: 'var(--fs-base)', marginTop: 2, marginBottom: 0 }}>
               {t('models.subtitle')}
             </p>
           </div>
@@ -733,22 +621,8 @@ export function ModelManagementContent({ isInline = false, onClose, focusProvide
         </div>
 
         <div className="model-provider-body flex-1 col gap-2 settings-models-inline-body--modal">
-          {placeholderGroupSection ?? providerDetailPanel}
+          {providerDetailPanel}
         </div>
-
-        <ModalFooter
-          hasChanges={hasChanges}
-          ready={draftsReady}
-          saving={manualSaving}
-          saved={manualSaved}
-          onSave={() => { void handleManualSave(); }}
-        />
-
-        <ConnectProviderDrawer
-          open={connectDrawerOpen}
-          onClose={() => setConnectDrawerOpen(false)}
-          onConnected={handleProviderConnected}
-        />
       </div>
     </div>
   );

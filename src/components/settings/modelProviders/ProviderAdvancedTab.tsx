@@ -27,13 +27,13 @@ export function ProviderAdvancedTab({ provider, onDeleteProvider, onSaveBaseUrl 
       {/* Provider info */}
       <div className="col gap-2 settings-provider-info-card">
         <div className="row settings-provider-info-row">
-          <span className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>{t('models.advancedProviderId')}</span>
+          <span className="subtle" style={{ fontSize: 'var(--fs-base)' }}>{t('models.advancedProviderId')}</span>
           <span className="med settings-provider-info-value settings-provider-info-value--mono">
             {provider.id}
           </span>
         </div>
         <div className="row settings-provider-info-row" style={{ alignItems: 'center' }}>
-          <span className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>{t('models.advancedBaseUrl')}</span>
+          <span className="subtle" style={{ fontSize: 'var(--fs-base)' }}>{t('models.advancedBaseUrl')}</span>
           <input
             type="text"
             value={draftBaseUrl}
@@ -54,7 +54,7 @@ export function ProviderAdvancedTab({ provider, onDeleteProvider, onSaveBaseUrl 
               border: '1px solid var(--c-border-1)',
               background: 'var(--c-background-0)',
               color: 'var(--c-text-1)',
-              fontSize: 'var(--fs-xs)',
+              fontSize: 'var(--fs-base)',
               fontFamily: 'ui-monospace, monospace',
               textAlign: 'right',
             }}
@@ -65,7 +65,7 @@ export function ProviderAdvancedTab({ provider, onDeleteProvider, onSaveBaseUrl 
             <button
               type="button"
               className="btn-xs"
-              style={{ fontSize: 'var(--fs-xs)', border: '1px solid var(--c-border-1)' }}
+              style={{ fontSize: 'var(--fs-base)', border: '1px solid var(--c-border-1)' }}
               onClick={handleSaveBaseUrl}
             >
               {t('models.save')}
@@ -73,7 +73,7 @@ export function ProviderAdvancedTab({ provider, onDeleteProvider, onSaveBaseUrl 
           </div>
         )}
         <div className="row settings-provider-info-row">
-          <span className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>{t('models.advancedProviderType')}</span>
+          <span className="subtle" style={{ fontSize: 'var(--fs-base)' }}>{t('models.advancedProviderType')}</span>
           <span className="med settings-provider-info-value">
             {provider.provider}
           </span>
@@ -83,14 +83,14 @@ export function ProviderAdvancedTab({ provider, onDeleteProvider, onSaveBaseUrl 
       {/* Future items */}
       <div className="col gap-2 settings-future-card">
         <div className="row settings-provider-info-row">
-          <span className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>{t('models.advancedRequestTimeout')}</span>
-          <span className="med" style={{ fontSize: 'var(--fs-xs)', color: 'var(--c-text-2)' }}>
+          <span className="subtle" style={{ fontSize: 'var(--fs-base)' }}>{t('models.advancedRequestTimeout')}</span>
+          <span className="med" style={{ fontSize: 'var(--fs-base)', color: 'var(--c-text-2)' }}>
             {t('models.advancedRequestTimeoutFuture')}
           </span>
         </div>
         <div className="row settings-provider-info-row">
-          <span className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>{t('models.advancedCustomHeaders')}</span>
-          <span className="med" style={{ fontSize: 'var(--fs-xs)', color: 'var(--c-text-2)' }}>
+          <span className="subtle" style={{ fontSize: 'var(--fs-base)' }}>{t('models.advancedCustomHeaders')}</span>
+          <span className="med" style={{ fontSize: 'var(--fs-base)', color: 'var(--c-text-2)' }}>
             {t('models.advancedCustomHeadersFuture')}
           </span>
         </div>
@@ -100,7 +100,7 @@ export function ProviderAdvancedTab({ provider, onDeleteProvider, onSaveBaseUrl 
       <div className="col gap-2">
         <div className="label-sm" style={{ color: 'var(--c-danger, #dc2626)' }}>{t('models.dangerZone')}</div>
         <div className="col gap-2 settings-danger-zone-card">
-          <p className="subtle" style={{ fontSize: 'var(--fs-sm)', margin: 0 }}>
+          <p className="subtle" style={{ fontSize: 'var(--fs-base)', margin: 0 }}>
             {t('models.dangerZoneProviderHint')}
           </p>
           {confirmDelete ? (

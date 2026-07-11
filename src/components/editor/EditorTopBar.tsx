@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { Search, Undo2, Redo2, ChevronUp, ChevronDown, Replace, ReplaceAll, Save } from 'lucide-react';
-import { useDocumentStore } from '../../stores/documentStore';
+import { useWorkspaceStore } from '../../stores/workspaceStore';
 
 interface EditorTopBarProps {
   editor: Editor | null;
-  onSave: (editor: Editor) => void;
+  onSave: (editor: Editor | null) => void;
 }
 
 interface FindState {
@@ -27,10 +27,10 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
   const findInputRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const activeDoc = useDocumentStore((s) =>
-    s.documents.find((d) => d.id === s.activeDocumentId) ?? null
+  const activeWs = useWorkspaceStore((s) =>
+    s.workspaces.find((w) => w.id === s.activeWorkspaceId) ?? null
   );
-  const updateDocument = useDocumentStore((s) => s.updateDocument);
+  const currentFile = activeWs?.currentFile ?? null;
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -45,16 +45,14 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
   }, [isEditingTitle]);
 
   const startEditingTitle = () => {
-    if (!activeDoc) return;
-    setTitleDraft(activeDoc.title);
+    if (!currentFile) return;
+    setTitleDraft(currentFile.name);
     setIsEditingTitle(true);
   };
 
   const commitTitle = () => {
-    const next = titleDraft.trim();
-    if (next && activeDoc && next !== activeDoc.title) {
-      void updateDocument(activeDoc.id, { title: next });
-    }
+    // File names are managed by the file tree; title editing is disabled
+    // in the workspace model. This is kept for UI compatibility but does nothing.
     setIsEditingTitle(false);
   };
 
@@ -76,23 +74,22 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
 
   useEffect(() => {
     if (searchOpen) {
-      const saved = activeDoc ? searchStateByDoc[activeDoc.id] : undefined;
+      const saved = currentFile ? searchStateByDoc[currentFile.path] : undefined;
       const q = saved?.query ?? '';
       setQuery(q);
       setReplaceText(saved?.replaceText ?? '');
       setFindState({ matches: computeMatches(q), index: 0 });
       setTimeout(() => findInputRef.current?.focus(), 0);
     } else {
-      if (activeDoc) {
+      if (currentFile) {
         setSearchStateByDoc((prev) => ({
           ...prev,
-          [activeDoc.id]: { query, replaceText },
+          [currentFile.path]: { query, replaceText },
         }));
       }
       setFindState({ matches: [], index: 0 });
     }
-  }, [searchOpen, activeDoc?.id]);
-
+  }, [searchOpen, currentFile?.path]);
   const computeMatches = (q: string): number[] => {
     if (!editor || !q) return [];
     const text = editor.state.doc.textBetween(0, editor.state.doc.content.size, '\n', '\n');
@@ -185,30 +182,27 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
   return (
     <div id="editor-topbar" className="editor-topbar">
       <div className="editor-topbar-col">
-        {activeDoc && (
-          <button
-            id="editor-topbar-save"
-            type="button"
-            className="tbar-btn"
-            onClick={() => {
-              if (!editor || !activeDoc) return;
-              onSave(editor);
-            }}
-            disabled={!editor}
-            title="Save"
-            aria-label="Save"
-          >
-            <Save size={14} />
-          </button>
-        )}
-        {activeDoc && (
+        <button
+          id="editor-topbar-save"
+          type="button"
+          className="tbar-btn"
+          onClick={() => {
+            void onSave(editor);
+          }}
+          disabled={!editor}
+          title="Save"
+          aria-label="Save"
+        >
+          <Save size={14} />
+        </button>
+        {currentFile && (
           isEditingTitle ? (
             <input
               ref={titleInputRef}
               className="ctrl-xs editor-topbar-title-input"
               value={titleDraft}
-              title="Document name"
-              placeholder="Document name"
+              title="File name"
+              placeholder="File name"
               onChange={(e) => setTitleDraft(e.target.value)}
               onBlur={commitTitle}
               onKeyDown={(e) => {
@@ -227,9 +221,9 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
               type="button"
               className="ctrl-xs editor-topbar-title"
               onClick={startEditingTitle}
-              title="Click to rename"
+              title={currentFile.name}
             >
-              {activeDoc.title || 'Untitled'}
+              {currentFile.name || 'Untitled'}
             </button>
           )
         )}

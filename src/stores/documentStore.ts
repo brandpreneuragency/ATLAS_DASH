@@ -33,7 +33,6 @@ interface DocumentStore {
   openFileByPath: (path: string) => Promise<Document | null>;
   renameDocumentBySourcePath: (oldPath: string, newPath: string, newTitle: string) => Promise<void>;
   deleteDocumentsBySourcePaths: (paths: string[]) => Promise<void>;
-  setDocumentSplitEditorOpen: (id: string, v: boolean) => Promise<void>;
 }
 
 function emptyDocumentShell(title: string, order: number, colorIndex: number = 0): Document {
@@ -140,7 +139,6 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       optimistic.sourcePath = patch.sourcePath;
     }
     if (patch.isDirty !== undefined) optimistic.isDirty = patch.isDirty;
-    if (patch.splitEditorOpen !== undefined) optimistic.splitEditorOpen = patch.splitEditorOpen;
     optimistic.updatedAt = patch.updatedAt;
     set((s) => ({
       documents: s.documents.map((d) => (d.id === id ? { ...d, ...optimistic } : d)),
@@ -151,7 +149,6 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
         content: patch.content,
         sourcePath: patch.sourcePath === undefined ? undefined : (patch.sourcePath ?? undefined),
         isDirty: patch.isDirty,
-        splitEditorOpen: patch.splitEditorOpen,
       });
     } catch {
       // Best-effort: refetch on failure.
@@ -220,17 +217,6 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
   getActiveDocument: () => {
     const { documents, activeDocumentId } = get();
     return documents.find((d) => d.id === activeDocumentId) ?? null;
-  },
-
-  setDocumentSplitEditorOpen: async (id, v) => {
-    set((s) => ({
-      documents: s.documents.map((d) => (d.id === id ? { ...d, splitEditorOpen: v } : d)),
-    }));
-    try {
-      await db.documents.update(id, { splitEditorOpen: v });
-    } catch {
-      /* ignore */
-    }
   },
 
   // ── File viewer (image / text via data URL) ──────────────────────────────
@@ -418,6 +404,5 @@ interface DocumentUpdatePatch {
   content?: string;
   sourcePath?: string | null;
   isDirty?: boolean;
-  splitEditorOpen?: boolean;
   updatedAt: number;
 }
