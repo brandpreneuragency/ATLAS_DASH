@@ -288,18 +288,6 @@ export interface ProviderConnectionDraft {
   apiKey: string;
 }
 
-/** Per-drawer import state surfaced to the UI. */
-export type ProviderImportPhase =
-  | 'idle'
-  | 'importing'
-  | 'error'
-  | 'success';
-
-export interface ProviderImportUiState {
-  phase: ProviderImportPhase;
-  message?: string;
-}
-
 export interface AppSettings {
   key: string;
   value: string | number | boolean | Record<string, unknown>;

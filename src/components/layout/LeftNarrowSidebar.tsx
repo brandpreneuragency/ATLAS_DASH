@@ -3,30 +3,33 @@ import { useUIStore } from '../../stores/uiStore';
 import { useTheme } from '../../hooks/useTheme';
 
 export function LeftNarrowSidebar() {
-  const {
-    taskMode,
-    setTaskMode,
-    fileExplorerOpen,
-    setFileExplorerOpen,
-    taskListOpen,
-    setTaskListOpen,
-    crmMode,
-    setCrmMode,
-    setActiveCRMPage,
-    activeView,
-    openSettings,
-    setActiveView,
-  } = useUIStore();
+  const taskMode = useUIStore((s) => s.taskMode);
+  const setTaskMode = useUIStore((s) => s.setTaskMode);
+  const contextPanelOpenByMode = useUIStore((s) => s.contextPanelOpenByMode);
+  const setContextPanelOpen = useUIStore((s) => s.setContextPanelOpen);
+  const crmMode = useUIStore((s) => s.crmMode);
+  const setCrmMode = useUIStore((s) => s.setCrmMode);
+  const setActiveCRMPage = useUIStore((s) => s.setActiveCRMPage);
+  const activeView = useUIStore((s) => s.activeView);
+  const openSettings = useUIStore((s) => s.openSettings);
+  const setActiveView = useUIStore((s) => s.setActiveView);
+  const primaryWrapperOpen = useUIStore((s) => s.primaryWrapperOpen);
+  const togglePrimaryWrapper = useUIStore((s) => s.togglePrimaryWrapper);
   const { isCyberpunk, toggleTheme } = useTheme();
 
-  const leftPanelOpen = taskMode ? taskListOpen : fileExplorerOpen;
+  const workspaceLabel = primaryWrapperOpen ? 'Hide workspace' : 'Show workspace';
 
-  const toggleLeftPanel = () => {
-    if (taskMode) {
-      setTaskListOpen(!taskListOpen);
-      return;
+  const handlePrimaryToggle = () => {
+    const primaryEl = document.getElementById('primary-workspace-wrapper');
+    const focusInside = Boolean(
+      primaryWrapperOpen && primaryEl?.contains(document.activeElement),
+    );
+    togglePrimaryWrapper();
+    if (focusInside) {
+      requestAnimationFrame(() => {
+        document.getElementById('nav-btn-toggle-panel')?.focus();
+      });
     }
-    setFileExplorerOpen(!fileExplorerOpen);
   };
 
   return (
@@ -35,9 +38,11 @@ export function LeftNarrowSidebar() {
         <button
           id="nav-btn-toggle-panel"
           type="button"
-          onClick={toggleLeftPanel}
-          title={leftPanelOpen ? 'Hide panel' : 'Show panel'}
-          className={`nav-btn${leftPanelOpen ? ' nav-btn--on' : ''}`}
+          onClick={handlePrimaryToggle}
+          title={workspaceLabel}
+          aria-label={workspaceLabel}
+          aria-pressed={primaryWrapperOpen}
+          className={`nav-btn${primaryWrapperOpen ? ' nav-btn--on' : ''}`}
         >
           <PanelLeft size={15} />
         </button>
@@ -49,7 +54,12 @@ export function LeftNarrowSidebar() {
           type="button"
           onClick={() => {
             setTaskMode(false);
-            if (!fileExplorerOpen) setFileExplorerOpen(true);
+            setCrmMode(false);
+            setActiveView('document');
+            // Mode entry: primary is ensured by setActiveView; open file tree if closed (UX).
+            if (!contextPanelOpenByMode.documents) {
+              setContextPanelOpen('documents', true);
+            }
           }}
           title="Documents"
           className={`mode-btn${!taskMode && !crmMode && activeView !== 'settings' ? ' mode-btn--on' : ''}`}
@@ -61,8 +71,11 @@ export function LeftNarrowSidebar() {
           id="nav-btn-tasks"
           type="button"
           onClick={() => {
+            // setTaskMode ensures primaryWrapperOpen; open task list if closed (UX).
             setTaskMode(true);
-            if (!taskListOpen) setTaskListOpen(true);
+            if (!contextPanelOpenByMode.tasks) {
+              setContextPanelOpen('tasks', true);
+            }
           }}
           title="Tasks"
           className={`mode-btn${taskMode ? ' mode-btn--on' : ''}`}
@@ -75,6 +88,7 @@ export function LeftNarrowSidebar() {
           type="button"
           onClick={() => {
             setActiveCRMPage('leads');
+            // setCrmMode ensures primaryWrapperOpen; preserves assistant/swap/widths.
             setCrmMode(true);
           }}
           title="CRM"
@@ -92,6 +106,7 @@ export function LeftNarrowSidebar() {
             if (!taskMode && !crmMode && activeView === 'settings') {
               setActiveView('document');
             } else {
+              // openSettings ensures primaryWrapperOpen.
               openSettings();
             }
           }}
@@ -112,7 +127,6 @@ export function LeftNarrowSidebar() {
         >
           <Sparkles size={15} />
         </button>
-
       </div>
     </div>
   );

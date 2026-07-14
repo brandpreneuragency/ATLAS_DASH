@@ -87,7 +87,7 @@ export function TerminalInstance({ id, active, onExit }: TerminalInstanceProps) 
 
     term.onData((data) => {
       writeQueueRef.current = writeQueueRef.current
-        .then(() => ensureSession(term))
+        .then(() => ensureSession(term)) // eslint-disable-line react-hooks/immutability
         .then(() => invoke('terminal_write', {
           id,
           data: btoa(data),
@@ -160,7 +160,7 @@ export function TerminalInstance({ id, active, onExit }: TerminalInstanceProps) 
           /* ignore */
         }
         if (!native) return;
-        void ensureSession(term)
+        void ensureSession(term) // eslint-disable-line react-hooks/immutability
           .then(() => invoke('terminal_resize', {
             id,
             cols: term.cols,

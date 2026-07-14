@@ -35,7 +35,11 @@ export function ToolsSection() {
             toolLabel={t(`settings.${focusedTool}` as const)}
             connected={connected}
           />
-        ) : undefined
+        ) : (
+          <div className="settings-list-head">
+            <h3>{t('tools.title')}</h3>
+          </div>
+        )
       }
       centerMain={
         <div className="settings-detail-body">

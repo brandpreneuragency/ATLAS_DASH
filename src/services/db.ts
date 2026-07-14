@@ -86,7 +86,7 @@ class ZenEditorDB extends Dexie {
     }).upgrade(async (tx) => {
       const agents = await tx.table('agents').toArray();
       await Promise.all(
-        agents.map((agent: any) =>
+        agents.map((agent: { id: string; scope?: string }) =>
           tx.table('agents').update(agent.id, {
             scope: agent.scope === 'task' ? 'task' : 'writer',
           })
@@ -95,7 +95,7 @@ class ZenEditorDB extends Dexie {
 
       const prompts = await tx.table('quickPrompts').toArray();
       await Promise.all(
-        prompts.map((prompt: any) =>
+        prompts.map((prompt: { id: string; scope?: string }) =>
           tx.table('quickPrompts').update(prompt.id, {
             scope: prompt.scope === 'task' ? 'task' : 'writer',
           })

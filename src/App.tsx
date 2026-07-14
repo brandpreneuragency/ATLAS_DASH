@@ -15,7 +15,6 @@ import { QuickPrompts } from './components/modals/QuickPrompts';
 import { TrashModal } from './components/modals/TrashModal';
 import { ModelSwitcher } from './components/ui/ModelSwitcher';
 import { ToastContainer } from './components/ui/Toast';
-import { SettingsDocument } from './components/settings/SettingsDocument';
 import { CRMWorkspace } from './components/layout/CRMWorkspace';
 import { CRMListPanel } from './components/crm/CRMListPanel';
 import { FormsListPanel } from './components/forms/FormsListPanel';
@@ -46,6 +45,7 @@ export default function App() {
     activeCRMPage,
     activeFormsPage,
     activeView,
+    activeSettingsSubTab,
   } = useUIStore();
   const { loadAISettings } = useAIStore();
   const { loadThemeTokens } = useThemeStore();
@@ -170,6 +170,7 @@ export default function App() {
   // precedence over doc/task. The forms pages render inside CRMWorkspace.
   // Task mode "Projects" tab shows a full-width kanban board (matching the
   // CRM pipeline style) instead of the task detail panel.
+  // Settings primary content is owned by AppLayout (SettingsDocument → section slots).
   const activeWorkspace = crmMode
     ? <CRMWorkspace />
     : taskMode
@@ -177,11 +178,11 @@ export default function App() {
       ? <TaskProjectsKanban />
       : <TaskDetailPanel />
     : settingsActive
-    ? <SettingsDocument />
+    ? null
     : <EditorWorkspace onEditorReady={handleEditorReady} />;
 
-  // Panel 1 (leftPanel) — CRM list, or Forms list when the CRM forms sub-module
-  // is active. Settings doc owns its own internal left panel, so hide the outer one.
+  // Panel 1 (leftPanel) — CRM/Forms lists, or Documents file explorer.
+  // Settings supplies its own list via SettingsPanels inside SettingsDocument.
   const formsPageActive = crmMode && activeCRMPage === 'forms';
   const leftPanel = crmMode
     ? formsPageActive
@@ -191,9 +192,7 @@ export default function App() {
     ? null
     : <FileExplorerPanel />;
 
-  // Panel 3 (sidebar) — CRM AI sidebar for CRM (incl. forms); existing AISidebar for doc/task.
-  // CRM AI sidebar context — only pass the selection relevant to the active page
-  // so the sidebar shows the right assistant (lead vs contact vs pipeline vs form vs submission).
+  // Assistant content — CRM AI, Settings AI (scoped by sub-tab), or doc/task AI.
   const crmContext = {
     module: (formsPageActive ? 'forms' : 'crm') as 'crm' | 'forms',
     page: (formsPageActive ? activeFormsPage : activeCRMPage) as CRMPage | FormsPage,
@@ -209,7 +208,14 @@ export default function App() {
   const sidebar = crmMode
     ? <CRMAISidebar crmContext={crmContext} />
     : settingsActive
-    ? null
+    ? (
+      <AISidebar
+        workspaceId={null}
+        taskId={null}
+        settingsTab={activeSettingsSubTab}
+        editor={null}
+      />
+    )
     : (
       <AISidebar
         workspaceId={taskMode ? '' : activeWorkspaceId}

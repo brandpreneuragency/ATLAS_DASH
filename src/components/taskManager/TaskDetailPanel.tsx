@@ -40,7 +40,7 @@ export function TaskDetailPanel() {
   useEffect(() => {
     if (task) {
       loadComments(task.id);
-      setTitle(task.title);
+      setTitle(task.title); // eslint-disable-line react-hooks/set-state-in-effect
       titleRef.current = task.title;
       taskRef.current = task;
     }

@@ -1,7 +1,7 @@
-import { Clock, Plus, X, ArrowLeftRight } from 'lucide-react';
+import { Clock, Plus, X } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useChatStore } from '../../stores/chatStore';
-import { useUIStore, selectCanSwapPanels } from '../../stores/uiStore';
+import { useUIStore } from '../../stores/uiStore';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { ContextWindowPanel, ContextWindowSummaryTooltip, ContextWindowRing } from '../contextWindow';
 
@@ -18,33 +18,25 @@ interface RightPanelSubheaderProps {
   taskId?: string | null;
   /** Optional Settings sub-tab id — when set, threads are scoped per tab. */
   settingsTab?: string | null;
-  /**
-   * Hide the "Move AI panel" swap button. Defaults to false. Settings
-   * sub-tabs pass `true` because the chat lives inside a fixed 3-column
-   * page template, not the main-row swap container.
-   */
-  hideSwapButton?: boolean;
 }
 
+/**
+ * Assistant chat chrome: context window + history + new chat.
+ * Shell swap lives in the global Header (not here).
+ */
 export function RightPanelSubheader({
   mode: modeOverride,
   workspaceId: workspaceIdOverride,
   taskId: taskIdOverride,
   settingsTab,
-  hideSwapButton = false,
 }: RightPanelSubheaderProps = {}) {
   const { threads, newChat, selectThread, deleteThread, activeThreadId } = useChatStore();
   const {
     taskMode,
     activeTaskId,
-    panelsSwapped,
-    setPanelsSwapped,
-    aiSidebarOpen,
     contextWindowOpen,
     setContextWindowOpen,
   } = useUIStore();
-  const canSwapPanels = useUIStore(selectCanSwapPanels);
-  const layoutSwapped = canSwapPanels && panelsSwapped && !settingsTab;
   const { activeWorkspaceId } = useWorkspaceStore();
   const [historyOpen, setHistoryOpen] = useState(false);
   const [contextSummaryOpen, setContextSummaryOpen] = useState(false);
@@ -115,139 +107,94 @@ export function RightPanelSubheader({
     setContextWindowOpen(!contextWindowOpen);
   };
 
-  const renderContextButton = (align: 'left' | 'right') => (
-    <div
-      ref={contextWindowRef}
-      className="context-window-trigger"
-      data-align={align}
-      onMouseEnter={() => {
-        if (!contextWindowOpen) {
-          setContextSummaryOpen(true);
-        }
-      }}
-      onMouseLeave={() => setContextSummaryOpen(false)}
-    >
-      <button
-        type="button"
-        className={`tbar-btn ${contextWindowOpen ? 'tbar-btn--on' : ''}`}
-        onClick={toggleContextWindow}
-        title="Context window"
-        aria-label="Context window"
-        aria-haspopup="dialog"
-        aria-expanded={contextWindowOpen ? 'true' : 'false'}
-      >
-        <ContextWindowRing size={18} />
-      </button>
-      {contextSummaryOpen && !contextWindowOpen && <ContextWindowSummaryTooltip />}
-      {contextWindowOpen && (
-        <div className="context-window-dropdown" role="dialog" aria-label="Context window">
-          <ContextWindowPanel />
-        </div>
-      )}
-    </div>
-  );
-
-  const renderHistoryControls = () => (
-    <div
-      ref={historyRef}
-      className="right-panel-subheader-actions"
-      data-align={layoutSwapped ? 'left' : 'right'}
-    >
-      <button
-        type="button"
-        className="tbar-btn"
-        onClick={() => {
-          setContextSummaryOpen(false);
-          setContextWindowOpen(false);
-          setHistoryOpen((v) => !v);
-        }}
-        title="Chat history"
-      >
-        <Clock size={12} />
-      </button>
-      <button
-        type="button"
-        className="tbar-btn"
-        onClick={handleNewChat}
-        title="New chat"
-      >
-        <Plus size={12} />
-      </button>
-      {historyOpen && (
-        <div className="chat-history-dropdown">
-          {threads.length === 0 && (
-            <div className="chat-history-empty subtle">No chats yet</div>
-          )}
-          {threads.map((thread) => (
-            <div
-              key={thread.id}
-              className={`chat-history-item ${thread.id === activeThreadId ? 'active' : ''}`}
-              onClick={() => handleSelectThread(thread.id)}
-            >
-              <span className="trunc">{thread.title}</span>
-              <button
-                type="button"
-                className="chat-history-delete"
-                title="Delete chat"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteThread(thread.id);
-                }}
-              >
-                <X size={12} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div id="right-panel-subheader" className="right-panel-subheader">
-      {!layoutSwapped ? (
-        // Normal: AI sidebar on right panel
-        <>
-          <div className="editor-topbar-col justify-start">
-            {canSwapPanels && aiSidebarOpen && !hideSwapButton && (
-              <button
-                type="button"
-                className="tbar-btn"
-                onClick={() => setPanelsSwapped(true)}
-                title="Move AI panel to center"
-                aria-label="Move AI panel to center"
-              >
-                <ArrowLeftRight size={12} />
-              </button>
-            )}
-            {renderContextButton('left')}
-          </div>
-          <div className="editor-topbar-col justify-end">
-            {renderHistoryControls()}
-          </div>
-        </>
-      ) : (
-        // Swapped: AI sidebar on center panel (left side) — doc mode only
-        <>
-          <div className="editor-topbar-col justify-start">
-            {renderHistoryControls()}
-          </div>
-          <div className="editor-topbar-col justify-end">
-            {renderContextButton('right')}
-            {aiSidebarOpen && !hideSwapButton && (
-              <button
-                type="button"
-                className="tbar-btn"
-                onClick={() => setPanelsSwapped(false)}
-                title="Move AI panel to right"
-                aria-label="Move AI panel to right"
-              >
-                <ArrowLeftRight size={12} />
-              </button>
-            )}
-          </div>
-        </>
-      )}
+      <div className="editor-topbar-col justify-start">
+        <div
+          ref={contextWindowRef}
+          className="context-window-trigger"
+          data-align="left"
+          onMouseEnter={() => {
+            if (!contextWindowOpen) {
+              setContextSummaryOpen(true);
+            }
+          }}
+          onMouseLeave={() => setContextSummaryOpen(false)}
+        >
+          <button
+            type="button"
+            className={`tbar-btn ${contextWindowOpen ? 'tbar-btn--on' : ''}`}
+            onClick={toggleContextWindow}
+            title="Context window"
+            aria-label="Context window"
+            aria-haspopup="dialog"
+            aria-expanded={contextWindowOpen ? 'true' : 'false'}
+          >
+            <ContextWindowRing size={18} />
+          </button>
+          {contextSummaryOpen && !contextWindowOpen && <ContextWindowSummaryTooltip />}
+          {contextWindowOpen && (
+            <div className="context-window-dropdown" role="dialog" aria-label="Context window">
+              <ContextWindowPanel />
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="editor-topbar-col justify-end">
+        <div
+          ref={historyRef}
+          className="right-panel-subheader-actions"
+          data-align="right"
+        >
+          <button
+            type="button"
+            className="tbar-btn"
+            onClick={() => {
+              setContextSummaryOpen(false);
+              setContextWindowOpen(false);
+              setHistoryOpen((v) => !v);
+            }}
+            title="Chat history"
+          >
+            <Clock size={12} />
+          </button>
+          <button
+            type="button"
+            className="tbar-btn"
+            onClick={handleNewChat}
+            title="New chat"
+          >
+            <Plus size={12} />
+          </button>
+          {historyOpen && (
+            <div className="chat-history-dropdown">
+              {threads.length === 0 && (
+                <div className="chat-history-empty subtle">No chats yet</div>
+              )}
+              {threads.map((thread) => (
+                <div
+                  key={thread.id}
+                  className={`chat-history-item ${thread.id === activeThreadId ? 'active' : ''}`}
+                  onClick={() => handleSelectThread(thread.id)}
+                >
+                  <span className="trunc">{thread.title}</span>
+                  <button
+                    type="button"
+                    className="chat-history-delete"
+                    title="Delete chat"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteThread(thread.id);
+                    }}
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

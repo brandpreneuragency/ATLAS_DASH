@@ -267,9 +267,9 @@ export class BrowserFolderConnector implements FolderConnector {
   }
 
   async pickSavePath(
-    _suggestedName?: string,
-    _defaultPath?: string,
-    _filters?: { name: string; extensions: string[] }[],
+    _suggestedName?: string, // eslint-disable-line @typescript-eslint/no-unused-vars
+    _defaultPath?: string, // eslint-disable-line @typescript-eslint/no-unused-vars
+    _filters?: { name: string; extensions: string[] }[], // eslint-disable-line @typescript-eslint/no-unused-vars
   ): Promise<string | null> {
     if (!isFileSystemAccessAvailable()) {
       return null;

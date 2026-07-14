@@ -4,6 +4,25 @@ import { db } from '../services/db';
 import i18n from '../i18n';
 import type { FileViewerItem } from '../types';
 import { DEFAULT_THEME, isTheme, type Theme } from '../types/theme';
+import {
+  applyAssistantWrapperOpen,
+  applyPrimaryWrapperOpen,
+  clampAssistantWrapperWidth,
+  clampContextPanelWidth,
+  migrateLayoutStateFromStored,
+  selectActiveWorkspaceMode as selectActiveWorkspaceModeImpl,
+  selectCanSwapWrappers as selectCanSwapWrappersImpl,
+  selectIsAssistantWrapperOpen as selectIsAssistantWrapperOpenImpl,
+  selectIsContextPanelOpen as selectIsContextPanelOpenImpl,
+  selectIsPrimaryWrapperOpen as selectIsPrimaryWrapperOpenImpl,
+  ASSISTANT_WRAPPER_WIDTH_DEFAULT_VW,
+  CONTEXT_PANEL_WIDTH_DEFAULT_VW,
+  DEFAULT_CONTEXT_PANEL_OPEN_BY_MODE,
+  type ContextPanelOpenByMode,
+  type WorkspaceMode,
+} from './uiLayoutState';
+
+export type { ContextPanelOpenByMode, WorkspaceMode } from './uiLayoutState';
 
 export interface Toast {
   id: string;
@@ -36,8 +55,16 @@ export type SettingsSubTab = 'models' | 'actions' | 'appearance' | 'agents' | 't
 export type DocActiveView = 'document' | 'settings';
 
 interface UIStore {
-  sidebarOpen: boolean;
-  sidebarWidth: number; // vw 15-75
+  // ── Logical two-wrapper layout ─────────────────────────────────────
+  primaryWrapperOpen: boolean;
+  assistantWrapperOpen: boolean;
+  wrappersSwapped: boolean;
+  /** Assistant/detail wrapper width in vw (shared across modes). */
+  assistantWrapperWidth: number;
+  /** Contextual panel width in vw (shared across modes). */
+  contextPanelWidth: number;
+  contextPanelOpenByMode: ContextPanelOpenByMode;
+
   sidebarTab: SidebarTab;
   selectedText: SelectionState | null;
   activeModal:
@@ -58,9 +85,9 @@ interface UIStore {
   editingAgentId: string | null;
   findReplaceOpen: boolean;
   htmlViewOpen: boolean;
+  /** When true, document headings use accent color in the TipTap editor. */
+  rainbowMode: boolean;
 
-  fileExplorerOpen: boolean;
-  fileExplorerWidth: number; // vw 15-40
   settingsPanelOpen: boolean;
   expandedPaths: string[];
   selectedTreePath: string | null;
@@ -70,7 +97,6 @@ interface UIStore {
 
   taskMode: boolean;
   activeTaskId: string | null;
-  taskListOpen: boolean;
   subtasksOpen: boolean;
 
   /** CRM module active — mutually exclusive with task mode. Hosts the merged Forms sub-module via `activeCRMPage === 'forms'`. */
@@ -87,21 +113,13 @@ interface UIStore {
   /** Active sub-tab inside the Settings document. */
   activeSettingsSubTab: SettingsSubTab;
 
-  /** Panels swapped state (AI panel on left, center panel on right) */
-  panelsSwapped: boolean;
-
   /** Active UI theme */
   theme: Theme;
 
-  /** File viewer panel state */
+  /** File viewer panel state (assistant-wrapper content selection). */
   fileViewerOpen: boolean;
   fileViewerFile: FileViewerItem | null;
-  fileViewerPreviousSidebarOpen: boolean;
-  fileViewerPreviousSidebarWidth: number;
 
-  aiSidebarOpen: boolean;
-  /** When panels are swapped, the center panel sits on the right; this controls its visibility. */
-  centerPanelOpen: boolean;
   contextWindowOpen: boolean;
   contextWindowCollapsed: boolean;
 
@@ -114,8 +132,22 @@ interface UIStore {
   showToastWithAction: (message: string, actionLabel: string, onAction: () => void, type?: Toast['type']) => void;
   dismissToast: (id: string) => void;
 
-  setSidebarOpen: (v: boolean) => void;
-  setSidebarWidth: (w: number) => void;
+  // Logical wrapper actions
+  setPrimaryWrapperOpen: (v: boolean) => void;
+  togglePrimaryWrapper: () => void;
+  setAssistantWrapperOpen: (v: boolean) => void;
+  toggleAssistantWrapper: () => void;
+  setWrappersSwapped: (v: boolean) => void;
+  toggleWrappersSwapped: () => void;
+  setContextPanelOpen: (mode: WorkspaceMode, open: boolean) => void;
+  toggleContextPanel: (mode?: WorkspaceMode) => void;
+  /**
+   * Set assistant width in memory. Pass `{ persist: true }` (default) to write Dexie,
+   * or `{ persist: false }` during drag and call again with persist at pointerup.
+   */
+  setAssistantWrapperWidth: (w: number, options?: { persist?: boolean }) => void;
+  setContextPanelWidth: (w: number, options?: { persist?: boolean }) => void;
+
   setSidebarTab: (tab: SidebarTab) => void;
   setSelectedText: (sel: SelectionState | null) => void;
   setActiveModal: (m: UIStore['activeModal']) => void;
@@ -123,8 +155,8 @@ interface UIStore {
   setEditingAgentId: (id: string | null) => void;
   setFindReplaceOpen: (v: boolean) => void;
   setHtmlViewOpen: (v: boolean) => void;
-  setFileExplorerOpen: (v: boolean) => void;
-  setFileExplorerWidth: (w: number) => void;
+  setRainbowMode: (v: boolean) => void;
+  toggleRainbowMode: () => void;
   setSettingsPanelOpen: (v: boolean) => void;
   setEditorFontFamily: (font: string) => void;
   setEditorFontSize: (size: 12 | 14 | 16) => void;
@@ -142,17 +174,11 @@ interface UIStore {
   /** Switch to the Settings document tab, optionally targeting a sub-tab. */
   openSettings: (subTab?: SettingsSubTab) => void;
   setActiveTaskId: (id: string | null) => void;
-  setTaskListOpen: (v: boolean) => void;
   setSubtasksOpen: (v: boolean) => void;
-  setPanelsSwapped: (v: boolean) => void;
   setTheme: (theme: Theme) => void;
   openFileViewer: (file: FileViewerItem) => void;
   closeFileViewer: () => void;
   setFileViewerFile: (file: FileViewerItem | null) => void;
-  setAiSidebarOpen: (v: boolean) => void;
-  setCenterPanelOpen: (v: boolean) => void;
-  /** Toggle whatever panel(s) are on the right side of the main row (detail or center when swapped). */
-  toggleRightPanel: () => void;
   setContextWindowOpen: (v: boolean) => void;
   setContextWindowCollapsed: (v: boolean) => void;
   setTerminalPanelOpen: (v: boolean) => void;
@@ -160,31 +186,73 @@ interface UIStore {
   loadUISettings: () => Promise<void>;
 }
 
-function isMainRowSwapped(state: Pick<UIStore, 'panelsSwapped' | 'aiSidebarOpen' | 'fileViewerOpen' | 'crmMode' | 'taskMode' | 'activeView'>): boolean {
-  if (state.taskMode || state.crmMode) return false;
-
-  const settingsActive = state.activeView === 'settings';
-  const showSidebarPanel = !settingsActive && (state.aiSidebarOpen || state.fileViewerOpen);
-  return state.panelsSwapped && showSidebarPanel;
-}
-
-/** Panel swap (AI on left, editor on right) is doc-mode only. */
-export function selectCanSwapPanels(state: Pick<UIStore, 'crmMode' | 'taskMode'>): boolean {
-  return !state.taskMode && !state.crmMode;
-}
-
-export { isMainRowSwapped as selectIsMainRowSwapped };
-
-/** True when the panel occupying the right side of #main-row is visible. */
-export function selectIsRightPanelOpen(state: Pick<UIStore, 'panelsSwapped' | 'aiSidebarOpen' | 'fileViewerOpen' | 'centerPanelOpen' | 'crmMode' | 'taskMode' | 'activeView'>): boolean {
-  const crmOrForms = state.crmMode;
-  const settingsActive = !crmOrForms && !state.taskMode && state.activeView === 'settings';
-  if (settingsActive) return false;
-
-  if (isMainRowSwapped(state)) {
-    return state.centerPanelOpen;
+function persistLayoutKeys(partial: {
+  primaryWrapperOpen?: boolean;
+  assistantWrapperOpen?: boolean;
+  wrappersSwapped?: boolean;
+  assistantWrapperWidth?: number;
+  contextPanelWidth?: number;
+  contextPanelOpenByMode?: ContextPanelOpenByMode;
+}): void {
+  if (partial.primaryWrapperOpen !== undefined) {
+    void db.settings.put({ key: 'primaryWrapperOpen', value: partial.primaryWrapperOpen });
   }
-  return state.aiSidebarOpen || state.fileViewerOpen;
+  if (partial.assistantWrapperOpen !== undefined) {
+    void db.settings.put({ key: 'assistantWrapperOpen', value: partial.assistantWrapperOpen });
+  }
+  if (partial.wrappersSwapped !== undefined) {
+    void db.settings.put({ key: 'wrappersSwapped', value: partial.wrappersSwapped });
+  }
+  if (partial.assistantWrapperWidth !== undefined) {
+    void db.settings.put({ key: 'assistantWrapperWidth', value: partial.assistantWrapperWidth });
+  }
+  if (partial.contextPanelWidth !== undefined) {
+    void db.settings.put({ key: 'contextPanelWidth', value: partial.contextPanelWidth });
+  }
+  if (partial.contextPanelOpenByMode !== undefined) {
+    void db.settings.put({
+      key: 'contextPanelOpenByMode',
+      value: JSON.stringify(partial.contextPanelOpenByMode),
+    });
+  }
+}
+
+/** Logical: swap only when both wrappers are open. */
+export function selectCanSwapWrappers(
+  state: Pick<UIStore, 'primaryWrapperOpen' | 'assistantWrapperOpen'>,
+): boolean {
+  return selectCanSwapWrappersImpl(state);
+}
+
+export function selectActiveWorkspaceMode(
+  state: Pick<UIStore, 'taskMode' | 'crmMode' | 'activeCRMPage' | 'activeView'>,
+): WorkspaceMode {
+  return selectActiveWorkspaceModeImpl(state);
+}
+
+export function selectIsPrimaryWrapperOpen(
+  state: Pick<UIStore, 'primaryWrapperOpen'>,
+): boolean {
+  return selectIsPrimaryWrapperOpenImpl(state);
+}
+
+export function selectIsAssistantWrapperOpen(
+  state: Pick<UIStore, 'assistantWrapperOpen'>,
+): boolean {
+  return selectIsAssistantWrapperOpenImpl(state);
+}
+
+export function selectIsContextPanelOpen(
+  state: Pick<
+    UIStore,
+    | 'contextPanelOpenByMode'
+    | 'taskMode'
+    | 'crmMode'
+    | 'activeCRMPage'
+    | 'activeView'
+  >,
+): boolean {
+  return selectIsContextPanelOpenImpl(state);
 }
 
 export const useUIStore = create<UIStore>((set, get) => ({
@@ -204,8 +272,14 @@ export const useUIStore = create<UIStore>((set, get) => ({
 
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 
-  sidebarOpen: true,
-  sidebarWidth: 33,
+  // Logical layout defaults
+  primaryWrapperOpen: true,
+  assistantWrapperOpen: true,
+  wrappersSwapped: false,
+  assistantWrapperWidth: ASSISTANT_WRAPPER_WIDTH_DEFAULT_VW,
+  contextPanelWidth: CONTEXT_PANEL_WIDTH_DEFAULT_VW,
+  contextPanelOpenByMode: { ...DEFAULT_CONTEXT_PANEL_OPEN_BY_MODE },
+
   sidebarTab: 'chat',
   selectedText: null,
   activeModal: null,
@@ -213,9 +287,8 @@ export const useUIStore = create<UIStore>((set, get) => ({
   editingAgentId: null,
   findReplaceOpen: false,
   htmlViewOpen: false,
+  rainbowMode: false,
 
-  fileExplorerOpen: false,
-  fileExplorerWidth: 22,
   settingsPanelOpen: false,
   expandedPaths: [],
   selectedTreePath: null,
@@ -224,7 +297,6 @@ export const useUIStore = create<UIStore>((set, get) => ({
   language: 'en',
   taskMode: false,
   activeTaskId: null,
-  taskListOpen: true,
   subtasksOpen: true,
   crmMode: false,
   activeCRMPage: 'leads',
@@ -233,33 +305,87 @@ export const useUIStore = create<UIStore>((set, get) => ({
   activeView: 'document',
   activeSettingsSubTab: 'models',
 
-  panelsSwapped: false,
-
   theme: DEFAULT_THEME,
 
   fileViewerOpen: false,
   fileViewerFile: null,
-  fileViewerPreviousSidebarOpen: true,
-  fileViewerPreviousSidebarWidth: 33,
-
-  aiSidebarOpen: true,
-  centerPanelOpen: true,
   contextWindowOpen: false,
   contextWindowCollapsed: true,
 
   terminalPanelOpen: false,
   terminalPanelHeight: 240,
 
-  setSidebarOpen: (v) => {
-    set({ sidebarOpen: v });
-    db.settings.put({ key: 'sidebarOpen', value: v });
+  // ── Logical wrapper actions ────────────────────────────────────────
+
+  setPrimaryWrapperOpen: (v) => {
+    const next = applyPrimaryWrapperOpen(get(), v);
+    set({
+      primaryWrapperOpen: next.primaryWrapperOpen,
+      assistantWrapperOpen: next.assistantWrapperOpen,
+    });
+    persistLayoutKeys(next);
   },
 
-  setSidebarWidth: (w) => {
-    const clamped = Math.min(75, Math.max(15, w));
-    set({ sidebarWidth: clamped });
-    db.settings.put({ key: 'sidebarWidth', value: clamped });
+  togglePrimaryWrapper: () => {
+    get().setPrimaryWrapperOpen(!get().primaryWrapperOpen);
   },
+
+  setAssistantWrapperOpen: (v) => {
+    const next = applyAssistantWrapperOpen(get(), v);
+    set({
+      primaryWrapperOpen: next.primaryWrapperOpen,
+      assistantWrapperOpen: next.assistantWrapperOpen,
+    });
+    persistLayoutKeys(next);
+  },
+
+  toggleAssistantWrapper: () => {
+    get().setAssistantWrapperOpen(!get().assistantWrapperOpen);
+  },
+
+  setWrappersSwapped: (v) => {
+    // Swap is only available when both wrappers are open (PRD 6.2 / 12.x).
+    if (!selectCanSwapWrappersImpl(get())) return;
+    set({ wrappersSwapped: v });
+    persistLayoutKeys({ wrappersSwapped: v });
+  },
+
+  toggleWrappersSwapped: () => {
+    const { wrappersSwapped } = get();
+    get().setWrappersSwapped(!wrappersSwapped);
+  },
+
+  setContextPanelOpen: (mode, open) => {
+    const next = { ...get().contextPanelOpenByMode, [mode]: open };
+    set({ contextPanelOpenByMode: next });
+    persistLayoutKeys({ contextPanelOpenByMode: next });
+  },
+
+  toggleContextPanel: (mode) => {
+    const resolved = mode ?? selectActiveWorkspaceModeImpl(get());
+    const current = get().contextPanelOpenByMode[resolved];
+    get().setContextPanelOpen(resolved, !current);
+  },
+
+  setAssistantWrapperWidth: (w, options) => {
+    const persist = options?.persist ?? true;
+    const clamped = clampAssistantWrapperWidth(w);
+    set({ assistantWrapperWidth: clamped });
+    if (persist) {
+      persistLayoutKeys({ assistantWrapperWidth: clamped });
+    }
+  },
+
+  setContextPanelWidth: (w, options) => {
+    const persist = options?.persist ?? true;
+    const clamped = clampContextPanelWidth(w);
+    set({ contextPanelWidth: clamped });
+    if (persist) {
+      persistLayoutKeys({ contextPanelWidth: clamped });
+    }
+  },
+
+  // ── Remaining store ────────────────────────────────────────────────
 
   setSidebarTab: (tab) => set({ sidebarTab: tab }),
   setSelectedText: (sel) => set({ selectedText: sel }),
@@ -268,33 +394,24 @@ export const useUIStore = create<UIStore>((set, get) => ({
   setEditingAgentId: (id) => set({ editingAgentId: id }),
   setFindReplaceOpen: (v) => set({ findReplaceOpen: v }),
   setHtmlViewOpen: (v) => set({ htmlViewOpen: v }),
+  setRainbowMode: (v) => set({ rainbowMode: v }),
+  toggleRainbowMode: () => set((s) => ({ rainbowMode: !s.rainbowMode })),
 
   setEditorFontFamily: (font) => {
     set({ editorFontFamily: font });
-    db.settings.put({ key: 'editorFontFamily', value: font });
+    void db.settings.put({ key: 'editorFontFamily', value: font });
   },
 
   setEditorFontSize: (size) => {
     set({ editorFontSize: size });
-    db.settings.put({ key: 'editorFontSize', value: size });
+    void db.settings.put({ key: 'editorFontSize', value: size });
   },
 
   setLanguage: (lang) => {
     set({ language: lang });
-    i18n.changeLanguage(lang);
+    void i18n.changeLanguage(lang);
     document.documentElement.lang = lang;
-    db.settings.put({ key: 'language', value: lang });
-  },
-
-  setFileExplorerOpen: (v) => {
-    set({ fileExplorerOpen: v });
-    db.settings.put({ key: 'fileExplorerOpen', value: v });
-  },
-
-  setFileExplorerWidth: (w) => {
-    const clamped = Math.min(40, Math.max(15, w));
-    set({ fileExplorerWidth: clamped });
-    db.settings.put({ key: 'fileExplorerWidth', value: clamped });
+    void db.settings.put({ key: 'language', value: lang });
   },
 
   setSettingsPanelOpen: (v) => {
@@ -307,7 +424,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
     if (isExpanded) {
       const next = current.filter((p) => p !== path);
       set({ expandedPaths: next });
-      db.settings.put({ key: 'fileExplorerExpandedPaths', value: JSON.stringify(next) });
+      void db.settings.put({ key: 'fileExplorerExpandedPaths', value: JSON.stringify(next) });
     } else {
       const parentPath = path.substring(0, path.lastIndexOf('/'));
       const next = [...current.filter((p) => {
@@ -315,29 +432,40 @@ export const useUIStore = create<UIStore>((set, get) => ({
         return pParent !== parentPath;
       }), path];
       set({ expandedPaths: next });
-      db.settings.put({ key: 'fileExplorerExpandedPaths', value: JSON.stringify(next) });
+      void db.settings.put({ key: 'fileExplorerExpandedPaths', value: JSON.stringify(next) });
     }
   },
 
   setExpandedPaths: (paths) => {
     set({ expandedPaths: paths });
-    db.settings.put({ key: 'fileExplorerExpandedPaths', value: JSON.stringify(paths) });
+    void db.settings.put({ key: 'fileExplorerExpandedPaths', value: JSON.stringify(paths) });
   },
 
   setSelectedTreePath: (path) => set({ selectedTreePath: path }),
 
   setTaskMode: (v) => {
-    // Entering/leaving a non-doc mode always returns to the document view
-    // (the Settings doc only lives in pure doc mode).
-    set({ taskMode: v, crmMode: false, activeView: 'document' });
-    db.settings.put({ key: 'taskMode', value: v });
-    db.settings.put({ key: 'crmMode', value: false });
+    // Mode entry ensures primary is open (PRD 6.6).
+    set({
+      taskMode: v,
+      crmMode: false,
+      activeView: 'document',
+      primaryWrapperOpen: true,
+    });
+    persistLayoutKeys({ primaryWrapperOpen: true });
+    void db.settings.put({ key: 'taskMode', value: v });
+    void db.settings.put({ key: 'crmMode', value: false });
   },
 
   setCrmMode: (v) => {
-    set({ crmMode: v, taskMode: false, activeView: 'document' });
-    db.settings.put({ key: 'crmMode', value: v });
-    db.settings.put({ key: 'taskMode', value: false });
+    set({
+      crmMode: v,
+      taskMode: false,
+      activeView: 'document',
+      primaryWrapperOpen: true,
+    });
+    persistLayoutKeys({ primaryWrapperOpen: true });
+    void db.settings.put({ key: 'crmMode', value: v });
+    void db.settings.put({ key: 'taskMode', value: false });
   },
 
   setActiveCRMPage: (p) => {
@@ -347,50 +475,49 @@ export const useUIStore = create<UIStore>((set, get) => ({
       useCrmStore.getState().setLeadsCenterView('lead');
     });
     set({ activeCRMPage: resolved });
-    db.settings.put({ key: 'activeCRMPage', value: resolved });
+    void db.settings.put({ key: 'activeCRMPage', value: resolved });
   },
 
   setActiveFormsPage: (p) => {
     const resolved = p === 'templates' ? 'list' : p;
     set({ activeFormsPage: resolved });
-    db.settings.put({ key: 'activeFormsPage', value: resolved });
+    void db.settings.put({ key: 'activeFormsPage', value: resolved });
   },
 
   setActiveTaskPage: (p) => {
     set({ activeTaskPage: p });
-    db.settings.put({ key: 'activeTaskPage', value: p });
+    void db.settings.put({ key: 'activeTaskPage', value: p });
   },
 
-  setActiveView: (v) => set({ activeView: v }),
+  setActiveView: (v) => {
+    // Entering documents or settings in doc mode ensures primary open.
+    set({ activeView: v, primaryWrapperOpen: true });
+    persistLayoutKeys({ primaryWrapperOpen: true });
+  },
 
   setActiveSettingsSubTab: (tab) => set({ activeSettingsSubTab: tab }),
 
   openSettings: (subTab) => {
+    // Settings is a first-class shell mode (PRD 6.9). Deep links from Tasks/CRM
+    // AI (models/agents/actions) must leave those modes or Settings never renders.
     set((s) => ({
       activeView: 'settings',
       activeSettingsSubTab: subTab ?? s.activeSettingsSubTab,
-      // Opening Settings never disturbs the task/page/crm/forms modes; it only
-      // matters in doc mode where the Settings tab lives.
+      primaryWrapperOpen: true,
+      taskMode: false,
+      crmMode: false,
     }));
+    persistLayoutKeys({ primaryWrapperOpen: true });
+    void db.settings.put({ key: 'taskMode', value: false });
+    void db.settings.put({ key: 'crmMode', value: false });
   },
 
   setActiveTaskId: (id) => {
     set({ activeTaskId: id });
-    if (id) db.settings.put({ key: 'lastActiveTaskId', value: id });
-  },
-
-  setTaskListOpen: (v) => {
-    set({ taskListOpen: v });
-    db.settings.put({ key: 'taskListOpen', value: v });
+    if (id) void db.settings.put({ key: 'lastActiveTaskId', value: id });
   },
 
   setSubtasksOpen: (v) => set({ subtasksOpen: v }),
-
-  setPanelsSwapped: (v: boolean) => {
-    if (!selectCanSwapPanels(get())) return;
-    set({ panelsSwapped: v });
-    db.settings.put({ key: 'panelsSwapped', value: v });
-  },
 
   setTheme: (theme) => {
     set({ theme });
@@ -399,63 +526,32 @@ export const useUIStore = create<UIStore>((set, get) => ({
   },
 
   openFileViewer: (file) => {
-    const { sidebarOpen, sidebarWidth } = get();
+    // File Viewer is assistant-wrapper content (PRD 6.10).
+    // Opening ensures assistant is open; does not change swap or close primary.
+    const nextAssistant = applyAssistantWrapperOpen(get(), true);
     set({
-      fileViewerPreviousSidebarOpen: sidebarOpen,
-      fileViewerPreviousSidebarWidth: sidebarWidth,
-      sidebarOpen: false,
       fileViewerOpen: true,
       fileViewerFile: file,
+      primaryWrapperOpen: nextAssistant.primaryWrapperOpen,
+      assistantWrapperOpen: true,
+    });
+    persistLayoutKeys({
+      primaryWrapperOpen: nextAssistant.primaryWrapperOpen,
+      assistantWrapperOpen: true,
     });
   },
 
   closeFileViewer: () => {
-    const { fileViewerPreviousSidebarOpen, fileViewerPreviousSidebarWidth } = get();
+    // Explicit close returns assistant content to mode AI.
+    // Does not hide the assistant wrapper or clear wrapper widths/swap.
     set({
       fileViewerOpen: false,
       fileViewerFile: null,
-      sidebarOpen: fileViewerPreviousSidebarOpen,
-      sidebarWidth: fileViewerPreviousSidebarWidth,
     });
   },
 
   setFileViewerFile: (file) => {
     set({ fileViewerFile: file });
-  },
-
-  setAiSidebarOpen: (v) => {
-    set({ aiSidebarOpen: v });
-    db.settings.put({ key: 'aiSidebarOpen', value: v });
-  },
-
-  setCenterPanelOpen: (v) => {
-    set({ centerPanelOpen: v });
-    db.settings.put({ key: 'centerPanelOpen', value: v });
-  },
-
-  toggleRightPanel: () => {
-    const state = get();
-    const open = selectIsRightPanelOpen(state);
-    const swapped = isMainRowSwapped(state);
-
-    if (open) {
-      if (swapped) {
-        set({ centerPanelOpen: false });
-        db.settings.put({ key: 'centerPanelOpen', value: false });
-      } else {
-        if (state.fileViewerOpen) {
-          get().closeFileViewer();
-        }
-        set({ aiSidebarOpen: false });
-        db.settings.put({ key: 'aiSidebarOpen', value: false });
-      }
-    } else if (swapped) {
-      set({ centerPanelOpen: true });
-      db.settings.put({ key: 'centerPanelOpen', value: true });
-    } else {
-      set({ aiSidebarOpen: true });
-      db.settings.put({ key: 'aiSidebarOpen', value: true });
-    }
   },
 
   setContextWindowOpen: (v) => {
@@ -464,47 +560,84 @@ export const useUIStore = create<UIStore>((set, get) => ({
 
   setContextWindowCollapsed: (v) => {
     set({ contextWindowCollapsed: v });
-    db.settings.put({ key: 'contextWindowCollapsed', value: v });
+    void db.settings.put({ key: 'contextWindowCollapsed', value: v });
   },
 
   setTerminalPanelOpen: (v) => {
     set({ terminalPanelOpen: v });
-    db.settings.put({ key: 'terminalPanelOpen', value: v });
+    void db.settings.put({ key: 'terminalPanelOpen', value: v });
   },
   setTerminalPanelHeight: (h) => {
     const clamped = Math.min(window.innerHeight * 0.7, Math.max(120, h));
     set({ terminalPanelHeight: clamped });
-    db.settings.put({ key: 'terminalPanelHeight', value: clamped });
+    void db.settings.put({ key: 'terminalPanelHeight', value: clamped });
   },
 
   loadUISettings: async () => {
-    const sidebarOpen = await db.settings.get('sidebarOpen');
-    const sidebarWidth = await db.settings.get('sidebarWidth');
-    const sidebarTab = await db.settings.get('sidebarTab');
-    const fileExplorerOpen = await db.settings.get('fileExplorerOpen');
-    const fileExplorerWidth = await db.settings.get('fileExplorerWidth');
-    const fileExplorerExpandedPaths = await db.settings.get('fileExplorerExpandedPaths');
-    const editorFontFamily = await db.settings.get('editorFontFamily');
-    const editorFontSize = await db.settings.get('editorFontSize');
-    const language = await db.settings.get('language');
-    const taskMode = await db.settings.get('taskMode');
-    const lastActiveTaskId = await db.settings.get('lastActiveTaskId');
-    const taskListOpen = await db.settings.get('taskListOpen');
-    const panelsSwapped = await db.settings.get('panelsSwapped');
-    const aiSidebarOpen = await db.settings.get('aiSidebarOpen');
-    const centerPanelOpen = await db.settings.get('centerPanelOpen');
-    const themeSetting = await db.settings.get('theme');
-    const contextWindowCollapsed = await db.settings.get('contextWindowCollapsed');
-    const terminalPanelOpen = await db.settings.get('terminalPanelOpen');
-    const terminalPanelHeight = await db.settings.get('terminalPanelHeight');
-    const crmModeSetting = await db.settings.get('crmMode');
-    const formsModeSetting = await db.settings.get('formsMode');
-    const activeCRMPageSetting = await db.settings.get('activeCRMPage');
-    const activeFormsPageSetting = await db.settings.get('activeFormsPage');
-    const activeTaskPageSetting = await db.settings.get('activeTaskPage');
+    // Read new layout keys + legacy fallbacks (aiSidebarOpen, panelsSwapped, …).
+    // After migrate we only write the new key set (do not delete legacy keys).
+    const [
+      sidebarTab,
+      fileExplorerOpen,
+      fileExplorerWidth,
+      fileExplorerExpandedPaths,
+      editorFontFamily,
+      editorFontSize,
+      language,
+      taskMode,
+      lastActiveTaskId,
+      taskListOpen,
+      panelsSwapped,
+      aiSidebarOpen,
+      sidebarWidth,
+      themeSetting,
+      contextWindowCollapsed,
+      terminalPanelOpen,
+      terminalPanelHeight,
+      crmModeSetting,
+      formsModeSetting,
+      activeCRMPageSetting,
+      activeFormsPageSetting,
+      activeTaskPageSetting,
+      primaryWrapperOpenSetting,
+      assistantWrapperOpenSetting,
+      wrappersSwappedSetting,
+      assistantWrapperWidthSetting,
+      contextPanelWidthSetting,
+      contextPanelOpenByModeSetting,
+    ] = await Promise.all([
+      db.settings.get('sidebarTab'),
+      db.settings.get('fileExplorerOpen'),
+      db.settings.get('fileExplorerWidth'),
+      db.settings.get('fileExplorerExpandedPaths'),
+      db.settings.get('editorFontFamily'),
+      db.settings.get('editorFontSize'),
+      db.settings.get('language'),
+      db.settings.get('taskMode'),
+      db.settings.get('lastActiveTaskId'),
+      db.settings.get('taskListOpen'),
+      db.settings.get('panelsSwapped'),
+      db.settings.get('aiSidebarOpen'),
+      db.settings.get('sidebarWidth'),
+      db.settings.get('theme'),
+      db.settings.get('contextWindowCollapsed'),
+      db.settings.get('terminalPanelOpen'),
+      db.settings.get('terminalPanelHeight'),
+      db.settings.get('crmMode'),
+      db.settings.get('formsMode'),
+      db.settings.get('activeCRMPage'),
+      db.settings.get('activeFormsPage'),
+      db.settings.get('activeTaskPage'),
+      db.settings.get('primaryWrapperOpen'),
+      db.settings.get('assistantWrapperOpen'),
+      db.settings.get('wrappersSwapped'),
+      db.settings.get('assistantWrapperWidth'),
+      db.settings.get('contextPanelWidth'),
+      db.settings.get('contextPanelOpenByMode'),
+    ]);
 
     const lang = (language?.value === 'tr' ? 'tr' : 'en') as 'en' | 'tr';
-    i18n.changeLanguage(lang);
+    void i18n.changeLanguage(lang);
     document.documentElement.lang = lang;
 
     const theme: Theme = isTheme(themeSetting?.value) ? themeSetting.value : DEFAULT_THEME;
@@ -546,23 +679,40 @@ export const useUIStore = create<UIStore>((set, get) => ({
     const activeTaskPage: TaskPage =
       storedTaskPage && TASK_PAGES.includes(storedTaskPage) ? storedTaskPage : 'list';
 
+    const layout = migrateLayoutStateFromStored({
+      primaryWrapperOpen: primaryWrapperOpenSetting?.value,
+      assistantWrapperOpen: assistantWrapperOpenSetting?.value,
+      aiSidebarOpen: aiSidebarOpen?.value,
+      wrappersSwapped: wrappersSwappedSetting?.value,
+      panelsSwapped: panelsSwapped?.value,
+      assistantWrapperWidth: assistantWrapperWidthSetting?.value,
+      sidebarWidth: sidebarWidth?.value,
+      contextPanelWidth: contextPanelWidthSetting?.value,
+      fileExplorerWidth: fileExplorerWidth?.value,
+      contextPanelOpenByMode: contextPanelOpenByModeSetting?.value,
+      fileExplorerOpen: fileExplorerOpen?.value,
+      taskListOpen: taskListOpen?.value,
+    });
+
+    // Write migrated new keys (do not delete legacy keys).
+    persistLayoutKeys(layout);
+
     set({
-      sidebarOpen: sidebarOpen ? Boolean(sidebarOpen.value) : true,
-      sidebarWidth: Math.min(75, Math.max(15, sidebarWidth ? Number(sidebarWidth.value) : 25)),
+      primaryWrapperOpen: layout.primaryWrapperOpen,
+      assistantWrapperOpen: layout.assistantWrapperOpen,
+      wrappersSwapped: layout.wrappersSwapped,
+      assistantWrapperWidth: layout.assistantWrapperWidth,
+      contextPanelWidth: layout.contextPanelWidth,
+      contextPanelOpenByMode: layout.contextPanelOpenByMode,
+
       sidebarTab: (sidebarTab ? String(sidebarTab.value) : 'chat') as SidebarTab,
-      fileExplorerOpen: fileExplorerOpen ? Boolean(fileExplorerOpen.value) : false,
-      fileExplorerWidth: Math.min(40, Math.max(15, fileExplorerWidth ? Number(fileExplorerWidth.value) : 20)),
       expandedPaths: fileExplorerExpandedPaths ? JSON.parse(String(fileExplorerExpandedPaths.value)) : [],
       editorFontFamily: editorFontFamily ? String(editorFontFamily.value) : 'Inter',
       editorFontSize: editorFontSize ? (Number(editorFontSize.value) as 12 | 14 | 16) : 12,
       language: lang,
       taskMode: taskModeValue,
       activeTaskId: lastActiveTaskId ? String(lastActiveTaskId.value) : null,
-      taskListOpen: taskListOpen ? Boolean(taskListOpen.value) : true,
-      panelsSwapped: panelsSwapped ? Boolean(panelsSwapped.value) : false,
       theme,
-      aiSidebarOpen: aiSidebarOpen ? Boolean(aiSidebarOpen.value) : true,
-      centerPanelOpen: centerPanelOpen ? Boolean(centerPanelOpen.value) : true,
       contextWindowOpen: false,
       contextWindowCollapsed: contextWindowCollapsed ? Boolean(contextWindowCollapsed.value) : true,
       terminalPanelOpen: terminalPanelOpen ? Boolean(terminalPanelOpen.value) : false,

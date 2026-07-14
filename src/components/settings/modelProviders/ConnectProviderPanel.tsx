@@ -31,6 +31,7 @@ export function ConnectProviderPanel({ open, onClose, onConnected }: ConnectProv
   const keyRef = useRef<HTMLInputElement>(null);
   const addProviderBtnRef = useRef<HTMLButtonElement>(null);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (open) {
       setStep('preset');
@@ -183,7 +184,7 @@ export function ConnectProviderPanel({ open, onClose, onConnected }: ConnectProv
             <p className="subtle" style={{ fontSize: 'var(--fs-sm)', marginTop: 0, marginBottom: 8 }}>
               {t('models.chooseProviderType')}
             </p>
-            <div className="col gap-1">
+            <div className="col gap-1.5">
               {PROVIDER_PRESETS.map((preset) => (
                 <button
                   key={preset.id}
@@ -198,7 +199,7 @@ export function ConnectProviderPanel({ open, onClose, onConnected }: ConnectProv
                   )}
                   {preset.verified && (
                     <span className="connect-preset-btn__badge">
-                      <Check size={10} /> {t('models.verified')}
+                      {t('models.verified')}
                     </span>
                   )}
                 </button>

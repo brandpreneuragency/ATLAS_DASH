@@ -37,7 +37,7 @@ function describeOperation(
   if (operation.type === 'update_task') {
     const before = taskById[operation.taskId] ?? {};
     const changes = Object.entries(operation.updates).map(([field, next]) => {
-      const previous = (before as any)[field];
+      const previous = (before as Record<string, unknown>)[field];
       return `${field}: ${String(previous ?? '—')} -> ${String(next ?? '—')}`;
     });
     return `Update ${taskTitleById[operation.taskId] ?? operation.taskId}: ${changes.join(' | ') || 'no fields'}`;

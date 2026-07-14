@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
-import { Search, Undo2, Redo2, ChevronUp, ChevronDown, Replace, ReplaceAll, Save } from 'lucide-react';
+import { Search, Undo2, Redo2, ChevronUp, ChevronDown, Replace, ReplaceAll, Save, Rainbow } from 'lucide-react';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
+import { useUIStore } from '../../stores/uiStore';
+import { ContextPanelToggle } from '../layout/workspace';
 
 interface EditorTopBarProps {
   editor: Editor | null;
@@ -31,6 +33,8 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
     s.workspaces.find((w) => w.id === s.activeWorkspaceId) ?? null
   );
   const currentFile = activeWs?.currentFile ?? null;
+  const rainbowMode = useUIStore((s) => s.rainbowMode);
+  const toggleRainbowMode = useUIStore((s) => s.toggleRainbowMode);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -72,6 +76,23 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [searchOpen]);
 
+  const computeMatches = (q: string): number[] => {
+    if (!editor || !q) return [];
+    const text = editor.state.doc.textBetween(0, editor.state.doc.content.size, '\n', '\n');
+    const lower = text.toLowerCase();
+    const needle = q.toLowerCase();
+    const positions: number[] = [];
+    let from = 0;
+    while (from <= lower.length - needle.length) {
+      const idx = lower.indexOf(needle, from);
+      if (idx === -1) break;
+      positions.push(idx);
+      from = idx + needle.length;
+    }
+    return positions;
+  };
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (searchOpen) {
       const saved = currentFile ? searchStateByDoc[currentFile.path] : undefined;
@@ -90,21 +111,6 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
       setFindState({ matches: [], index: 0 });
     }
   }, [searchOpen, currentFile?.path]);
-  const computeMatches = (q: string): number[] => {
-    if (!editor || !q) return [];
-    const text = editor.state.doc.textBetween(0, editor.state.doc.content.size, '\n', '\n');
-    const lower = text.toLowerCase();
-    const needle = q.toLowerCase();
-    const positions: number[] = [];
-    let from = 0;
-    while (from <= lower.length - needle.length) {
-      const idx = lower.indexOf(needle, from);
-      if (idx === -1) break;
-      positions.push(idx);
-      from = idx + needle.length;
-    }
-    return positions;
-  };
 
   const updateQuery = (q: string) => {
     setQuery(q);
@@ -182,6 +188,7 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
   return (
     <div id="editor-topbar" className="editor-topbar">
       <div className="editor-topbar-col">
+        <ContextPanelToggle mode="documents" available />
         <button
           id="editor-topbar-save"
           type="button"
@@ -229,6 +236,17 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
         )}
       </div>
       <div className="editor-topbar-col editor-topbar-col--right">
+        <button
+          id="editor-topbar-rainbow"
+          type="button"
+          className={`tbar-btn${rainbowMode ? ' tbar-btn--on' : ''}`}
+          onClick={toggleRainbowMode}
+          title={rainbowMode ? 'Rainbow mode on' : 'Rainbow mode'}
+          aria-label="Rainbow mode"
+          aria-pressed={rainbowMode}
+        >
+          <Rainbow size={14} />
+        </button>
         <div className="relative" ref={searchRef}>
           <button
             id="editor-topbar-find"
@@ -251,7 +269,7 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
-                    e.shiftKey ? goPrev() : goNext();
+                    if (e.shiftKey) goPrev(); else goNext();
                   } else if (e.key === 'Escape') {
                     setSearchOpen(false);
                   }

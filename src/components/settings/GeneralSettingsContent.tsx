@@ -29,8 +29,8 @@ export function SettingsContent() {
   }, []);
 
   return (
-    <div className="flex-col h-full w-full" style={{ background: 'var(--c-background-1)', overflow: 'hidden', display: 'flex' }}>
-      <div className="flex-1 col gap-4" style={{ padding: '0px 0px 16px 0px', overflowY: 'auto' }}>
+    <div className="settings-general-content flex-col h-full w-full" style={{ background: 'var(--c-background-1)', overflow: 'hidden', display: 'flex' }}>
+      <div className="settings-general-content__body flex-1 col gap-4" style={{ padding: '0px 0px 16px 0px', overflowY: 'auto' }}>
         <div>
           <div style={{ marginBottom: 12 }}>
             <div className="row" style={{ justifyContent: 'space-between', padding: '2px 0' }}>

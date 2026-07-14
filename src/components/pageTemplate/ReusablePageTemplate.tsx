@@ -215,7 +215,7 @@ export function ReusablePageTemplate(props: ReusablePageTemplateProps) {
             data-handle="right"
             role="separator"
             aria-orientation="vertical"
-            aria-label="Resize right panel"
+            aria-label="Resize panel"
             tabIndex={0}
             onPointerDown={rightHandle.onPointerDown}
           />

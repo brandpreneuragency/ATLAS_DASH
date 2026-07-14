@@ -45,6 +45,7 @@ export function FindReplace({ editor, anchorRef }: FindReplaceProps) {
     setMatchCount(matches?.length ?? 0);
   }, [editor, findText]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { countMatches(); }, [countMatches]);
 
   useEffect(() => {

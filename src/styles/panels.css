@@ -5,10 +5,11 @@
  * component. This file owns ONLY the panel-root rules so
  * the cascade is unambiguous.
  *
- * Width tokens (consumed by AppLayout.tsx + AISidebarPanel.tsx):
+ * Width tokens (consumed by the workspace shell):
  *   --left-panel-width
  *   --right-panel-width
  *   --main-panel-min-width
+ *   --assistant-wrapper-width
  *
  * Tokens are defined in src/styles/tokens.css.
  * ========================================================= */

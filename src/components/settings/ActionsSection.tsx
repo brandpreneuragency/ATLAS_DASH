@@ -210,6 +210,7 @@ function ActionDetail({ action, groups, onSave, onDelete }: ActionDetailProps) {
   const [icon, setIcon] = useState('');
   const [groupId, setGroupId] = useState<string | undefined>(undefined);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (action) { setTitle(action.title); setPrompt(action.prompt); setIcon(action.icon ?? ''); setGroupId(action.groupId); }
   }, [action]);

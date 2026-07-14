@@ -10,6 +10,9 @@ import {
   importProviderModels as fetchProviderModels,
   normalizeProviderBaseUrl,
   ProviderImportError,
+  type ProviderImportErrorCode,
+  type SyncModelsResult,
+  type SyncModelsError,
 } from '../services/ai/importProviderModels';
 import { useUIStore } from './uiStore';
 
@@ -145,6 +148,7 @@ interface AIStore {
   addModelToProvider: (configId: string, modelSlug: string) => void;
   removeModelFromProvider: (configId: string, modelSlug: string) => void;
   toggleHiddenModel: (key: string) => void;
+  setModelHidden: (providerId: string, modelId: string, hidden: boolean) => void;
   setHiddenModels: (keys: string[]) => void;
   isModelHidden: (configId: string, modelSlug: string) => boolean;
 
@@ -163,6 +167,18 @@ interface AIStore {
     | { ok: false; code: string; error: string }
   >;
   importProviderModels: (id: string, baseUrl: string, apiKey: string) => Promise<{ ok: true } | { ok: false; error: string; code: string }>;
+  /**
+   * Read-only credential validation.  Fetches the model list from the given
+   * endpoint to verify the base URL and API key, but does NOT persist
+   * anything — no config write, no secure-storage write, no model update.
+   */
+  testProviderConnection: (id: string, baseUrl: string, apiKey: string) => Promise<{ ok: true } | { ok: false; error: string; code: ProviderImportErrorCode }>;
+  /**
+   * Re-sync the model list for an already-persisted provider using its
+   * stored credentials.  Does NOT change the base URL or API key in
+   * secure storage.  Preserves custom models and hidden-model choices.
+   */
+  syncProviderModels: (id: string) => Promise<SyncModelsResult | SyncModelsError>;
   getEnabledModels: (providerId: string) => ModelItem[];
   getAllEnabledModels: () => { provider: AIProviderConfig; model: ModelItem }[];
 
@@ -451,12 +467,21 @@ export const useAIStore = create<AIStore>((set, get) => ({
 
       set((state) => {
         const providerConfigs = state.providerConfigs.filter((candidate) => candidate.id !== id);
+        let nextActiveId = state.activeProviderId;
+        if (state.activeProviderId === id) {
+          // Prefer a connected provider, then fall back to the first remaining.
+          nextActiveId =
+            providerConfigs.find((p) => p.status === 'connected')?.id ??
+            providerConfigs[0]?.id ??
+            null;
+        }
+        // Clear appManagementProvider if it pointed to the deleted provider.
+        const nextAppMgmtId =
+          state.appManagementProviderId === id ? null : state.appManagementProviderId;
         return {
           providerConfigs,
-          activeProviderId:
-            state.activeProviderId === id
-              ? providerConfigs[0]?.id ?? null
-              : state.activeProviderId,
+          activeProviderId: nextActiveId,
+          appManagementProviderId: nextAppMgmtId,
         };
       });
     } catch (err) {
@@ -632,6 +657,18 @@ export const useAIStore = create<AIStore>((set, get) => ({
     const hiddenModels = current.includes(key)
       ? current.filter((candidate) => candidate !== key)
       : [...current, key];
+    set({ hiddenModels });
+    void secureStorage.secureSet('hiddenModels', JSON.stringify(hiddenModels)).catch(() => undefined);
+  },
+
+  setModelHidden: (providerId, modelId, hidden) => {
+    const key = modelKey(providerId, modelId);
+    const current = get().hiddenModels;
+    const isCurrentlyHidden = current.includes(key);
+    if (hidden === isCurrentlyHidden) return;
+    const hiddenModels = hidden
+      ? [...current, key]
+      : current.filter((k) => k !== key);
     set({ hiddenModels });
     void secureStorage.secureSet('hiddenModels', JSON.stringify(hiddenModels)).catch(() => undefined);
   },
@@ -913,32 +950,20 @@ export const useAIStore = create<AIStore>((set, get) => ({
     const trimmedKey = apiKey.trim();
 
     try {
-      // Persist the base URL + key up front so the connection survives reloads
-      // even if the network call fails.
-      const persisted: AIProviderConfig = {
-        ...current,
-        baseUrl: trimmedBaseUrl,
-        apiKey: current.apiKey,
-        status: current.status ?? 'not_connected',
-      };
-      await db.providerConfigs.put(persisted);
-      set((state) => ({
-        providerConfigs: state.providerConfigs.map((p) =>
-          p.id === id ? persisted : p
-        ),
-      }));
-
-      if (trimmedKey) {
-        await secureStorage.secureSet(providerApiKeyName(id), trimmedKey);
-      } else {
-        await secureStorage.secureDelete(providerApiKeyName(id));
-      }
-
+      // Fetch FIRST — persist only after a successful fetch so that a
+      // failed reconnect leaves the previous working config untouched.
       const imported = await fetchProviderModels({
         providerId: id,
         baseUrl: trimmedBaseUrl,
         apiKey: trimmedKey,
       });
+
+      // Save the API key to secure storage.
+      if (trimmedKey) {
+        await secureStorage.secureSet(providerApiKeyName(id), trimmedKey);
+      } else {
+        await secureStorage.secureDelete(providerApiKeyName(id));
+      }
 
       // Preserve user-added custom models across re-imports.
       const customModels = current.customModels ?? [];
@@ -977,8 +1002,10 @@ export const useAIStore = create<AIStore>((set, get) => ({
         ? current.selectedModel
         : imported[0]?.id ?? current.selectedModel;
 
+      // Persist only after a successful fetch.
       const nextConfig: AIProviderConfig = {
-        ...persisted,
+        ...current,
+        baseUrl: trimmedBaseUrl,
         models,
         selectedModel: nextSelected,
         lastImportedAt: Date.now(),
@@ -1005,8 +1032,7 @@ export const useAIStore = create<AIStore>((set, get) => ({
       return { ok: true };
     } catch (err) {
       if (err instanceof ProviderImportError) {
-        // Persist a "connection_failed" status so the UI reflects the failure
-        // even when the saved baseUrl/key are still present.
+        // Mark as connection_failed so the UI reflects the failure.
         const currentAfter = get().providerConfigs.find((p) => p.id === id);
         if (currentAfter) {
           const failed: AIProviderConfig = {
@@ -1024,6 +1050,147 @@ export const useAIStore = create<AIStore>((set, get) => ({
       }
       const message = err instanceof Error ? err.message : 'Failed to import models.';
       return { ok: false, error: message, code: 'unknown' };
+    }
+  },
+
+  testProviderConnection: async (id, baseUrl, apiKey) => {
+    const current = get().providerConfigs.find((p) => p.id === id);
+    if (!current) {
+      return { ok: false, error: 'Provider not found.', code: 'request_failed' };
+    }
+
+    const trimmedBaseUrl = normalizeProviderBaseUrl(baseUrl);
+    const trimmedKey = apiKey.trim();
+
+    try {
+      // Validate URL shape.
+      try {
+        const parsed = new URL(trimmedBaseUrl);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          return { ok: false, error: 'Base URL must use http or https.', code: 'invalid_url' };
+        }
+      } catch {
+        return { ok: false, error: 'Base URL is not a valid URL.', code: 'invalid_url' };
+      }
+
+      // Fetch models to verify endpoint and authentication.
+      // Nothing is persisted — this is read-only.
+      await fetchProviderModels({
+        providerId: id,
+        baseUrl: trimmedBaseUrl,
+        apiKey: trimmedKey,
+      });
+
+      return { ok: true };
+    } catch (err) {
+      if (err instanceof ProviderImportError) {
+        return { ok: false, error: err.message, code: err.code };
+      }
+      const message = err instanceof Error ? err.message : 'Connection test failed.';
+      return { ok: false, error: message, code: 'request_failed' };
+    }
+  },
+
+  syncProviderModels: async (id) => {
+    const current = get().providerConfigs.find((p) => p.id === id);
+    if (!current) {
+      return { ok: false, error: 'Provider not found.', code: 'request_failed' };
+    }
+
+    // Use stored credentials — sync never changes the base URL or API key.
+    const storedKey = await secureStorage.secureGet(providerApiKeyName(id));
+
+    try {
+      const modelsBefore = (current.models ?? []).length;
+
+      const imported = await fetchProviderModels({
+        providerId: id,
+        baseUrl: current.baseUrl,
+        apiKey: storedKey ?? '',
+      });
+
+      // Preserve user-added custom models.
+      const customModels = current.customModels ?? [];
+      const customIds = new Set(customModels);
+      const customItems: ModelItem[] = imported
+        .filter((m) => customIds.has(m.id))
+        .map((m) => ({ ...m, custom: true }));
+      const importedIds = new Set(imported.map((m) => m.id));
+      const orphanCustoms: ModelItem[] = customModels
+        .filter((slug) => !importedIds.has(slug))
+        .map((slug) => ({
+          id: slug,
+          name: slug,
+          enabled: true,
+          custom: true,
+          capabilities: {
+            vision: false,
+            toolCalling: true,
+            contextLength: 'Unknown',
+            speed: 'Unknown',
+            cost: 'Unknown',
+            reasoning: 'Unknown',
+            endpointType: 'Custom',
+            lastSynced: 'Unknown',
+          },
+        }));
+      const models: ModelItem[] = [...imported, ...customItems, ...orphanCustoms];
+
+      const stillExists = current.selectedModel
+        ? models.some((m) => m.id === current.selectedModel)
+        : false;
+      const nextSelected = stillExists
+        ? current.selectedModel
+        : imported[0]?.id ?? current.selectedModel;
+
+      const nextConfig: AIProviderConfig = {
+        ...current,
+        models,
+        selectedModel: nextSelected,
+        lastImportedAt: Date.now(),
+        status: deriveProviderStatus({
+          hasBaseUrl: Boolean(current.baseUrl),
+          hasKey: Boolean(storedKey),
+          modelCount: models.length,
+          selectedModel: nextSelected,
+        }),
+      };
+      await db.providerConfigs.put(nextConfig);
+      set((state) => ({
+        providerConfigs: state.providerConfigs.map((p) =>
+          p.id === id ? nextConfig : p
+        ),
+      }));
+
+      if (get().activeProviderId === id) {
+        get().setActiveModel(id, nextConfig.selectedModel);
+      }
+
+      // Compute sync result counts.
+      const added = Math.max(0, models.length - modelsBefore);
+      const removed = 0; // Sync never removes; orphan customs are kept.
+      const unchanged = Math.max(0, modelsBefore - removed);
+
+      return { ok: true, added, removed, unchanged, updatedAt: nextConfig.lastImportedAt };
+    } catch (err) {
+      if (err instanceof ProviderImportError) {
+        const currentAfter = get().providerConfigs.find((p) => p.id === id);
+        if (currentAfter) {
+          const failed: AIProviderConfig = {
+            ...currentAfter,
+            status: 'connection_failed',
+          };
+          await db.providerConfigs.put(failed).catch(() => undefined);
+          set((state) => ({
+            providerConfigs: state.providerConfigs.map((p) =>
+              p.id === id ? failed : p
+            ),
+          }));
+        }
+        return { ok: false, error: err.message, code: err.code };
+      }
+      const message = err instanceof Error ? err.message : 'Failed to sync models.';
+      return { ok: false, error: message, code: 'request_failed' };
     }
   },
 

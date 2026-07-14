@@ -84,6 +84,7 @@ function FolderDropdown() {
   }, [open]);
 
   // Reset highlight when opening
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (open) {
       const idx = connectedFolders.findIndex((f) => f.id === activeFolderId);

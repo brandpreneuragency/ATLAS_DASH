@@ -19,6 +19,7 @@ export function AgentEditor() {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (editingAgent) {
       setName(editingAgent.name);

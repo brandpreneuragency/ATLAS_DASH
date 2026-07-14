@@ -4,7 +4,7 @@ interface HamburgerMenuProps {
   position?: 'left' | 'right';
 }
 
-export function HamburgerMenu({ }: HamburgerMenuProps) {
+export function HamburgerMenu(_props: HamburgerMenuProps) { // eslint-disable-line @typescript-eslint/no-unused-vars
   const ref = useRef<HTMLDivElement>(null);
 
   return (

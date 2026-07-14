@@ -45,7 +45,8 @@ interface EditorWorkspaceProps {
 export function EditorWorkspace({ onEditorReady }: EditorWorkspaceProps) {
   const [localEditor, setLocalEditor] = useState<Editor | null>(null);
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
-  const { htmlViewOpen } = useUIStore();
+  const htmlViewOpen = useUIStore((s) => s.htmlViewOpen);
+  const rainbowMode = useUIStore((s) => s.rainbowMode);
   const activeWs = workspaces.find((w) => w.id === activeWorkspaceId);
   const currentFile = activeWs?.currentFile ?? null;
   const editorScrollRef = useRef<HTMLDivElement>(null);
@@ -84,7 +85,11 @@ export function EditorWorkspace({ onEditorReady }: EditorWorkspaceProps) {
   }, [localEditor, htmlViewOpen]);
 
   return (
-    <div id="editor-column" className="panel col h-full" style={{ background: 'var(--center-bg)' }}>
+    <div
+      id="editor-column"
+      className={`panel col h-full${rainbowMode ? ' rainbow-mode' : ''}`}
+      style={{ background: 'var(--center-bg)' }}
+    >
       <EditorTopBar editor={localEditor} onSave={saveDocument} />
 
       <div
@@ -95,10 +100,20 @@ export function EditorWorkspace({ onEditorReady }: EditorWorkspaceProps) {
         onClick={(e) => {
           if (!localEditor) return;
           const editorDom = localEditor.view.dom;
-          if (!editorDom.contains(e.target as Node)) {
-            e.preventDefault();
-            localEditor.commands.focus('end');
-          }
+          if (editorDom.contains(e.target as Node)) return;
+
+          // Left/right gutter clicks and selection drags that end outside
+          // the editor must not jump the caret to the document end (that
+          // scrolls #scroll-main to the bottom). Only empty space below
+          // the content should focus the end.
+          const { from, to } = localEditor.state.selection;
+          if (from !== to) return;
+
+          const rect = editorDom.getBoundingClientRect();
+          if (e.clientY <= rect.bottom) return;
+
+          e.preventDefault();
+          localEditor.commands.focus('end');
         }}
       >
         <div style={{ margin: 0, padding: 0, width: '100%' }}>

@@ -52,7 +52,7 @@ export function FileExplorerPanel() {
     getActiveRootNode,
     getActiveFolderId,
   } = useWorkspaceStore();
-  const { fileExplorerOpen } = useUIStore();
+  const fileExplorerOpen = useUIStore((s) => s.contextPanelOpenByMode.documents);
 
   // Derive active workspace state
   const activeWs = workspaces.find((w) => w.id === activeWorkspaceId);

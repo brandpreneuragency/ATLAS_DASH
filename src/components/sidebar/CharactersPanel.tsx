@@ -390,7 +390,7 @@ function AgentAccordionItem({
   );
 }
 
-export function CharactersPanel({ scope, scopes, title: _title }: CharactersPanelProps) {
+export function CharactersPanel({ scope, scopes }: CharactersPanelProps) {
   const {
     agents,
     activeAgentId,

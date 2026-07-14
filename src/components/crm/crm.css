@@ -1203,7 +1203,7 @@
  * wireframe "Responsive Behavior"). Container queries scale
  * Panel 2 content with the center-panel width â€” the real
  * trigger for CRM surfaces, since the shell collapses Panel
- * 1/3 via the existing LeftNarrowSidebar/RightNarrowSidebar
+ * 1/3 via the existing LeftNarrowSidebar
  * toggles. Viewport media queries add graceful degradation
  * for very narrow viewports. No existing rules rewritten;
  * only new @container / @media blocks appended.

@@ -8,7 +8,7 @@
   height: 100%;
   width: 100%;
   min-height: 0;
-  background: var(--c-background-2);
+  background: var(--center-bg);
   overflow: hidden;
 }
 
@@ -20,41 +20,47 @@
   overflow: hidden;
 }
 
-.settings-panels { height: 100%; min-height: 0; }
-
-/* Main sections are column flex containers so list/chat bodies fill panel height. */
-.settings-panels .reusable-page-template__section--header,
-.settings-panels .reusable-page-template__section--footer {
-  align-self: stretch;
-  align-items: stretch;
+/* Settings surfaces inside PrimaryWorkspaceContent (no nested page template). */
+.settings-document-body > .primary-workspace-content {
+  height: 100%;
+  width: 100%;
 }
 
-.settings-panels .reusable-page-template__section--main {
+.settings-surface {
+  display: flex;
   flex-direction: column;
-  align-items: stretch;
-  align-self: stretch;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
-.settings-panels .reusable-page-template__section--main > * {
+.settings-surface--list {
+  background: var(--c-background-2);
+}
+
+.settings-surface--detail {
+  background: var(--center-bg);
+}
+
+.settings-surface__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-surface__body > * {
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
   width: 100%;
 }
 
-.settings-panels .reusable-page-template__section--footer {
-  height: auto;
-  flex-shrink: 0;
-}
-
-/* Match left/center list headers in the AI sidebar toolbar slot. */
-.settings-panels .right-panel-subheader {
-  height: var(--control-height-xl);
-  min-height: var(--control-height-xl);
-  box-sizing: border-box;
-  padding-top: 0;
-  padding-bottom: 0;
-  border-bottom: 1px solid var(--c-border-1);
+.settings-context-column {
+  background: var(--c-background-2);
 }
 
 /* Left list header + items (shared by all sections). */
@@ -62,10 +68,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
-  height: var(--control-height-xl);
-  padding: 10px 12px;
+  height: var(--control-height-md);
+  min-height: var(--control-height-md);
+  padding: 0 var(--space-3);
   border-bottom: none;
 }
 .settings-list-head h3 {
@@ -78,17 +85,18 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 6px;
+  padding: var(--space-2) 6px var(--space-3);
 }
 
 .settings-list-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
   text-align: left;
-  padding: 12px;
-  border-radius: var(--radius-md);
+  min-height: var(--control-height-sm);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
   background: transparent;
   border: 1px solid transparent;
   cursor: pointer;
@@ -98,18 +106,18 @@
 .settings-list-item:hover { background: var(--c-background-3); }
 .settings-list-item--active,
 .settings-list-item--active:hover {
-  background: var(--c-background-2);
+  background: var(--c-background-1);
   border-color: transparent;
   border-left: none;
   border-image: none;
 }
 .settings-list-item .settings-list-item-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-text-1); }
 .settings-list-item .settings-list-item-meta { font-size: var(--fs-base); color: var(--c-text-3); }
-.settings-list-item--placeholder { padding: 8px 12px; color: var(--c-text-3); }
+.settings-list-item--placeholder { padding: 6px 10px; color: var(--c-text-3); }
 .settings-list-item--placeholder[style*="cursor: default"] { cursor: default !important; }
 .settings-list-item--empty {
   display: block;
-  padding: 8px 12px;
+  padding: 6px 10px;
   font-size: var(--fs-base);
   font-style: italic;
   color: var(--c-text-3);
@@ -118,14 +126,14 @@
 }
 
 /* Provider groups in the left rail. */
-.settings-provider-group { margin-top: 4px; }
+.settings-provider-group { margin-top: var(--space-1); }
 .settings-provider-group-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
-  padding: 10px 12px 4px;
-  font-size: var(--fs-base);
+  gap: var(--space-2);
+  padding: var(--space-2) 10px 4px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -156,11 +164,11 @@
   background: transparent;
   color: var(--c-text-2);
   font-size: var(--fs-base);
-  padding: 0 10px;
+  height: 26px;
+  padding: 0 9px;
   border-radius: 9999px;
   cursor: pointer;
   width: fit-content;
-  height: fit-content;
   min-width: 0;
   min-height: 0;
 }
@@ -168,23 +176,57 @@
   background: var(--c-accent-center-panel);
   color: #fff;
   width: fit-content;
-  height: fit-content;
+  height: 26px;
   min-height: 0;
 }
 
 /* Center detail header. */
 .settings-detail-head {
-  padding: 12px 16px;
+  min-height: var(--control-height-md);
+  padding: 0 var(--space-4);
+  display: flex;
+  align-items: center;
   border-bottom: 1px solid var(--c-border-1);
 }
 .settings-detail-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 16px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
+}
+
+/* Detail forms should remain readable on a wide document canvas instead of
+   stretching controls from one edge of the workspace to the other. */
+.settings-detail-body > * {
+  width: min(100%, 720px);
+}
+.settings-detail-body .ctrl,
+.settings-detail-body select.ctrl {
+  min-height: var(--control-height-sm);
+}
+.settings-detail-body .btn,
+.settings-detail-body .btn-brand {
+  min-height: var(--control-height-sm);
+  width: auto;
+  min-width: 0;
+}
+
+/* SettingsContent is also used in page mode. In this document it is one
+   section of the detail form, so it must not create a competing full-height
+   scroll region. */
+.settings-detail-body > .settings-general-content {
+  height: auto !important;
+  overflow: visible !important;
+  flex: 0 0 auto;
+  background: transparent !important;
+}
+.settings-detail-body > .settings-general-content > .settings-general-content__body {
+  height: auto;
+  overflow: visible !important;
+  padding: 0 !important;
 }
 
 .settings-empty {
@@ -204,8 +246,8 @@
 .settings-token-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 0;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
   border-bottom: 1px solid var(--c-border-1);
 }
 .settings-token-row:last-child { border-bottom: none; }
@@ -219,13 +261,13 @@
 .settings-token-name { font-size: var(--fs-base); color: var(--c-text-1); }
 .settings-token-current { font-size: var(--fs-base); color: var(--c-text-3); font-family: ui-monospace, monospace; }
 .settings-token-swatch {
-  width: 28px; height: 28px;
+  width: var(--control-height-sm); height: var(--control-height-sm);
   border-radius: var(--radius-sm);
   border: 1px solid var(--c-border-1);
   flex-shrink: 0;
 }
 .settings-token-input {
-  flex: 0 0 160px;
+  flex: 0 0 180px;
 }
 .settings-token-reset {
   appearance: none;
@@ -233,7 +275,10 @@
   background: transparent;
   color: var(--c-text-2);
   border-radius: var(--radius-sm);
-  padding: 4px 8px;
+  min-width: auto;
+  min-height: var(--control-height-xs);
+  height: var(--control-height-xs);
+  padding: 0 8px;
   font-size: var(--fs-base);
   cursor: pointer;
 }
@@ -241,17 +286,17 @@
 
 /* Actions grouping. */
 .settings-action-group {
-  margin-bottom: 6px;
-  border: 1px solid var(--c-border-1);
-  border-radius: var(--radius-md);
-  overflow: hidden;
+  margin-bottom: var(--space-1);
+  border: none;
+  border-radius: var(--radius-sm);
 }
 .settings-action-group-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  background: rgba(17, 17, 17, 0);
+  gap: var(--space-2);
+  min-height: var(--control-height-sm);
+  padding: 6px 10px;
+  background: transparent;
   cursor: pointer;
   font-size: var(--fs-base);
   font-weight: 600;
@@ -262,14 +307,15 @@
 .settings-action-group-head svg {
   color: var(--c-text-2);
 }
-.settings-action-group-body { padding: 4px; }
+.settings-action-group-body { padding: 0 0 2px; }
 .settings-action-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
+  gap: var(--space-2);
+  min-height: var(--control-height-sm);
+  padding: 6px 10px;
   border-radius: var(--radius-sm);
-  background: rgba(17, 17, 17, 0);
+  background: transparent;
   margin-bottom: 2px;
   cursor: pointer;
   font-size: var(--fs-base);
@@ -310,28 +356,31 @@
 
 .settings-add-btn {
   appearance: none;
-  border: 1px dashed var(--c-border-2);
+  min-height: var(--control-height-sm);
+  height: var(--control-height-sm);
+  min-width: 0;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--c-text-2);
-  border-radius: var(--radius-md);
-  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
   width: 100%;
   font-size: var(--fs-base);
   cursor: pointer;
-  margin-top: 6px;
+  margin-top: var(--space-1);
   display: flex;
   align-items: center;
   gap: 6px;
-  justify-content: center;
+  justify-content: flex-start;
 }
 .settings-add-btn:hover {
   background: var(--c-background-3);
-  border: 1px solid var(--c-border-1);
+  border-color: transparent;
 }
 .settings-add-btn--active,
 .settings-add-btn--active:hover {
-  background: var(--c-background-2);
-  border: 1px solid var(--c-border-1);
+  background: var(--c-background-1);
+  border-color: transparent;
   color: var(--c-text-1);
 }
 
@@ -805,10 +854,12 @@
 /* ── Connect Provider Drawer: Preset buttons ── */
 .connect-preset-btn {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 10px 12px;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  height: fit-content;
+  padding: 6px 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--c-border-1);
   background: var(--c-background-0);
@@ -933,4 +984,30 @@
   0% { transform: scale(1); }
   50% { transform: scale(1.15); }
   100% { transform: scale(1); }
+}
+
+/* ── Delete confirmation popover ── */
+.settings-delete-popover {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--c-bg-1, #fff);
+  border: 1px solid var(--c-border-1, #e5e7eb);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  white-space: nowrap;
+  font-size: var(--fs-base);
+}
+.settings-delete-popover-text {
+  color: var(--c-text-2);
+}
+.settings-delete-confirm-btn {
+  color: var(--c-danger, #dc2626);
+  font-weight: 600;
 }

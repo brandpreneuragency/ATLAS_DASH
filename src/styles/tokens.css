@@ -71,8 +71,7 @@
   /* ---------- Workspace columns ---------- */
   --task-list-width: clamp(280px, 24vw, 420px);
   --main-panel-min-width: 420px;
-  /* Right panel — minimum width only. No max cap; the grid track
-   * (`auto` in `#main-row`) controls how wide it can grow. */
+  /* Assistant/detail preferred width token (shell uses --assistant-wrapper-width). */
   --right-panel-width: 360px;
 
   /* ---------- Panel structure ---------- */

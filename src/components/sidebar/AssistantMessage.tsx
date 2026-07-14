@@ -116,7 +116,7 @@ function MdContent({ children }: { children: string }) {
         pre: ({ children: c }) => (
           <pre style={mdStyles.pre}>{c}</pre>
         ),
-        code: ({ node, children: c, className, ...props }: any) => {
+        code: ({ node, children: c, className, ...props }: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
           const isBlock = /language-/.test(className || '') ||
             (node?.position && node.position.end.line > node.position.start.line);
           return isBlock

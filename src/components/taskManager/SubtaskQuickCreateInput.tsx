@@ -15,6 +15,55 @@ import { getTodayIso, getTomorrowIso } from '../../services/taskFormat';
 import { TASK_TITLE_MAX_LENGTH } from '../../types';
 import './taskList.css';
 
+function SubtaskDateDropdown({ show, dateInputRef, onPick, onClose }: { show: boolean; dateInputRef: React.RefObject<HTMLInputElement | null>; onPick: (date: string) => void; onClose: () => void }) {
+  if (!show) return null;
+  return (
+    <div
+      id="stqc-date-dropdown"
+      className="drop"
+      onMouseDown={(event) => event.stopPropagation()}
+      style={{ left: 0, bottom: '100%', minWidth: 140, marginBottom: 2 }}
+    >
+      <button type="button" className="drop-item" onClick={() => onPick('')} style={{ fontSize: 'var(--fs-base)' }}>
+        No date
+      </button>
+      {['Today', 'Tomorrow', 'Next week', 'Next month'].map((label) => (
+        <button
+          key={label}
+          type="button"
+          className="drop-item"
+          onClick={() => {
+            const d = new Date();
+            if (label === 'Tomorrow') d.setDate(d.getDate() + 1);
+            else if (label === 'Next week') d.setDate(d.getDate() + 7);
+            else if (label === 'Next month') d.setMonth(d.getMonth() + 1);
+            onPick(d.toISOString().slice(0, 10));
+            onClose();
+          }}
+          style={{ fontSize: 'var(--fs-base)' }}
+        >
+          {label}
+        </button>
+      ))}
+      <button
+        type="button"
+        className="drop-item"
+        onClick={() => {
+          if (dateInputRef.current?.showPicker) {
+            dateInputRef.current.showPicker();
+          } else {
+            dateInputRef.current?.click();
+          }
+          onClose();
+        }}
+        style={{ fontSize: 'var(--fs-base)' }}
+      >
+        Custom...
+      </button>
+    </div>
+  );
+}
+
 interface SubtaskQuickCreateInputProps {
   parentTaskId: string;
 }
@@ -98,54 +147,6 @@ export function SubtaskQuickCreateInput({ parentTaskId }: SubtaskQuickCreateInpu
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showDatePicker]);
 
-  function DateDropdown() {
-    if (!showDatePicker) return null;
-    return (
-      <div
-        id="stqc-date-dropdown"
-        className="drop"
-        onMouseDown={(event) => event.stopPropagation()}
-        style={{ left: 0, bottom: '100%', minWidth: 140, marginBottom: 2 }}
-      >
-        <button type="button" className="drop-item" onClick={() => handleDatePick('')} style={{ fontSize: 'var(--fs-base)' }}>
-          No date
-        </button>
-        {['Today', 'Tomorrow', 'Next week', 'Next month'].map((label) => (
-          <button
-            key={label}
-            type="button"
-            className="drop-item"
-            onClick={() => {
-              const d = new Date();
-              if (label === 'Tomorrow') d.setDate(d.getDate() + 1);
-              else if (label === 'Next week') d.setDate(d.getDate() + 7);
-              else if (label === 'Next month') d.setMonth(d.getMonth() + 1);
-              handleDatePick(d.toISOString().slice(0, 10));
-            }}
-            style={{ fontSize: 'var(--fs-base)' }}
-          >
-            {label}
-          </button>
-        ))}
-        <button
-          type="button"
-          className="drop-item"
-          onClick={() => {
-            if (dateInputRef.current?.showPicker) {
-              dateInputRef.current.showPicker();
-            } else {
-              dateInputRef.current?.click();
-            }
-            setShowDatePicker(false);
-          }}
-          style={{ fontSize: 'var(--fs-base)' }}
-        >
-          Custom...
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div id="subtask-quick-create-wrapper" style={{ height: 'fit-content', width: '100%', padding: '0px', flexShrink: 0 }}>
       <ComposerRoot id="subtask-quick-create" className="composer-root--clear">
@@ -184,7 +185,7 @@ export function SubtaskQuickCreateInput({ parentTaskId }: SubtaskQuickCreateInpu
                   <span className="trunc med task-quick-create-dropup-label">{dateButtonLabel}</span>
                   <ChevronDown size={12} className="task-quick-create-dropup-chevron" />
                 </button>
-                <DateDropdown />
+                <SubtaskDateDropdown show={showDatePicker} dateInputRef={dateInputRef} onPick={handleDatePick} onClose={() => setShowDatePicker(false)} />
                 <input
                   ref={dateInputRef}
                   type="date"

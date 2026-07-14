@@ -7,6 +7,7 @@ import { useFileSystemStore } from '../../stores/fileSystemStore';
 import { useDocumentStore } from '../../stores/documentStore';
 import { serialize } from '../../services/fileFormat';
 import { writeTextFile, pickSaveTabsPath, getExt, joinPath } from '../../services/fs-adapter';
+import { getDocumentTabMeta } from './documentTabUtils';
 
 interface DocumentTabDropdownItemProps {
   doc: Document;
@@ -14,19 +15,6 @@ interface DocumentTabDropdownItemProps {
   onSelect: () => void;
   onClose: () => void;
   onRename: (newTitle: string) => void;
-}
-
-function hasDocumentText(content: string | undefined) {
-  return !!content?.includes('"text":');
-}
-
-export function getDocumentTabMeta(doc: Document) {
-  const isEmpty = !hasDocumentText(doc.content);
-  const isCleanFile = !!doc.sourcePath && !doc.isDirty;
-  const isReplaceable = isEmpty || isCleanFile;
-  const isDirty = !!doc.sourcePath && !!doc.isDirty;
-  const hasEdits = isDirty || (!doc.sourcePath && !isEmpty);
-  return { isReplaceable, hasEdits };
 }
 
 export function DocumentTabDropdownItem({

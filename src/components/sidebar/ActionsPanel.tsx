@@ -411,7 +411,7 @@ export function ActionsPanel({ scope }: ActionsPanelProps) {
       title: newTitle.trim(),
       prompt: newPrompt.trim(),
       scope,
-      createdAt: Date.now(),
+      createdAt: Date.now(), // eslint-disable-line react-hooks/purity
     };
     await db.quickPrompts.put(prompt);
     setCustomPrompts((previous) => [prompt, ...previous]);

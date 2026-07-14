@@ -29,15 +29,15 @@ select:focus-visible {
   --right-bg: var(--c-background-3);
 
   /* Soft warm palette inspired by screenshots */
-  --c-background-1: #444;
-  --c-background-2: #333;
-  --c-background-3: #222;
-  --c-background-4: #111111;
+  --c-background-1: #333;
+  --c-background-2: #222;
+  --c-background-3: #111;
+  --c-background-4: #000;
 
   /* Panel Accents */
   --c-accent-1: #df3f00;
   --c-accent-2:#d35115;
-  --c-accent-3:#63270c;
+  --c-accent-3:#af3200;
 
   /* Text Layers */
   --c-text-1: #e7e7e7;
@@ -172,7 +172,8 @@ body {
 .workspace-content,
 .task-list-panel,
 .main-panel,
-.detail-panel,
+.primary-workspace-wrapper,
+.assistant-wrapper,
 .panel {
   min-width: 0;
   min-height: 0;
@@ -419,18 +420,6 @@ input.ctrl-xs.editor-topbar-title-input {
   min-height: 0;
 }
 
-#main-row {
-  position: relative;
-  z-index: 1;
-  border-radius: 0px;
-  box-sizing: border-box;
-  padding-top: 0px;
-  padding-bottom: 0px;
-  padding-left: 0px;
-  padding-right: 0px;
-  background-color: unset;
-}
-
 .tabs-row .tbar-btn {
   width: fit-content;
   height: 100%;
@@ -517,7 +506,8 @@ input.ctrl-xs.editor-topbar-title-input {
   min-width: 0;
 }
 .subtasks-toggle-bar-row > .subtasks-complete-btn,
-.subtasks-toggle-bar-row > .tdp-meta-swap-btn {
+.subtasks-toggle-bar-row > .tdp-meta-swap-btn,
+.subtasks-toggle-bar-row > .context-panel-toggle {
   flex: 0 0 auto;
 }
 
@@ -768,6 +758,12 @@ input.subtasks-title-input:focus-visible {
   max-width: 266px;
   width: fit-content;
   padding-right: 6px;
+}
+
+/* Module header tabs: fixed width for uniform layout */
+.tabs-row > [id^="tab-module-active"],
+.tabs-row > [id^="tab-module-passive"] {
+  width: 100px;
 }
 
 .tabs-row > .tab-active svg,
@@ -1119,6 +1115,7 @@ input.subtasks-title-input:focus-visible {
 
 [id^="tab-ws-passive"].tab-passive,
 [id^="tab-ws-passive"].tab-passive:hover {
+  background-color: rgba(30, 30, 30, 0);
   height: 28px;
   margin-top: 4px;
   margin-bottom: 0;
@@ -1160,10 +1157,12 @@ input.subtasks-title-input:focus-visible {
   align-items: center;
   justify-content: center;
   height: 28px;
+  min-height: 28px;
   width: var(--div-h-1);
   flex-shrink: 0;
   margin: 4px 0 0;
   border: none;
+  border-radius: 100px;
   color: var(--c-text-2);
   cursor: pointer;
   transition: background-color 0.15s;
@@ -1812,6 +1811,18 @@ ul {
   color: var(--c-text-1);
   margin-bottom: 0.5rem;
   margin-top: 1.25rem;
+}
+/* Rainbow mode: accent-colored document headers */
+.rainbow-mode .tiptap-editor h1,
+.rainbow-mode .tiptap-editor h2,
+.rainbow-mode .tiptap-editor h3,
+.rainbow-mode .tiptap-editor h4,
+.rainbow-mode .tiptap-editor h5,
+.rainbow-mode .tiptap-editor h6,
+.rainbow-mode .tiptap-editor span[data-text-preset="h1"],
+.rainbow-mode .tiptap-editor span[data-text-preset="h2"],
+.rainbow-mode .tiptap-editor span[data-text-preset="h3"] {
+  color: var(--c-accent-1);
 }
 .tiptap-editor mark {
   background: var(--c-background-4);
@@ -3461,11 +3472,6 @@ button.calendar-task-row {
 :root #right-resize-handle:hover {
   background: var(--c-accent-1);
 }
-:root #center-resize-handle {
-  background-color: var(--c-background-1);
-  border: none;
-}
-
 /*TABS / HEADER*/
 :root #header-bar {
   display: flex;
@@ -3505,6 +3511,15 @@ button.calendar-task-row {
 }
 .ai-toggle-btn--on {
   background: unset;
+}
+/* Swap stays visible while disabled so header controls do not jump (PRD 6.16). */
+.ai-toggle-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  color: var(--c-text-2);
+}
+.ai-toggle-btn:disabled:hover {
+  color: var(--c-text-2);
 }
 :root .tabs-dropdown-toggle {
   background: transparent;
@@ -3629,6 +3644,7 @@ button.calendar-task-row {
 
 :root [id^="tab-ws-passive"].tab-passive,
 :root [id^="tab-ws-passive"].tab-passive:hover {
+  background-color: rgba(30, 30, 30, 0);
   height: 28px;
   margin-top: 4px;
   margin-bottom: 0;
@@ -3644,9 +3660,11 @@ button.calendar-task-row {
   align-items: center;
   justify-content: center;
   height: 28px;
+  min-height: 28px;
   width: var(--topbar-height);
   flex-shrink: 0;
   margin-top: 4px;
+  border-radius: 100px;
   color: var(--c-text-2);
   z-index: 1;
 }
@@ -4059,7 +4077,7 @@ button.calendar-task-row {
   align-items: center;
   height: fit-content;
   min-height: 0;
-  padding: 0 6px 6px;
+  padding: 0 12px 6px;
   gap: 0;
   overflow: visible;
   z-index: 2;

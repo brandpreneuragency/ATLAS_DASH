@@ -152,10 +152,8 @@
  * ========================================================= */
 
 /* `is-collapsed` shrinks a panel to its minimal token
- * width. Apply to `.task-list-panel` or `.detail-panel`
- * to flip a panel into a collapsed rail. The class only
- * affects width and overflow; the panel still scrolls
- * internally if its content overflows. */
+ * width. Apply to contextual / list panels to flip into a
+ * collapsed rail. The class only affects width and overflow. */
 .is-collapsed {
   width: var(--control-height-md) !important;
   min-width: var(--control-height-md) !important;

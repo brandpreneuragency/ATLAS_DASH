@@ -7,6 +7,8 @@ import { streamChat } from '../services/ai/router';
 import type { ChatMessage as AiChatMessage, ContentPart } from '../services/ai/types';
 import { getWriterInstructions, getTaskInstructions } from '../services/instructionFiles';
 import { buildTaskAIContext } from '../services/taskAIContext';
+import { buildSettingsAIContext } from '../components/settings/settingsAIContext';
+import type { SettingsSubTab } from '../stores/uiStore';
 import { readTextFile } from '../services/fs-adapter';
 import { findNodeByFullPath, useWorkspaceStore } from '../stores/workspaceStore';
 import type { ChatMessage as AppChatMessage, Attachment, MessageUsage } from '../types';
@@ -174,6 +176,10 @@ export function useStreamingChat(
       const history = getActiveThreadMessages();
       const fileInstructions = isTaskMode ? await getTaskInstructions() : await getWriterInstructions();
       const parts: string[] = [];
+      // Safe Settings page context only — never secrets/API keys (see buildSettingsAIContext).
+      if (contextSettingsTab) {
+        parts.push(buildSettingsAIContext(contextSettingsTab as SettingsSubTab));
+      }
       if (fileInstructions?.trim()) parts.push(fileInstructions.trim());
       if (systemInstructions.trim()) parts.push(systemInstructions.trim());
       parts.push(agent.systemPrompt);

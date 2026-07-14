@@ -28,7 +28,7 @@ export function formatContextNumber(n: number): string {
 export function aggregateContextMessages(messages: ChatMessage[]): ContextWindowStats {
   let userTokens = 0;
   let assistantTokens = 0;
-  let toolCallsTokens = 0;
+  const toolCallsTokens = 0;
   let otherTokens = 0;
 
   let promptTokens = 0;

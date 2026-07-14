@@ -27,6 +27,7 @@ function extractJson(raw: string): string | null {
   return cleaned.slice(start, end + 1);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeOperation(op: any): TaskAIOperation | null {
   const id = typeof op?.id === 'string' ? op.id : shortId('op');
   if (op?.type === 'create_task' && typeof op?.title === 'string') {

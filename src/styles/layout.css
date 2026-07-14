@@ -36,18 +36,9 @@ body {
 }
 
 /* ---------------------------------------------------------------
- * .workspace Ã¢â‚¬â€ Agent 4
- * The actual DOM has up to 3 children at the workspace level:
- *   1. .sidebar-panel     Ã¢â€ â€™ narrow left rail (always visible)
- *   2. .workspace-panels  Ã¢â€ â€™ flex row: task-list / file-tree / handle / main
- *   3. .terminal-panel    Ã¢â€ â€™ optional bottom terminal (when open)
- * The right detail-panel lives INSIDE #main-row, not at this level,
- * so it does not occupy a column here. Column widths are `auto`
- * for the side panels because the actual panels carry their own
- * (resize-handle driven) width via inline styles; the grid just
- * gives them a stable track. The main column uses the tokenised
- * `minmax(var(--main-panel-min-width), 1fr)` so the centre never
- * collapses below the usable width.
+ * .workspace — outer app chrome
+ * Children: nav rail (.sidebar-panel) + workspace-panels + optional terminal.
+ * Horizontal two-wrapper layout lives inside #workspace-shell.
  * ------------------------------------------------------------- */
 .workspace {
   min-width: 0;
@@ -113,6 +104,223 @@ body {
   border-radius: 8px;
 }
 
+/* =========================================================
+ * Universal two-wrapper shell (Phase 2+)
+ * Swap uses CSS grid-area only — no JSX remount, no transitions.
+ * ========================================================= */
+.workspace-shell {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  /* No swap animation on columns/areas/widths */
+  transition: none;
+  --primary-min-width: 140px;
+  --assistant-min-width: 320px;
+  --shell-handle-width: 6px;
+}
+
+/* Both wrappers: primary keeps a usable minimum; assistant track is clamped. */
+.workspace-shell[data-layout='both'] {
+  grid-template-columns:
+    minmax(var(--primary-min-width), 1fr)
+    var(--shell-handle-width)
+    var(--assistant-wrapper-width, 33vw);
+  grid-template-areas: 'primary handle assistant';
+}
+
+.workspace-shell[data-layout='both'][data-swapped='true'] {
+  grid-template-columns:
+    var(--assistant-wrapper-width, 33vw)
+    var(--shell-handle-width)
+    minmax(var(--primary-min-width), 1fr);
+  grid-template-areas: 'assistant handle primary';
+}
+
+.workspace-shell[data-layout='primary-only'] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'primary';
+}
+
+.workspace-shell[data-layout='assistant-only'] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'assistant';
+}
+
+/* Drag session: global cursor + no text selection (set by resize hooks). */
+html[data-resizing] {
+  cursor: col-resize !important;
+}
+
+html[data-resizing],
+html[data-resizing] * {
+  user-select: none !important;
+}
+
+html[data-resizing='assistant'] .main-resize-handle,
+html[data-resizing='context'] .context-resize-handle {
+  background: var(--c-accent-1);
+}
+
+.primary-workspace-wrapper {
+  grid-area: primary;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.assistant-wrapper {
+  grid-area: assistant;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+}
+
+/* `display: flex` above would otherwise override the UA [hidden] rule. */
+.primary-workspace-wrapper[hidden],
+.assistant-wrapper[hidden] {
+  display: none !important;
+}
+
+.main-resize-handle {
+  grid-area: handle;
+  min-width: var(--shell-handle-width, 6px);
+  width: var(--shell-handle-width, 6px);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+  background-color: var(--c-background-1);
+  border: none;
+  flex-shrink: 0;
+  z-index: 1;
+  outline: none;
+}
+
+.main-resize-handle__line {
+  width: 1px;
+  height: 100%;
+  background: var(--c-background-1);
+}
+
+.main-resize-handle:hover,
+.main-resize-handle:focus-visible {
+  background: var(--c-accent-1);
+}
+
+.main-resize-handle:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--c-accent-1);
+}
+
+.primary-workspace-content {
+  display: flex;
+  flex-direction: row;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.contextual-panel {
+  min-width: 0;
+  min-height: 0;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.context-resize-handle {
+  min-width: var(--shell-handle-width, 6px);
+  width: var(--shell-handle-width, 6px);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+  background-color: var(--c-background-1);
+  border: none;
+  flex-shrink: 0;
+  z-index: 1;
+  outline: none;
+}
+
+.context-resize-handle__line {
+  width: 2px;
+  height: 100%;
+}
+
+.context-resize-handle:hover,
+.context-resize-handle:focus-visible {
+  background: var(--c-accent-1);
+}
+
+.context-resize-handle:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--c-accent-1);
+}
+
+.center-content-panel {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  /* Centre-only container queries (editor / task detail). */
+  container-type: inline-size;
+  container-name: main-panel;
+}
+
+/* Stable leading slot for inner contextual-panel toggle (Phase 4). */
+.center-content-panel > .subtasks-bar-wrapper {
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.context-panel-toggle {
+  flex-shrink: 0;
+}
+
+.context-panel-toggle--on {
+  color: var(--c-accent-1);
+}
+
+.assistant-panel {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  /* detail-panel container queries live on #ai-sidebar-panel / #file-viewer-panel */
+}
+
+.workspace-shell[data-layout='assistant-only'] .assistant-wrapper,
+.workspace-shell[data-layout='assistant-only'] .assistant-panel {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  min-height: 0;
+}
+
+.workspace-shell[data-layout='primary-only'] .primary-workspace-wrapper {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  min-height: 0;
+}
+
 .task-list-panel {
   min-width: 0;
   min-height: 0;
@@ -147,69 +355,12 @@ body {
   container-name: main-panel;
 }
 
-/* Right-side panel wrapper Ã¢â‚¬â€ lives inside #main-row, not at the
- * workspace level. It is a flex row so the resize handle and the
- * panel sit side-by-side and collapse together via `display: none`. */
-.detail-panel {
-  width: fit-content;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: row;
-  height: 100%;
-  overflow: hidden;
-  /* NOTE: container-type moved to the inner panel (#ai-sidebar-panel /
-   * #file-viewer-panel) because inline-size containment on this wrapper
-   * breaks CSS grid auto-sizing Ã¢â‚¬â€ the track collapses to 0px. */
-}
-
-/* Container context for the right detail column Ã¢â‚¬â€ lives on the inner
- * panels so @container detail-panel queries still work, without
- * breaking the grid auto-sizing on the wrapper. */
+/* Container context for assistant content (legacy name: detail-panel).
+ * Kept so existing @container detail-panel queries continue to match. */
 #ai-sidebar-panel,
 #file-viewer-panel {
   container-type: inline-size;
   container-name: detail-panel;
-}
-
-/* main-row grid: centre (flexible) + .detail-panel (auto, optional).
- * The CSS rule wins over the legacy `flex` class on the JSX because
- * of ID-selector specificity. */
-#main-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  min-width: 0;
-  min-height: 0;
-}
-
-#main-row.main-row--swapped {
-  grid-template-columns: auto minmax(0, 1fr);
-}
-
-/* One visible panel in the main row â€” remaining panel fills the row
- * (center when the right detail panel is collapsed, or detail panel
- * when swapped and the center column on the right is collapsed). */
-#main-row.main-row--single-panel {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-#main-row.main-row--single-panel > #center-panel {
-  grid-column: 1 / -1;
-  width: 100%;
-  max-width: none;
-}
-
-#main-row.main-row--single-panel > .detail-panel {
-  grid-column: 1 / -1;
-  width: 100%;
-  max-width: none;
-}
-
-#main-row.main-row--single-panel .detail-panel > #ai-sidebar-panel,
-#main-row.main-row--single-panel .detail-panel > #file-viewer-panel {
-  width: 100%;
-  max-width: none;
-  flex: 1 1 auto;
 }
 
 .panel {
@@ -242,67 +393,13 @@ body {
   padding: var(--space-3);
 }
 
-/* ---------- Responsive collapse rules ----------
- * Agent 7 (Responsive Behavior):
- *  - Below 900px: hide the right detail panel; the task-list
- *    column keeps its token-bounded width.
- *  - Below 900px: hide both the task-list column AND the
- *    left resize handle so the workspace collapses to
- *    sidebar + main content only.
- *  - Below 640px: ultra-narrow safety. Sidebar stays
- *    visible (its 36px is the irreducible shell). Optional
- *    labels and metadata get hidden so the centre panel
- *    keeps its breathing room. The main panel min-width
- *    is relaxed to 0 so the column can shrink to the
- *    remaining viewport.
- *
- * The grid keeps 4 tracks; the hidden tracks collapse to
- * 0 width because their items become `display: none`.
+/* ---------- Responsive shell ≤900px (PRD 6.17 / §16) ----------
+ * - Ignore desktop swap: assistant always opens as a right drawer.
+ * - Do not mutate stored wrappersSwapped (CSS-only presentation).
+ * - Hide main resize handle.
+ * - Visually collapse contextual panel without touching persisted open state.
+ * - assistant-only fills the workspace (not a floating narrow drawer).
  */
-@media (max-width: 900px) {
-  .workspace {
-    grid-template-columns:
-      var(--sidebar-width)
-      minmax(var(--main-panel-min-width), 1fr);
-  }
-
-  /* Keep the right detail column reachable on narrow windows.
-   * AppLayout only mounts this wrapper when the AI sidebar or
-   * file viewer is open, so this behaves like a drawer without
-   * adding separate drawer state. */
-  .detail-panel {
-    position: fixed;
-    inset-block-start: var(--topbar-height);
-    inset-block-end: 0;
-    inset-inline-end: 0;
-    z-index: var(--z-drawer);
-    display: flex !important;
-    flex-direction: row;
-    width: min(var(--right-panel-width), calc(100vw - var(--sidebar-width))) !important;
-    max-width: calc(100vw - var(--sidebar-width));
-    height: auto;
-    min-width: 0;
-    min-height: 0;
-    overflow: hidden;
-    background: var(--c-background-1);
-    border-left: var(--border-width) solid var(--c-border-1);
-  }
-
-  #main-row.main-row--swapped .detail-panel {
-    inset-inline-start: var(--sidebar-width);
-    inset-inline-end: auto;
-    border-left: 0;
-    border-right: var(--border-width) solid var(--c-border-1);
-  }
-
-  .detail-panel > #ai-sidebar-panel,
-  .detail-panel > #file-viewer-panel {
-    width: calc(100% - 6px) !important;
-    max-width: calc(100% - 6px);
-    flex: 1 1 auto;
-  }
-}
-
 @media (max-width: 900px) {
   .workspace {
     grid-template-columns:
@@ -310,18 +407,66 @@ body {
       minmax(0, 1fr);
   }
 
-  /* Same reasoning as the 1280 px block above. */
-  .task-list-panel,
-  .workspace-handle {
+  .workspace-shell {
+    position: relative;
+  }
+
+  /* Both open: primary is the only grid track; assistant is an overlay drawer. */
+  .workspace-shell[data-layout='both'],
+  .workspace-shell[data-layout='both'][data-swapped='true'] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'primary';
+  }
+
+  .workspace-shell[data-layout='both'] .primary-workspace-wrapper {
+    grid-area: primary;
+    width: 100%;
+    max-width: none;
+  }
+
+  .workspace-shell[data-layout='both'] .main-resize-handle {
+    display: none !important;
+  }
+
+  .workspace-shell[data-layout='both'] .assistant-wrapper:not([hidden]) {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    width: min(var(--assistant-wrapper-width, 33vw), 100%);
+    max-width: min(420px, 100%);
+    min-width: min(var(--assistant-min-width, 320px), 100%);
+    height: 100%;
+    z-index: var(--z-drawer, 40);
+    grid-area: unset;
+    background-color: var(--c-background-1);
+    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.12);
+    border-inline-start: 1px solid var(--layout-border, var(--c-background-4));
+  }
+
+  /* Only assistant: full inline surface (no empty primary background). */
+  .workspace-shell[data-layout='assistant-only'] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'assistant';
+  }
+
+  .workspace-shell[data-layout='assistant-only'] .assistant-wrapper:not([hidden]) {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    box-shadow: none;
+    border-inline-start: none;
+    grid-area: assistant;
+  }
+
+  /* Contextual panel: visual auto-collapse only (PRD 16.4). */
+  .workspace-shell .contextual-panel,
+  .workspace-shell .context-resize-handle {
     display: none !important;
   }
 }
 
-/* Extra-small (phones / very narrow windows) Ã¢â‚¬â€ Agent 7.
- * Do NOT hide the sidebar (its 36 px is the irreducible shell).
- * Relax the main-panel min-width to 0 so the column can use
- * the remaining space. Optional UI labels collapse so the
- * centre panel keeps its real estate. */
 @media (max-width: 640px) {
   :root {
     --main-panel-min-width: 0;
@@ -333,21 +478,6 @@ body {
       minmax(0, 1fr);
   }
 
-  /* Hide the left-resize handle and task-list panel for safety.
-   * The right detail panel remains available as the drawer from
-   * the <=900px rule above.
-   * `!important` is required because the panel elements carry
-   * the `.flex-col` utility class from `index.css` (which is
-   * loaded after `layout.css` via `@import`). */
-  .workspace-handle,
-  .task-list-panel {
-    display: none !important;
-  }
-
-  /* Optional labels collapse on narrow widths Ã¢â‚¬â€ the underlying
-   * control keeps its size from the token, only the textual
-   * label disappears. Apply via the `.optional-toolbar-label`
-   * or `.secondary-panel-label` classes; components opt in. */
   .optional-toolbar-label,
   .secondary-panel-label,
   .secondary-meta {
@@ -355,107 +485,8 @@ body {
   }
 }
 
-/* Keep the AI sidebar reachable on narrow windows. The header
- * button still controls whether this panel exists; this only
- * changes its placement when inline layout is too tight. */
-/* Responsive drawer removed Ã¢â‚¬â€ panels stay inline at all widths. */
-
-/* ---------- Drawer preparation hooks ----------
- * Agent 7 adds these as future-use classes. They do NOT
- * change current behavior because no element gets them
- * automatically Ã¢â‚¬â€ they only kick in when a future agent
- * (or feature work) applies them to the panel roots.
- *
- * The drawer classes re-position the panel as a fixed
- * overlay that fills from a topbar offset down to the
- * bottom of the viewport, leaves room for the sidebar on
- * the left, and is capped at the right-panel token width.
- *
- * `.is-drawer-open` on the workspace activates a
- * semi-opaque scrim. The scrim lives at the workspace
- * level so it does not cover the sidebar. The drawer
- * itself sits above it via the z-drawer token.
- *
- * No open/close state is wired up here on purpose; this
- * is a CSS hook, not a feature. Agent 8 (Container Query
- * Agent) or a future drawer feature can opt in by
- * toggling these classes on the workspace/panel roots.
- */
-.detail-panel--drawer {
-  position: fixed;
-  inset-block-start: var(--topbar-height);
-  inset-block-end: 0;
-  inset-inline-end: 0;
-  width: min(var(--right-panel-width), calc(100vw - var(--sidebar-width)));
-  z-index: var(--z-drawer);
-  display: flex;
-  flex-direction: row;
-  height: auto;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  background: var(--c-background-1);
-  border-left: var(--border-width) solid var(--c-border-1);
-}
-
-.task-list-panel--drawer {
-  position: fixed;
-  inset-block-start: var(--topbar-height);
-  inset-block-end: 0;
-  inset-inline-start: var(--sidebar-width);
-  width: min(var(--task-list-width), calc(100vw - var(--sidebar-width)));
-  z-index: var(--z-drawer);
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  background: var(--c-background-1);
-  border-right: var(--border-width) solid var(--c-border-1);
-}
-
-/* Scrim Ã¢â‚¬â€ opt-in. The workspace adds `.is-drawer-open`
- * when any drawer is open, and the drawer hooks above
- * stack above the scrim via z-drawer. The scrim stays
- * at z-modal-backdrop via the modal z range, so it sits
- * above the workspace but below the drawers themselves. */
-.workspace-scrim {
-  position: fixed;
-  inset: 0;
-  inset-block-start: var(--topbar-height);
-  background: var(--c-overlay);
-  z-index: var(--z-drawer);
-  display: none;
-  pointer-events: auto;
-}
-
-.workspace.is-drawer-open .workspace-scrim {
-  display: block;
-}
-
-/* When a drawer is open, hide the inline panel column so
- * we do not double-render the same panel. This is the
- * opt-out for future drawer logic. */
-.workspace.is-drawer-open .detail-panel:not(.detail-panel--drawer) {
-  display: none;
-}
-
-.workspace.is-drawer-open .task-list-panel:not(.task-list-panel--drawer) {
-  display: none;
-}
-
 /* =========================================================
- * Agent 5: Panel Primitive Migration Ã¢â‚¬â€ Compatibility Rules
- *
- * These rules preserve the existing visual identity when the
- * `.panel / .panel-header / .panel-body / .panel-footer`
- * primitive classes are applied to elements that already had
- * ID-based styles in `index.css`. They are scoped to specific
- * selectors so they only kick in where needed.
- *
- * They are STRUCTURAL, not visual: they only relax or pin
- * flex/overflow so the panel primitive can co-exist with the
- * existing look.
+ * Panel primitive compatibility (ID + .panel co-existence)
  * ========================================================= */
 
 /* ---- Task list panel (#task-list-panel + .panel) ----
@@ -715,10 +746,9 @@ body {
 /* =========================================================
  * Agent 8: Container Query Rules
  *
- * The wrapper classes above (`.task-list-panel`, `.main-panel`,
- * `.detail-panel`) are now container contexts. The rules below
- * adapt the children of those panels to the *panel* width, not
- * the viewport. This is the local responsive refinement pass.
+ * Container hosts: `.task-list-panel`, `.main-panel` / center-content,
+ * and `#ai-sidebar-panel` / `#file-viewer-panel` (container-name: detail-panel).
+ * Rules adapt children to *panel* width, not the viewport.
  *
  * Rules:
  *  - Named containers only (`@container task-list-panel`,

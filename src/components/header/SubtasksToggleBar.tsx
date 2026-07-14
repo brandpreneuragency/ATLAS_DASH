@@ -3,6 +3,7 @@ import { CheckCircle2, Circle, ArrowUpDown } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
 import { useTaskStore } from '../../stores/taskStore';
 import { TaskMetadataControls } from '../taskManager/TaskMetadataControls';
+import { ContextPanelToggle } from '../layout/workspace';
 import { TASK_TITLE_MAX_LENGTH } from '../../types';
 
 export function SubtasksToggleBar() {
@@ -19,6 +20,7 @@ export function SubtasksToggleBar() {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     setLocalTitle(activeTask?.title ?? '');
   }, [activeTask?.id, activeTask?.title]);
@@ -36,9 +38,18 @@ export function SubtasksToggleBar() {
   // The "Projects" tab shows a full-width kanban board in the center panel;
   // the task-detail subtasks bar does not apply there.
   if (activeTaskPage === 'projects') return null;
-  // No selected task: leave the center panel to TaskDetailPanel's empty state
-  // (do not render Untitled task / No due date placeholders).
-  if (!activeTask) return null;
+  // No selected task: keep the context-panel toggle reachable above the empty state.
+  if (!activeTask) {
+    return (
+      <div className="subtasks-toggle-bar">
+        <div className="subtasks-toggle-bar-inner">
+          <div className="subtasks-toggle-bar-row">
+            <ContextPanelToggle mode="tasks" available />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const startEditingTitle = () => {
     setLocalTitle(activeTask?.title ?? '');
@@ -117,6 +128,7 @@ export function SubtasksToggleBar() {
         </div>
 
         <div className="subtasks-toggle-bar-row">
+          <ContextPanelToggle mode="tasks" available />
           <button
             type="button"
             className="tdp-meta-swap-btn"

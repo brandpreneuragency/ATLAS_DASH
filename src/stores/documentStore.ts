@@ -331,7 +331,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
           activeDocumentId: shell.id,
         }));
         return shell;
-      } catch (err) {
+      } catch {
         toast(`Could not read file: ${node.name}`);
         return null;
       }

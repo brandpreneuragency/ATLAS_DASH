@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { AIProviderConfig, ModelReasoning, ProviderImportUiState } from '../../../types';
+import type { AIProviderConfig, ModelReasoning } from '../../../types';
 import { ProviderStatusBadge } from '../../modals/modelProvider/ProviderStatusBadge';
 import { ProviderTabs, type ProviderTabId } from './ProviderTabs';
 import { ProviderConnectionTab } from './ProviderConnectionTab';
@@ -12,10 +12,7 @@ interface ProviderDetailPanelProps {
   hiddenModels: string[];
   draftKey: string;
   draftBaseUrl: string;
-  importState: ProviderImportUiState;
-  connectionState: { phase: 'idle' | 'connecting' | 'error'; message?: string };
   testConnectionState: { phase: 'idle' | 'testing' | 'success' | 'error'; message?: string };
-  syncState: { phase: 'idle' | 'syncing' | 'success' | 'error'; message?: string };
   onDraftKeyChange: (value: string) => void;
   onDraftBaseUrlChange: (value: string) => void;
   onTestConnection: () => void;
@@ -25,7 +22,6 @@ interface ProviderDetailPanelProps {
   onSetModelReasoningDescriptor: (providerId: string, modelId: string, reasoning: ModelReasoning | undefined) => void;
   onAddCustomModel: (providerId: string, slug: string) => void;
   onDeleteProvider: (id: string) => void;
-  onSaveProviderBaseUrl?: (id: string, baseUrl: string) => void;
 }
 
 const DEFAULT_TABS: { id: ProviderTabId; labelKey: string }[] = [
@@ -38,10 +34,7 @@ export function ProviderDetailPanel({
   hiddenModels,
   draftKey,
   draftBaseUrl,
-  importState,
-  connectionState,
   testConnectionState,
-  syncState,
   onDraftKeyChange,
   onDraftBaseUrlChange,
   onTestConnection,
@@ -55,6 +48,26 @@ export function ProviderDetailPanel({
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<ProviderTabId>('connection');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const deleteWrapRef = useRef<HTMLDivElement>(null);
+
+  // Reset delete confirmation on outside click or Escape key.
+  useEffect(() => {
+    if (!confirmDelete) return;
+    const handlePointerDown = (e: PointerEvent) => {
+      if (deleteWrapRef.current && !deleteWrapRef.current.contains(e.target as Node)) {
+        setConfirmDelete(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setConfirmDelete(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [confirmDelete]);
 
   const status = provider.status ?? 'not_connected';
   const modelCount = (provider.models ?? []).length;
@@ -70,15 +83,6 @@ export function ProviderDetailPanel({
     id: tab.id,
     label: t(tab.labelKey),
   }));
-
-  const handleDelete = () => {
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
-    onDeleteProvider(provider.id);
-    setConfirmDelete(false);
-  };
 
   return (
     <div className="provider-detail-panel col gap-0" style={{ height: '100%' }}>
@@ -99,18 +103,44 @@ export function ProviderDetailPanel({
               </span>
             )}
           </div>
-          <div className="row gap-2 shrink-0">
+          <div ref={deleteWrapRef} className="row gap-2 shrink-0" style={{ position: 'relative' }}>
             <button
               type="button"
-              onClick={handleDelete}
-              onBlur={() => setConfirmDelete(false)}
-              className={`btn-icon${confirmDelete ? ' settings-delete-confirm' : ''}`}
-              title={confirmDelete ? t('models.confirmDelete') : t('models.deleteProvider')}
-              aria-label={confirmDelete ? t('models.confirmDelete') : t('models.deleteProvider')}
-              style={{ color: confirmDelete ? 'var(--c-danger, #dc2626)' : undefined }}
+              onClick={() => setConfirmDelete(true)}
+              className="btn-icon"
+              title={t('models.deleteProvider')}
+              aria-label={t('models.deleteProvider')}
             >
               <Trash2 size={14} />
             </button>
+            {confirmDelete && (
+              <div
+                className="settings-delete-popover"
+                role="dialog"
+                aria-label={t('models.confirmDelete')}
+              >
+                <span className="settings-delete-popover-text">
+                  {t('models.confirmDelete')}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="btn-xs"
+                >
+                  {t('models.cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDeleteProvider(provider.id);
+                    setConfirmDelete(false);
+                  }}
+                  className="btn-xs settings-delete-confirm-btn"
+                >
+                  {t('models.deleteProvider')}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -125,14 +155,10 @@ export function ProviderDetailPanel({
             provider={provider}
             draftKey={draftKey}
             draftBaseUrl={draftBaseUrl}
-            importState={importState}
-            connectionState={connectionState}
             testConnectionState={testConnectionState}
-            syncState={syncState}
             onDraftKeyChange={onDraftKeyChange}
             onDraftBaseUrlChange={onDraftBaseUrlChange}
             onTestConnection={onTestConnection}
-            onSyncModels={onSyncModels}
           />
         )}
         {activeTab === 'models' && (

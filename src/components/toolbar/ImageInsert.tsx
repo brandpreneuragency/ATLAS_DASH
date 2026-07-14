@@ -44,7 +44,7 @@ export function ImageInsert({ editor, onClose }: ImageInsertProps) {
 
   const insertUpload = () => {
     if (!editor || !preview) return;
-    (editor.chain().focus() as any).setImage({ src: preview }).run();
+    (editor.chain().focus() as any).setImage({ src: preview }).run(); // eslint-disable-line @typescript-eslint/no-explicit-any
     onClose();
   };
 

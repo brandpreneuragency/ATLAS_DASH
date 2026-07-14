@@ -286,7 +286,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const prevActive = get().activeThreadId;
     set((s) => {
       const nextThreads = s.threads.filter((t) => t.id !== id);
-      const { [id]: _, ...rest } = s.messagesByThread;
+      const { [id]: _removed, ...rest } = s.messagesByThread; // eslint-disable-line @typescript-eslint/no-unused-vars
       return {
         threads: nextThreads,
         activeThreadId: s.activeThreadId === id ? (nextThreads[0]?.id ?? null) : s.activeThreadId,

@@ -72,7 +72,7 @@ async function syncTaskToFile(task: Task): Promise<void> {
   const project = await db.projects.get(task.projectId);
   if (!project) return;
   
-  const projectName = project.name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_'); // Sanitize for filesystem
+  const projectName = project.name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_'); // eslint-disable-line no-control-regex -- Sanitize for filesystem
   const taskDir = `TASKS/${projectName}/${task.id}`;
   
   try {
@@ -91,7 +91,7 @@ async function deleteTaskFile(task: Task): Promise<void> {
   const project = await db.projects.get(task.projectId);
   if (!project) return;
   
-  const projectName = project.name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+  const projectName = project.name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_'); // eslint-disable-line no-control-regex -- Sanitize for filesystem
   const taskDir = `TASKS/${projectName}/${task.id}`;
   
   try {
@@ -107,7 +107,7 @@ async function regenerateProjectIndex(projectId: string): Promise<void> {
   const project = await db.projects.get(projectId);
   if (!project) return;
   
-  const projectName = project.name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_');
+  const projectName = project.name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_'); // eslint-disable-line no-control-regex -- Sanitize for filesystem
   const projectDir = `TASKS/${projectName}`;
   
   try {
@@ -136,7 +136,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       
       // Initialize with a single empty tab if none exist
       let tabs = get().openTabs.length > 0 ? get().openTabs : [{ tabId: nanoid(8), taskId: null, colorIndex: 0 }];
-      let activeTabId = get().activeTabId ?? tabs[0].tabId;
+      const activeTabId = get().activeTabId ?? tabs[0].tabId;
 
       // Filter out tabs whose tasks no longer exist, and ensure colorIndex exists
       tabs = tabs.map((t) => {
@@ -324,7 +324,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     set((s) => {
       const remaining = s.tasks.filter((t) => t.id !== id);
       const tabs = s.openTabs.map((t) => (t.taskId === id ? { ...t, taskId: null } : t));
-      let nextActiveTab = s.activeTabId;
+      const nextActiveTab = s.activeTabId;
       let nextActiveTask: string | null = null;
       if (s.activeTaskId === id) {
         const actTab = tabs.find((t) => t.tabId === nextActiveTab);

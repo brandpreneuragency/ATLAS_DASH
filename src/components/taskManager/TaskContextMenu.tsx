@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { Trash2, Folder, Calendar, X } from 'lucide-react';
 import { useTaskStore } from '../../stores/taskStore';
 import { useProjectStore } from '../../stores/projectStore';
@@ -23,7 +23,7 @@ export function TaskContextMenu({ taskId, x, y, onClose }: TaskContextMenuProps)
 
   const rootRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useLayoutEffect(() => { onCloseRef.current = onClose; });
 
   // Close on outside click / escape (deferred capture listener avoids the opening click)
   useEffect(() => {
@@ -64,7 +64,7 @@ export function TaskContextMenu({ taskId, x, y, onClose }: TaskContextMenuProps)
   const [pos, setPos] = useState({ left: x, top: y });
 
   useEffect(() => {
-    setPos(adjustPos());
+    setPos(adjustPos()); // eslint-disable-line react-hooks/set-state-in-effect
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panel]);
 

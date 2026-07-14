@@ -124,9 +124,9 @@ export function parseByExt(text: string, ext: string): object {
 export function serialize(json: object, ext: string): string {
   if (ext === 'md' || ext === 'markdown') return serializeMdString(JSON.stringify(json));
   if (ext === 'txt' || ext === 'doc') {
-    const doc = json as any;
+    const doc = json as { content?: Array<{ content?: Array<{ text?: string }> }> };
     return (doc.content ?? [])
-      .map((n: any) => (n.content ?? []).map((c: any) => c.text ?? '').join(''))
+      .map((n) => (n.content ?? []).map((c) => c.text ?? '').join(''))
       .join('\n\n');
   }
   return JSON.stringify(json, null, 2);

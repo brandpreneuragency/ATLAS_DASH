@@ -22,6 +22,7 @@ export function ModelsSection() {
   const [addProviderOpen, setAddProviderOpen] = useState(false);
 
   // Reconcile only when the selected id was removed — do not auto-fill a cleared (null) selection.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (!selectedProviderId) return;
     if (providerConfigs.some((p) => p.id === selectedProviderId)) return;

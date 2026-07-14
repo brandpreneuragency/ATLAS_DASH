@@ -7,6 +7,7 @@ import { ChatInput } from './ChatInput';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useChatStore } from '../../stores/chatStore';
 import type { ChatMessage } from '../../types';
+import './aiSidebar.css';
 
 interface AISidebarProps {
   workspaceId: string | null;

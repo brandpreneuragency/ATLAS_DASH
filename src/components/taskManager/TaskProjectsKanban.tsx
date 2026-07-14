@@ -12,7 +12,7 @@ import {
 import '../crm/crm.css';
 import './taskProjectsKanban.css';
 import './taskDetail.css';
-import { dateOptions } from './TaskMetadataControls';
+import { dateOptions } from './taskMetadataUtils';
 import { useTaskStore } from '../../stores/taskStore';
 import { useProjectStore } from '../../stores/projectStore';
 import { KPICard, CRMEmptyState } from '../crm/components';

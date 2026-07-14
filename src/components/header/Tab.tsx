@@ -6,7 +6,7 @@ import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useFileSystemStore } from '../../stores/fileSystemStore';
 import { useDocumentStore } from '../../stores/documentStore';
 import { serialize } from '../../services/fileFormat';
-import { getDocumentTabMeta } from './DocumentTabDropdownItem';
+import { getDocumentTabMeta } from './documentTabUtils';
 import { writeTextFile, pickSaveTabsPath, getExt, joinPath } from '../../services/fs-adapter';
 
 interface TabProps {

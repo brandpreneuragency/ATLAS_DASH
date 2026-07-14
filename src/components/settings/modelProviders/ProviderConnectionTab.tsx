@@ -1,35 +1,27 @@
 import { useState } from 'react';
 import { Eye, EyeOff, Loader2, Download, Check, AlertCircle, Pencil } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { AIProviderConfig, ProviderImportUiState } from '../../../types';
+import type { AIProviderConfig } from '../../../types';
 import { ProviderStatusBadge } from '../../modals/modelProvider/ProviderStatusBadge';
 
 interface ProviderConnectionTabProps {
   provider: AIProviderConfig;
   draftKey: string;
   draftBaseUrl: string;
-  importState: ProviderImportUiState;
-  connectionState: { phase: 'idle' | 'connecting' | 'error'; message?: string };
   testConnectionState: { phase: 'idle' | 'testing' | 'success' | 'error'; message?: string };
-  syncState: { phase: 'idle' | 'syncing' | 'success' | 'error'; message?: string };
   onDraftKeyChange: (value: string) => void;
   onDraftBaseUrlChange: (value: string) => void;
   onTestConnection: () => void;
-  onSyncModels: () => void;
 }
 
 export function ProviderConnectionTab({
   provider,
   draftKey,
   draftBaseUrl,
-  importState,
-  connectionState,
   testConnectionState,
-  syncState,
   onDraftKeyChange,
   onDraftBaseUrlChange,
   onTestConnection,
-  onSyncModels,
 }: ProviderConnectionTabProps) {
   const { t } = useTranslation();
   const [showKey, setShowKey] = useState(false);
@@ -37,14 +29,15 @@ export function ProviderConnectionTab({
 
   const status = provider.status ?? 'not_connected';
   const isConnected = status === 'connected';
-  const isSyncing = syncState.phase === 'syncing';
 
   const lastImportedAt = provider.lastImportedAt;
   const lastImportedLabel = lastImportedAt
     ? new Date(lastImportedAt).toLocaleString()
     : null;
 
-  const canSync = Boolean(draftBaseUrl.trim()) && Boolean(draftKey.trim()) && !isSyncing;
+  const isTesting = testConnectionState.phase === 'testing';
+  const hasCredentials = Boolean(draftBaseUrl.trim()) && Boolean(draftKey.trim());
+  const canTestOrReconnect = hasCredentials && !isTesting;
 
   // Extract host from baseUrl for display
   let endpointHost = provider.baseUrl;
@@ -80,20 +73,6 @@ export function ProviderConnectionTab({
           </div>
         </div>
 
-        {/* Sync feedback */}
-        {syncState.phase === 'success' && (
-          <div className="row-xs settings-feedback-success">
-            <Check size={12} />
-            <span>{t('models.syncSuccess')}</span>
-          </div>
-        )}
-        {syncState.phase === 'error' && (
-          <div className="row-xs settings-feedback-error" role="alert">
-            <AlertCircle size={12} />
-            <span>{syncState.message}</span>
-          </div>
-        )}
-
         {/* Actions */}
         <div className="row gap-2" style={{ justifyContent: 'flex-end', marginTop: 4 }}>
           <button
@@ -105,17 +84,6 @@ export function ProviderConnectionTab({
           >
             <Pencil size={14} />
             <span>{t('models.editConnection')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={onSyncModels}
-            disabled={!canSync}
-            className={`btn-send settings-action-btn${canSync ? '' : ' settings-action-btn--disabled'}`}
-            title={t('models.syncModels')}
-            aria-label={t('models.syncModels')}
-          >
-            {isSyncing ? <Loader2 size={14} className="spin" /> : <Download size={14} />}
-            <span>{isSyncing ? t('models.syncingModels') : t('models.syncModels')}</span>
           </button>
         </div>
       </div>
@@ -177,11 +145,11 @@ export function ProviderConnectionTab({
         </div>
       </div>
 
-      {/* Test connection feedback */}
+      {/* Test / reconnect feedback */}
       {testConnectionState.phase === 'success' && (
         <div className="row-xs settings-feedback-success">
           <Check size={12} />
-          <span>{t('models.testSuccess')}</span>
+          <span>{isConnected ? t('models.reconnectSuccess') : t('models.testSuccess')}</span>
         </div>
       )}
       {testConnectionState.phase === 'error' && (
@@ -191,48 +159,18 @@ export function ProviderConnectionTab({
         </div>
       )}
 
-      {/* Sync models feedback */}
-      {syncState.phase === 'success' && (
-        <div className="row-xs settings-feedback-success">
-          <Check size={12} />
-          <span>{t('models.syncSuccess')}</span>
-        </div>
-      )}
-      {syncState.phase === 'error' && (
-        <div className="row-xs settings-feedback-error" role="alert">
-          <AlertCircle size={12} />
-          <span>{syncState.message}</span>
-        </div>
-      )}
-
-      {/* Import / Connect errors */}
-      {(connectionState.phase === 'error' || importState.phase === 'error') && (
-        <div
-          className="row-xs"
-          role="alert"
-          style={{
-            fontSize: 'var(--fs-base)',
-            color: 'var(--c-danger, #dc2626)',
-            gap: 6,
-          }}
-        >
-          <AlertCircle size={12} />
-          <span>{connectionState.phase === 'error' ? connectionState.message : importState.message}</span>
-        </div>
-      )}
-
       {/* Actions */}
       <div className="row gap-2" style={{ justifyContent: 'flex-end', marginTop: 4 }}>
         <button
           type="button"
           onClick={onTestConnection}
-          disabled={!canSync}
-          className={`btn-send settings-action-btn${canSync ? '' : ' settings-action-btn--disabled'}`}
+          disabled={!canTestOrReconnect}
+          className={`btn-send settings-action-btn${canTestOrReconnect ? '' : ' settings-action-btn--disabled'}`}
           title={editing ? t('models.reconnect') : t('models.testConnection')}
           aria-label={editing ? t('models.reconnect') : t('models.testConnection')}
         >
-          {testConnectionState.phase === 'testing' ? <Loader2 size={14} className="spin" /> : <Download size={14} />}
-          <span>{editing ? t('models.reconnect') : t('models.syncModels')}</span>
+          {isTesting ? <Loader2 size={14} className="spin" /> : <Download size={14} />}
+          <span>{isTesting ? t('models.testingConnection') : editing ? t('models.reconnect') : t('models.testConnection')}</span>
         </button>
       </div>
     </div>

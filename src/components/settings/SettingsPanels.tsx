@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { ReusablePageTemplate } from '../pageTemplate/ReusablePageTemplate';
+import { useUIStore } from '../../stores/uiStore';
+import { ContextPanelToggle, PrimaryWorkspaceContent } from '../layout/workspace';
 
 interface SettingsPanelsProps {
   leftHeader?: ReactNode;
@@ -8,26 +9,45 @@ interface SettingsPanelsProps {
   centerMain?: ReactNode;
 }
 
-// Two-column layout (left list | center detail). The AI chat sidebar that
-// previously occupied the right column has been removed.
+/**
+ * Settings left list + center detail for the shared primary workspace shell.
+ * Selection / form state stays in parent section components.
+ */
 export function SettingsPanels({
   leftHeader,
   leftMain,
   centerHeader,
   centerMain,
 }: SettingsPanelsProps) {
+  const contextPanelWidth = useUIStore((s) => s.contextPanelWidth);
+  const contextPanelOpen = useUIStore((s) => s.contextPanelOpenByMode.settings);
+
+  const contextPanel = (
+    <div className="settings-surface settings-surface--list">
+      {leftHeader}
+      <div className="settings-surface__body">{leftMain}</div>
+    </div>
+  );
+
+  const centerPanel = (
+    <div className="settings-surface settings-surface--detail">
+      {centerHeader}
+      <div className="settings-surface__body">{centerMain}</div>
+    </div>
+  );
+
   return (
-    <ReusablePageTemplate
-      className="settings-panels"
-      left={{ open: true, widthVw: 24, minWidthVw: 18, maxWidthVw: 38, headerHeight: 'auto' }}
-      center={{ open: true, minWidthVw: 36, maxWidthVw: 100, headerHeight: 'auto' }}
-      right={{ open: false, widthVw: 0, minWidthVw: 0, maxWidthVw: 0 }}
-      slots={{
-        leftHeader,
-        leftMain,
-        centerHeader,
-        centerMain,
-      }}
+    <PrimaryWorkspaceContent
+      mode="settings"
+      contextPanel={contextPanel}
+      centerPanel={centerPanel}
+      contextPanelAvailable
+      contextPanelOpen={contextPanelOpen}
+      contextPanelWidthVw={contextPanelWidth}
+      contextPanelId="settings-list-panel"
+      contextPanelClassName="settings-context-column"
+      contextPanelStyle={{ backgroundColor: 'var(--c-background-2)' }}
+      leadingControls={<ContextPanelToggle mode="settings" available />}
     />
   );
 }

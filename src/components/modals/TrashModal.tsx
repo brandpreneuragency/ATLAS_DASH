@@ -26,9 +26,10 @@ export function TrashModal({ onClose }: TrashModalProps) {
     setLoading(false);
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     loadDeleted();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleRestore = async (id: string) => {
     await restoreTask(id);

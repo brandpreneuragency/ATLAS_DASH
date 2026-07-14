@@ -14,6 +14,78 @@ import { parseTaskInput } from '../../services/nlpParser';
 import { getTodayIso, getTomorrowIso } from '../../services/taskFormat';
 import { TASK_TITLE_MAX_LENGTH } from '../../types';
 
+import type { Project } from '../../types';
+
+function ProjectDropdown({ show, projects, onPick }: { show: boolean; projects: Project[]; onPick: (name: string) => void }) {
+  if (!show) return null;
+  return (
+    <div
+      id="tqc-project-dropdown"
+      className="drop"
+      onMouseDown={(event) => event.stopPropagation()}
+      style={{ left: 0, bottom: '100%', minWidth: 120, marginBottom: 2 }}
+    >
+      <button type="button" className="drop-item" onClick={() => onPick('')} style={{ fontSize: 'var(--fs-base)' }}>
+        No project
+      </button>
+      {projects.map((p) => (
+        <button key={p.id} type="button" className="drop-item" onClick={() => onPick(p.name)} style={{ fontSize: 'var(--fs-base)' }}>
+          {p.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function DateDropdown({ show, dateInputRef, onPick, onClose }: { show: boolean; dateInputRef: React.RefObject<HTMLInputElement | null>; onPick: (date: string) => void; onClose: () => void }) {
+  if (!show) return null;
+  return (
+    <div
+      id="tqc-date-dropdown"
+      className="drop"
+      onMouseDown={(event) => event.stopPropagation()}
+      style={{ left: 0, bottom: '100%', minWidth: 140, marginBottom: 2 }}
+    >
+      <button type="button" className="drop-item" onClick={() => onPick('')} style={{ fontSize: 'var(--fs-base)' }}>
+        No date
+      </button>
+      {['Today', 'Tomorrow', 'Next week', 'Next month'].map((label) => (
+        <button
+          key={label}
+          type="button"
+          className="drop-item"
+          onClick={() => {
+            const d = new Date();
+            if (label === 'Tomorrow') d.setDate(d.getDate() + 1);
+            else if (label === 'Next week') d.setDate(d.getDate() + 7);
+            else if (label === 'Next month') d.setMonth(d.getMonth() + 1);
+            onPick(d.toISOString().slice(0, 10));
+            onClose();
+          }}
+          style={{ fontSize: 'var(--fs-base)' }}
+        >
+          {label}
+        </button>
+      ))}
+      <button
+        type="button"
+        className="drop-item"
+        onClick={() => {
+          if (dateInputRef.current?.showPicker) {
+            dateInputRef.current.showPicker();
+          } else {
+            dateInputRef.current?.click();
+          }
+          onClose();
+        }}
+        style={{ fontSize: 'var(--fs-base)' }}
+      >
+        Custom...
+      </button>
+    </div>
+  );
+}
+
 interface QuickCreateInputProps {
   prefillText?: string | null;
   onClearPrefillText?: () => void;
@@ -40,15 +112,15 @@ export function QuickCreateInput({
   // Sync with props when they change externally
   useEffect(() => {
     if (assignedDateProp !== assignedDate) {
-      setAssignedDate(assignedDateProp ?? null);
+      setAssignedDate(assignedDateProp ?? null); // eslint-disable-line react-hooks/set-state-in-effect
     }
-  }, [assignedDateProp]);
+  }, [assignedDateProp]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (assignedProjectProp !== assignedProject) {
-      setAssignedProject(assignedProjectProp ?? null);
+      setAssignedProject(assignedProjectProp ?? null); // eslint-disable-line react-hooks/set-state-in-effect
     }
-  }, [assignedProjectProp]);
+  }, [assignedProjectProp]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Wrapper setters that also call the prop callbacks
   const handleSetDate = (date: string | null) => {
@@ -145,7 +217,7 @@ export function QuickCreateInput({
 
   useEffect(() => {
     if (prefillText) {
-      setValue((prev) => {
+      setValue((prev) => { // eslint-disable-line react-hooks/set-state-in-effect
         if (!prev.trim()) return prefillText;
         return prev;
       });
@@ -188,83 +260,6 @@ export function QuickCreateInput({
     inputRef.current?.focus();
   };
 
-  // Extracted dropdown components for cleaner hierarchy
-  function ProjectDropdown() {
-    if (!showProjectPicker) return null;
-    return (
-      <div
-        id="tqc-project-dropdown"
-        className="drop"
-        onMouseDown={(event) => event.stopPropagation()}
-        style={{ left: 0, bottom: '100%', minWidth: 120, marginBottom: 2 }}
-      >
-        <button type="button" className="drop-item" onClick={() => handleProjectPick('')} style={{ fontSize: 'var(--fs-base)' }}>
-          No project
-        </button>
-        {projects.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            className="drop-item"
-            onClick={() => handleProjectPick(p.name)}
-            style={{ fontSize: 'var(--fs-base)' }}
-          >
-            {p.name}
-          </button>
-        ))}
-      </div>
-    );
-  }
-
-  function DateDropdown() {
-    if (!showDatePicker) return null;
-    return (
-      <div
-        id="tqc-date-dropdown"
-        className="drop"
-        onMouseDown={(event) => event.stopPropagation()}
-        style={{ left: 0, bottom: '100%', minWidth: 140, marginBottom: 2 }}
-      >
-        <button type="button" className="drop-item" onClick={() => handleDatePick('')} style={{ fontSize: 'var(--fs-base)' }}>
-          No date
-        </button>
-        {['Today', 'Tomorrow', 'Next week', 'Next month'].map((label) => (
-          <button
-            key={label}
-            type="button"
-            className="drop-item"
-            onClick={() => {
-              const d = new Date();
-              if (label === 'Tomorrow') d.setDate(d.getDate() + 1);
-              else if (label === 'Next week') d.setDate(d.getDate() + 7);
-              else if (label === 'Next month') d.setMonth(d.getMonth() + 1);
-              handleDatePick(d.toISOString().slice(0, 10));
-              setShowDatePicker(false);
-            }}
-            style={{ fontSize: 'var(--fs-base)' }}
-          >
-            {label}
-          </button>
-        ))}
-        <button
-          type="button"
-          className="drop-item"
-          onClick={() => {
-            if (dateInputRef.current?.showPicker) {
-              dateInputRef.current.showPicker();
-            } else {
-              dateInputRef.current?.click();
-            }
-            setShowDatePicker(false);
-          }}
-          style={{ fontSize: 'var(--fs-base)' }}
-        >
-          Custom...
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div id="task-quick-create-wrapper" style={{ height: 'fit-content', width: '100%', padding: '0px', flexShrink: 0 }}>
       <ComposerRoot id="task-quick-create" className="composer-root--clear">
@@ -302,7 +297,7 @@ export function QuickCreateInput({
                   <Folder size={12} className="task-quick-create-dropup-icon" />
                   <span className="trunc med task-quick-create-dropup-label">{projectButtonLabel}</span>
                 </button>
-                <ProjectDropdown />
+                <ProjectDropdown show={showProjectPicker} projects={projects} onPick={handleProjectPick} />
               </div>
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }} ref={datePickerRef}>
                 <button
@@ -319,7 +314,7 @@ export function QuickCreateInput({
                   <Calendar size={12} className="task-quick-create-dropup-icon" />
                   <span className="trunc med task-quick-create-dropup-label">{dateButtonLabel}</span>
                 </button>
-                <DateDropdown />
+                <DateDropdown show={showDatePicker} dateInputRef={dateInputRef} onPick={handleDatePick} onClose={() => setShowDatePicker(false)} />
                 <input
                   ref={dateInputRef}
                   type="date"

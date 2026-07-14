@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { Reply, Trash2 } from 'lucide-react';
 
 interface ChatBubbleContextMenuProps {
@@ -18,7 +18,7 @@ export function ChatBubbleContextMenu({
 }: ChatBubbleContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useLayoutEffect(() => { onCloseRef.current = onClose; });
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {

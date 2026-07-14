@@ -17,7 +17,23 @@ export type ProviderImportErrorCode =
   | 'request_failed'
   | 'empty_response'
   | 'malformed_response'
-  | 'unsupported_shape';
+  | 'unsupported_shape'
+  | 'database';
+
+/** Result of a model-sync operation. */
+export interface SyncModelsResult {
+  ok: true;
+  added: number;
+  removed: number;
+  unchanged: number;
+  updatedAt: number | undefined;
+}
+
+export interface SyncModelsError {
+  ok: false;
+  error: string;
+  code: string;
+}
 
 export class ProviderImportError extends Error {
   readonly code: ProviderImportErrorCode;

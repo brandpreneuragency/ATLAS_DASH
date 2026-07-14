@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { TaskComment, FileViewerItem } from '../../types';
 import { Paperclip, Play, Reply, Sparkles, Trash2 } from 'lucide-react';
@@ -76,7 +76,7 @@ function CommentContextMenu({
   const deletable = canDeleteComment(comment);
   const hasText = comment.text.trim().length > 0;
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useLayoutEffect(() => { onCloseRef.current = onClose; });
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {

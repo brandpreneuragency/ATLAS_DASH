@@ -28,6 +28,7 @@ export function AgentEditorForm({ agentId, scope, onDone }: AgentEditorFormProps
   const [avatarUrl, setAvatarUrl] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (editingAgent) {
       setName(editingAgent.name);
@@ -62,17 +63,8 @@ export function AgentEditorForm({ agentId, scope, onDone }: AgentEditorFormProps
   };
 
   return (
-    <div className="flex-col h-full w-full" style={{ background: 'var(--c-background-1)', display: 'flex', overflow: 'hidden' }}>
-      <div className="settings-detail-head shrink-0" style={{ padding: '12px 16px', borderBottom: '1px solid var(--c-border-1)' }}>
-        <h2 style={{ margin: 0, fontSize: 'var(--fs-base)', fontWeight: 600 }}>
-          {editingAgent ? 'Edit Agent' : 'New Agent'}
-        </h2>
-        <p className="subtle" style={{ fontSize: 'var(--fs-base)', margin: '2px 0 0' }}>
-          {editingAgent ? `${editingAgent.scope} agent` : `${scope} agent`}
-        </p>
-      </div>
-
-      <div className="flex-1 col gap-3" style={{ padding: '16px', overflowY: 'auto' }}>
+    <div className="settings-agent-editor flex-col h-full w-full" style={{ display: 'flex', overflow: 'hidden' }}>
+      <div className="settings-detail-body">
         <div>
           <label className="semibold" style={{ display: 'block', fontSize: 'var(--fs-base)', color: 'var(--c-text-2)', marginBottom: 6 }}>Agent Name</label>
           <input
