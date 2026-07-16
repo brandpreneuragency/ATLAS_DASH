@@ -7,7 +7,7 @@ Resume protocol: read `CLAUDE.md` (if present), `docs/PROGRESS.md`, `docs/MASTER
 | Phase | Status | Date | Notes |
 |-------|--------|------|-------|
 | 0 — Commit & push | [x] | 2026-07-16 | `npm run check` green; lint fixes for react-hooks (set-state-in-effect, immutability, refs) + ImageInsert `setImage` typing; pushed to origin/main |
-| 1 — VPS teardown | [ ] | | |
+| 1 — VPS teardown | [x] | 2026-07-16 | All 6 tabs* containers removed; tabs images removed; postgres/upload/backup volumes removed. Caddyfile.old preserved. hermes/atlas_control/searxng untouched. |
 | 2 — tabs_api server | [ ] | | |
 | 3 — Deploy assets | [ ] | | |
 | 4 — VPS install | [ ] | | |
@@ -22,3 +22,5 @@ Resume protocol: read `CLAUDE.md` (if present), `docs/PROGRESS.md`, `docs/MASTER
 ## Discovered facts / deviations log
 
 - 2026-07-16 Phase 0: `eslint-plugin-react-hooks` v7 flags setState-in-effect / immutability as errors when disable is on the `useEffect` line (must be on the setState line, or avoid mutating `editor.view.dom` via `useEditor` return — use wrapper `.ProseMirror` query instead). Working tree included substantial pre-existing WIP (settings, editor, tasks, Tauri, docs/plans) beyond the plan's expected file list.
+- 2026-07-16 Phase 1: `/home/admin/tabs/` is root:root (admin cannot write). Caddyfile.old written via `docker run --rm -v /home/admin/tabs:/tabs alpine cp`. No passwordless sudo.
+- 2026-07-16 Phase 1: `client-proxy-caddy` (running) mounts `tabs_caddy_config`, `tabs_caddy_data`, and is on `tabs_internal` network; also binds wagneratelier. Left intact — volumes/network could not be removed without killing client-proxy-caddy. Remaining after teardown: volumes `tabs_caddy_config`/`tabs_caddy_data`, network `tabs_internal`, files `Caddyfile`+`Caddyfile.old`. Wagner site files present (`index.html`, `bwa.jpg`). Running after: atlas_control, atlas_hermes_relay, client-proxy-caddy, hermes, searxng.
