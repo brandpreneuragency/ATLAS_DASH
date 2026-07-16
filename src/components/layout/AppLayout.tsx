@@ -156,6 +156,7 @@ function resolveModeLayout(args: {
     crm: boolean;
     forms: boolean;
     settings: boolean;
+    chat: boolean;
   };
   contextPanelWidth: number;
   activeTaskPage: string;
@@ -244,6 +245,28 @@ function resolveModeLayout(args: {
               <ContextPanelToggle mode="crm" available />
             ) : undefined
           }
+        />
+      ),
+    };
+  }
+
+  if (mode === 'chat') {
+    return {
+      primary: (
+        <PrimaryWorkspaceContent
+          mode="chat"
+          contextPanel={leftPanel}
+          centerPanel={editor}
+          contextPanelAvailable
+          contextPanelOpen={contextPanelOpenByMode.chat}
+          contextPanelWidthVw={contextPanelWidth}
+          contextPanelId="hermes-session-list"
+          contextPanelStyle={{
+            paddingTop: 0,
+            paddingBottom: 0,
+            backgroundColor: 'var(--c-background-1)',
+          }}
+          leadingControls={<ContextPanelToggle mode="chat" available />}
         />
       ),
     };

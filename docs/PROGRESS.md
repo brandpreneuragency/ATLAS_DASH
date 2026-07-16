@@ -14,7 +14,7 @@ Resume protocol: read `CLAUDE.md` (if present), `docs/PROGRESS.md`, `docs/MASTER
 | 5 — Hermes token (user "Approve" required) | [x] | 2026-07-16 | User approved. Hermes already had 64-char `HERMES_DASHBOARD_SESSION_TOKEN` in `~/.hermes/.env` + container env — reused (no hermes recreate). Wired into `deploy/.env` + `~/.hermes-dashboard-token`. tabs_api restarted. `GET /hermes/api/status` → 200 JSON. |
 | 6 — Frontend services + WS protocol | [x] | 2026-07-16 | `tabsApi` + `hermesClient` (REST + WS). Types from desktop reference. Outbound chat uses JSON-RPC `prompt.submit`. vitest 6/6 + typecheck green. Note: upstream Hermes OAuth gate returns 401 `no_cookie` on `/api/sessions` even with Bearer — proxy status works; sessions may need service-token seam later. |
 | 7 — RemoteFolderConnector | [x] | 2026-07-17 | `RemoteFolderConnector` + path codec tests; browser runtime picks remote when `/fs/roots` ok; FileTreeTabs VPS root picker; joinPath/basename/getParentFullPath + connect gate adapted for `root:rel`. `npm run check` green. |
-| 8 — CHAT mode | [ ] | | |
+| 8 — CHAT mode | [x] | 2026-07-17 | `chatMode` in uiStore + WorkspaceMode `chat`; hermesStore + reduceGatewayEvent tests; SessionListColumn/ChatSessionPane/ChatWorkspace; nav Chat button when tabs_api available. `npm run check` green (158 tests). Live Hermes sessions still may 401 OAuth (Phase 6 note) until service-token seam. |
 | 9 — Approvals inbox | [ ] | | |
 | 10 — Memory browser | [ ] | | |
 | 11 — Redeploy + acceptance | [ ] | | |
@@ -36,3 +36,4 @@ Resume protocol: read `CLAUDE.md` (if present), `docs/PROGRESS.md`, `docs/MASTER
   - `connectFolderInWorkspace` gated on `isNativeFsAvailable()` (`showDirectoryPicker` / Tauri) which blocked remote — remote root pick passes `fullPath`, or connector `isAvailable()` allows dialog-less connect.
   - Tauri path unchanged (still `TauriFolderConnector` when `__TAURI_INTERNALS__` present).
   - Live VPS Doc Mode open/edit/save deferred to Phase 11 redeploy (local dev has no `/fs` proxy unless ssh tunnel + Vite proxy added).
+- 2026-07-17 Phase 8: CHAT mode wired. Gateway stream reducer handles `message.start|delta|complete` + `error`; tool/approval events ignored until Phase 9. Chat nav gated on `tabsApi.available()` (same probe as RemoteFolderConnector). Session list/open/send still subject to Hermes OAuth `no_cookie` on `/api/sessions` from Phase 6 — UI surfaces fetch errors in the session column.

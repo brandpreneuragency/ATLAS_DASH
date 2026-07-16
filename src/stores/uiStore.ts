@@ -100,6 +100,9 @@ interface UIStore {
   activeTaskId: string | null;
   subtasksOpen: boolean;
 
+  /** Hermes CHAT mode — mutually exclusive with task/crm/doc primary modes. */
+  chatMode: boolean;
+
   /** CRM module active — mutually exclusive with task mode. Hosts the merged Forms sub-module via `activeCRMPage === 'forms'`. */
   crmMode: boolean;
   /** Active sub-page within the CRM module. */
@@ -163,6 +166,7 @@ interface UIStore {
   setExpandedPaths: (paths: string[]) => void;
   setSelectedTreePath: (path: string | null) => void;
   setTaskMode: (v: boolean) => void;
+  setChatMode: (v: boolean) => void;
   setCrmMode: (v: boolean) => void;
   setActiveCRMPage: (p: CRMPage) => void;
   setActiveFormsPage: (p: FormsPage) => void;
@@ -222,7 +226,7 @@ export function selectCanSwapWrappers(
 }
 
 export function selectActiveWorkspaceMode(
-  state: Pick<UIStore, 'taskMode' | 'crmMode' | 'activeCRMPage' | 'activeView'>,
+  state: Pick<UIStore, 'taskMode' | 'crmMode' | 'chatMode' | 'activeCRMPage' | 'activeView'>,
 ): WorkspaceMode {
   return selectActiveWorkspaceModeImpl(state);
 }
@@ -245,6 +249,7 @@ export function selectIsContextPanelOpen(
     | 'contextPanelOpenByMode'
     | 'taskMode'
     | 'crmMode'
+    | 'chatMode'
     | 'activeCRMPage'
     | 'activeView'
   >,
@@ -295,6 +300,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
   taskMode: false,
   activeTaskId: null,
   subtasksOpen: true,
+  chatMode: false,
   crmMode: false,
   activeCRMPage: 'leads',
   activeFormsPage: 'list',
@@ -443,11 +449,27 @@ export const useUIStore = create<UIStore>((set, get) => ({
     set({
       taskMode: v,
       crmMode: false,
+      chatMode: false,
       activeView: 'document',
       primaryWrapperOpen: true,
     });
     persistLayoutKeys({ primaryWrapperOpen: true });
     void db.settings.put({ key: 'taskMode', value: v });
+    void db.settings.put({ key: 'crmMode', value: false });
+    void db.settings.put({ key: 'chatMode', value: false });
+  },
+
+  setChatMode: (v) => {
+    set({
+      chatMode: v,
+      taskMode: false,
+      crmMode: false,
+      activeView: 'document',
+      primaryWrapperOpen: true,
+    });
+    persistLayoutKeys({ primaryWrapperOpen: true });
+    void db.settings.put({ key: 'chatMode', value: v });
+    void db.settings.put({ key: 'taskMode', value: false });
     void db.settings.put({ key: 'crmMode', value: false });
   },
 
@@ -455,12 +477,14 @@ export const useUIStore = create<UIStore>((set, get) => ({
     set({
       crmMode: v,
       taskMode: false,
+      chatMode: false,
       activeView: 'document',
       primaryWrapperOpen: true,
     });
     persistLayoutKeys({ primaryWrapperOpen: true });
     void db.settings.put({ key: 'crmMode', value: v });
     void db.settings.put({ key: 'taskMode', value: false });
+    void db.settings.put({ key: 'chatMode', value: false });
   },
 
   setActiveCRMPage: (p) => {
@@ -505,10 +529,12 @@ export const useUIStore = create<UIStore>((set, get) => ({
       primaryWrapperOpen: true,
       taskMode: false,
       crmMode: false,
+      chatMode: false,
     }));
     persistLayoutKeys({ primaryWrapperOpen: true });
     void db.settings.put({ key: 'taskMode', value: false });
     void db.settings.put({ key: 'crmMode', value: false });
+    void db.settings.put({ key: 'chatMode', value: false });
   },
 
   setActiveTaskId: (id) => {
@@ -578,6 +604,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
       editorFontSize,
       language,
       taskMode,
+      chatModeSetting,
       lastActiveTaskId,
       taskListOpen,
       panelsSwapped,
@@ -607,6 +634,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
       db.settings.get('editorFontSize'),
       db.settings.get('language'),
       db.settings.get('taskMode'),
+      db.settings.get('chatMode'),
       db.settings.get('lastActiveTaskId'),
       db.settings.get('taskListOpen'),
       db.settings.get('panelsSwapped'),
@@ -644,7 +672,8 @@ export const useUIStore = create<UIStore>((set, get) => ({
     // Forms module was merged into CRM. Migrate a persisted standalone formsMode
     // into CRM mode (activeCRMPage falls back to 'forms' below when migrated).
     const crmMode = crmModeStored || formsModeStored;
-    const taskModeValue = !crmMode && (taskMode ? Boolean(taskMode.value) : false);
+    const chatModeValue = !crmMode && (chatModeSetting ? Boolean(chatModeSetting.value) : false);
+    const taskModeValue = !crmMode && !chatModeValue && (taskMode ? Boolean(taskMode.value) : false);
 
     const CRM_PAGES: CRMPage[] = ['dashboard', 'leads', 'contacts', 'companies', 'pipeline', 'activities', 'forms', 'settings'];
     const FORMS_PAGES: FormsPage[] = ['dashboard', 'list', 'builder', 'submissions', 'templates', 'settings'];
@@ -707,6 +736,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
       editorFontSize: editorFontSize ? (Number(editorFontSize.value) as 12 | 14 | 16) : 12,
       language: lang,
       taskMode: taskModeValue,
+      chatMode: chatModeValue,
       activeTaskId: lastActiveTaskId ? String(lastActiveTaskId.value) : null,
       contextWindowOpen: false,
       contextWindowCollapsed: contextWindowCollapsed ? Boolean(contextWindowCollapsed.value) : true,

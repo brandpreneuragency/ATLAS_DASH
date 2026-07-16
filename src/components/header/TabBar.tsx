@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, useCallback } from 'react';
-import { Plus } from 'lucide-react';
+import { MessageSquare, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -60,6 +60,7 @@ export function TabBar() {
   const { t } = useTranslation();
   const {
     taskMode,
+    chatMode,
     activeView,    activeSettingsSubTab,
     setActiveSettingsSubTab,
     crmMode,
@@ -108,12 +109,12 @@ export function TabBar() {
       ro.disconnect();
       window.removeEventListener('resize', checkOverflow);
     };
-  }, [workspaces, taskMode, crmMode, activeCRMPage, activeFormsPage, activeTaskPage, activeView, activeSettingsSubTab]);
+  }, [workspaces, taskMode, chatMode, crmMode, activeCRMPage, activeFormsPage, activeTaskPage, activeView, activeSettingsSubTab]);
 
   // Subtle FLIP slide when workspace tab order changes
   useLayoutEffect(() => {
     const row = tabsRowRef.current;
-    if (!row || taskMode || crmMode || activeView === 'settings') {
+    if (!row || taskMode || chatMode || crmMode || activeView === 'settings') {
       prevLeftsRef.current = new Map();
       return;
     }
@@ -149,7 +150,7 @@ export function TabBar() {
 
     prevLeftsRef.current = nextLefts;
     skipFlipRef.current = false;
-  }, [workspaces, taskMode, crmMode, activeView]);
+  }, [workspaces, taskMode, chatMode, crmMode, activeView]);
 
   const handleDragStart = useCallback((id: string, e: React.DragEvent) => {
     didDragRef.current = false;
@@ -204,7 +205,7 @@ export function TabBar() {
     setActiveWorkspace(id);
   }, [setActiveWorkspace]);
 
-  if (!taskMode && !crmMode && activeView === 'settings') {
+  if (!taskMode && !crmMode && !chatMode && activeView === 'settings') {
     return (
       <div ref={tabsRowRef} className="tabs-row" data-overflowing={isOverflowing ? 'true' : 'false'}>
         {SETTINGS_HEADER_TABS.map((item) => (
@@ -217,6 +218,20 @@ export function TabBar() {
             onClick={() => setActiveSettingsSubTab(item.key)}
           />
         ))}
+      </div>
+    );
+  }
+
+  if (chatMode) {
+    return (
+      <div ref={tabsRowRef} className="tabs-row" data-overflowing={isOverflowing ? 'true' : 'false'}>
+        <ModuleHeaderTab
+          tabKey="chat"
+          label="Chat"
+          icon={MessageSquare}
+          isActive
+          onClick={() => undefined}
+        />
       </div>
     );
   }
