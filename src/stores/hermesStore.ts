@@ -307,9 +307,17 @@ export const useHermesStore = create<HermesStore>((set, get) => ({
   },
 
   openSession: async (id) => {
+    // Approvals / events use the short *live* gateway id. REST history uses the
+    // durable stored id. If the caller passed the live id for the active chat,
+    // re-home to the stored id so list highlight + transcript fetch work.
+    let restId = id;
+    if (get().liveSessionId === id && get().storedSessionId) {
+      restId = get().storedSessionId;
+    }
+
     set({
-      storedSessionId: id,
-      activeSessionId: id,
+      storedSessionId: restId,
+      activeSessionId: restId,
       // Drop any previous live binding — must resume this stored id.
       liveSessionId: null,
       loadingMessages: true,
@@ -318,7 +326,7 @@ export const useHermesStore = create<HermesStore>((set, get) => ({
       streaming: false,
     });
     try {
-      const raw = await hermesClient.getMessages(id);
+      const raw = await hermesClient.getMessages(restId);
       const messages = raw
         .map((m, i) => hermesMessageToBubble(m, i))
         .filter((m) => m.role === 'user' || m.role === 'assistant' || m.content);
@@ -329,19 +337,32 @@ export const useHermesStore = create<HermesStore>((set, get) => ({
         try {
           const conn = await ensureGatewayReady();
           // Bail if user switched sessions while we waited.
-          if (get().storedSessionId !== id) return;
-          const bound = await ensureLiveSession(conn, id, null);
-          if (get().storedSessionId !== id) return;
+          if (get().storedSessionId !== restId) return;
+          const bound = await ensureLiveSession(conn, restId, null);
+          if (get().storedSessionId !== restId) return;
           set({
             liveSessionId: bound.liveSessionId,
-            storedSessionId: bound.storedSessionId ?? id,
-            activeSessionId: bound.storedSessionId ?? id,
+            storedSessionId: bound.storedSessionId ?? restId,
+            activeSessionId: bound.storedSessionId ?? restId,
           });
         } catch {
           // Non-fatal: sendPrompt will resume/create on demand.
         }
       })();
     } catch (err) {
+      // Live-only id with no stored mapping: keep the live binding, empty history.
+      if (get().liveSessionId === id || (id.length <= 12 && !id.includes('_'))) {
+        set({
+          liveSessionId: id,
+          storedSessionId: get().storedSessionId,
+          activeSessionId: get().storedSessionId ?? id,
+          loadingMessages: false,
+          error: null,
+          messages: get().messages,
+        });
+        get().ensureChatConnection();
+        return;
+      }
       const message = err instanceof Error ? err.message : String(err);
       set({ loadingMessages: false, error: message, messages: [] });
     }
@@ -519,10 +540,16 @@ export const useHermesStore = create<HermesStore>((set, get) => ({
   },
 
   ensureEventsSubscription: () => {
+    // Approvals and stream events arrive on the chat gateway WebSocket
+    // (`/api/ws`). Hermes `/api/events` is a separate PTY-channel broadcast
+    // (requires `?channel=`) used by the dashboard TUI sidebar — not a
+    // general event bus. Keep the chat socket up so approval.request is
+    // collected for the bell badge while CHAT mode is mounted.
     if (eventsUnsub) return;
-    eventsUnsub = hermesClient.connectEvents((ev) => {
-      get().applyGatewayEvent(ev);
-    });
+    get().ensureChatConnection();
+    eventsUnsub = () => {
+      // Connection lifecycle is owned by ensureChatConnection / disconnectChat.
+    };
     set({ eventsConnected: true });
   },
 
