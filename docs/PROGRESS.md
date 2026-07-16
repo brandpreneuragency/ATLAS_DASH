@@ -15,7 +15,7 @@ Resume protocol: read `CLAUDE.md` (if present), `docs/PROGRESS.md`, `docs/MASTER
 | 6 — Frontend services + WS protocol | [x] | 2026-07-16 | `tabsApi` + `hermesClient` (REST + WS). Types from desktop reference. Outbound chat uses JSON-RPC `prompt.submit`. vitest 6/6 + typecheck green. Note: upstream Hermes OAuth gate returns 401 `no_cookie` on `/api/sessions` even with Bearer — proxy status works; sessions may need service-token seam later. |
 | 7 — RemoteFolderConnector | [x] | 2026-07-17 | `RemoteFolderConnector` + path codec tests; browser runtime picks remote when `/fs/roots` ok; FileTreeTabs VPS root picker; joinPath/basename/getParentFullPath + connect gate adapted for `root:rel`. `npm run check` green. |
 | 8 — CHAT mode | [x] | 2026-07-17 | `chatMode` in uiStore + WorkspaceMode `chat`; hermesStore + reduceGatewayEvent tests; SessionListColumn/ChatSessionPane/ChatWorkspace; nav Chat button when tabs_api available. `npm run check` green (158 tests). Live Hermes sessions still may 401 OAuth (Phase 6 note) until service-token seam. |
-| 9 — Approvals inbox | [ ] | | |
+| 9 — Approvals inbox | [x] | 2026-07-17 | Protocol from desktop: `approval.request` + JSON-RPC `approval.respond` `{choice: once|deny, session_id}`. Approvals slice + reduceApprovalEvent tests; ApprovalsInbox + bell badge; `/api/events` subscription from Chat mount. `npm run check` green (163 tests). |
 | 10 — Memory browser | [ ] | | |
 | 11 — Redeploy + acceptance | [ ] | | |
 
@@ -37,3 +37,4 @@ Resume protocol: read `CLAUDE.md` (if present), `docs/PROGRESS.md`, `docs/MASTER
   - Tauri path unchanged (still `TauriFolderConnector` when `__TAURI_INTERNALS__` present).
   - Live VPS Doc Mode open/edit/save deferred to Phase 11 redeploy (local dev has no `/fs` proxy unless ssh tunnel + Vite proxy added).
 - 2026-07-17 Phase 8: CHAT mode wired. Gateway stream reducer handles `message.start|delta|complete` + `error`; tool/approval events ignored until Phase 9. Chat nav gated on `tabsApi.available()` (same probe as RemoteFolderConnector). Session list/open/send still subject to Hermes OAuth `no_cookie` on `/api/sessions` from Phase 6 — UI surfaces fetch errors in the session column.
+- 2026-07-17 Phase 9: Approval protocol (desktop reference, read-only): inbound `approval.request` payload `{command, description, allow_permanent, smart_denied, choices?}` session-keyed (no request_id); respond via chat WS JSON-RPC `approval.respond` `{choice: "once"|"deny", session_id}`. Clears on `message.complete`/`error` for that session (desktop `clearAllPrompts`). Live dangerous-command approve path deferred to Phase 11 redeploy.

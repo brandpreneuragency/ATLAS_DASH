@@ -8,6 +8,7 @@ import {
   Settings as SettingsIcon,
 } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
+import { useHermesStore } from '../../stores/hermesStore';
 
 export function LeftNarrowSidebar() {
   const taskMode = useUIStore((s) => s.taskMode);
@@ -24,6 +25,7 @@ export function LeftNarrowSidebar() {
   const setActiveView = useUIStore((s) => s.setActiveView);
   const terminalPanelOpen = useUIStore((s) => s.terminalPanelOpen);
   const setTerminalPanelOpen = useUIStore((s) => s.setTerminalPanelOpen);
+  const approvalCount = useHermesStore((s) => s.approvals.length);
 
   // Hide Chat when tabs_api is not reachable (e.g. pure local browser / Tauri without VPS).
   const [chatAvailable, setChatAvailable] = useState(false);
@@ -77,10 +79,37 @@ export function LeftNarrowSidebar() {
                 setContextPanelOpen('chat', true);
               }
             }}
-            title="Chat"
+            title={
+              approvalCount > 0
+                ? `Chat (${approvalCount} pending approval${approvalCount === 1 ? '' : 's'})`
+                : 'Chat'
+            }
             className={`mode-btn${chatMode ? ' mode-btn--on' : ''}`}
+            style={{ position: 'relative' }}
           >
             <MessageSquare size={15} />
+            {approvalCount > 0 && (
+              <span
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  top: 2,
+                  right: 2,
+                  minWidth: 12,
+                  height: 12,
+                  padding: '0 2px',
+                  borderRadius: 6,
+                  background: '#dc2626',
+                  color: '#fff',
+                  fontSize: 8,
+                  fontWeight: 700,
+                  lineHeight: '12px',
+                  textAlign: 'center',
+                }}
+              >
+                {approvalCount > 9 ? '9+' : approvalCount}
+              </span>
+            )}
           </button>
         )}
 

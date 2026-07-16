@@ -182,3 +182,22 @@ export interface HermesPromptSubmitParams {
   session_id?: string | null;
   text: string;
 }
+
+/**
+ * Dangerous-command approval response — desktop sends JSON-RPC on /api/ws:
+ * `{ method: "approval.respond", params: { choice, session_id } }`
+ * (apps/desktop approval.tsx + store/prompts.ts).
+ *
+ * Choices used by TABS inbox:
+ * - `once`  → Approve (run once)
+ * - `deny`  → Deny
+ * Desktop also supports `session` / `always` (not exposed in the simple inbox).
+ *
+ * Approvals are session-keyed (one in-flight per session); there is no request_id.
+ */
+export type HermesApprovalChoice = 'once' | 'deny' | 'session' | 'always';
+
+export interface HermesApprovalRespondParams {
+  choice: HermesApprovalChoice;
+  session_id?: string | null;
+}

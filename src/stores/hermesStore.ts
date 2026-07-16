@@ -1,7 +1,8 @@
-// Hermes CHAT mode store — sessions list + live gateway chat stream.
+// Hermes CHAT mode store — sessions list + live gateway chat stream + approvals inbox.
 import { create } from 'zustand';
 import { hermesClient, type HermesChatConnection } from '../services/hermes/client';
 import type {
+  HermesApprovalChoice,
   HermesGatewayEvent,
   HermesMessage,
   HermesSession,
@@ -20,6 +21,24 @@ export interface HermesChatBubble {
 export interface HermesChatReducerState {
   messages: HermesChatBubble[];
   pending: string;
+}
+
+/**
+ * Pending dangerous-command / execute_code approval.
+ * Desktop keys by session (one in-flight per session; no request_id).
+ * Source: apps/desktop store/prompts.ts ApprovalRequest + gateway-event.ts.
+ */
+export interface PendingApproval {
+  /** Stable id — session_id when present, else synthetic. */
+  id: string;
+  sessionId: string | null;
+  command: string;
+  /** Human risk/description label from payload.description. */
+  risk: string;
+  requestedAt: number;
+  allowPermanent?: boolean;
+  choices?: string[];
+  smartDenied?: boolean;
 }
 
 function extractText(value: unknown): string {
@@ -114,6 +133,66 @@ export function reduceGatewayEvent(
   }
 }
 
+/** Build a stable approval id (session-keyed on the backend). */
+export function approvalIdFor(sessionId: string | null | undefined, command: string): string {
+  if (sessionId) return sessionId;
+  return `anon:${command.slice(0, 64)}`;
+}
+
+/**
+ * Pure reducer for approval-related gateway events (unit-tested).
+ * - approval.request → add/update one entry (dedupe by id)
+ * - message.complete / error for a session → clear that session's approval
+ *   (matches desktop clearAllPrompts on complete/error)
+ */
+export function reduceApprovalEvent(
+  approvals: PendingApproval[],
+  ev: HermesGatewayEvent,
+): PendingApproval[] {
+  if (ev.type === 'approval.request') {
+    const command = typeof ev.payload?.command === 'string' ? ev.payload.command : '';
+    const description =
+      typeof ev.payload?.description === 'string' ? ev.payload.description : 'dangerous command';
+    const sessionId = ev.session_id ?? null;
+    const id = approvalIdFor(sessionId, command);
+    const next: PendingApproval = {
+      id,
+      sessionId,
+      command,
+      risk: description,
+      requestedAt: Date.now(),
+      allowPermanent: ev.payload?.allow_permanent !== false,
+      choices: Array.isArray(ev.payload?.choices)
+        ? ev.payload.choices.filter((c): c is string => typeof c === 'string')
+        : undefined,
+      smartDenied: ev.payload?.smart_denied === true,
+    };
+    const idx = approvals.findIndex((a) => a.id === id);
+    if (idx >= 0) {
+      const copy = approvals.slice();
+      copy[idx] = next;
+      return copy;
+    }
+    return [...approvals, next];
+  }
+
+  if (
+    (ev.type === 'message.complete' || ev.type === 'error') &&
+    ev.session_id
+  ) {
+    return approvals.filter((a) => a.sessionId !== ev.session_id);
+  }
+
+  return approvals;
+}
+
+export function removeApprovalById(
+  approvals: PendingApproval[],
+  id: string,
+): PendingApproval[] {
+  return approvals.filter((a) => a.id !== id);
+}
+
 interface HermesStore {
   sessions: HermesSession[];
   activeSessionId: string | null;
@@ -124,6 +203,8 @@ interface HermesStore {
   loadingSessions: boolean;
   loadingMessages: boolean;
   error: string | null;
+  approvals: PendingApproval[];
+  eventsConnected: boolean;
 
   loadSessions: () => Promise<void>;
   openSession: (id: string) => Promise<void>;
@@ -134,9 +215,13 @@ interface HermesStore {
   deleteSession: (id: string) => Promise<void>;
   ensureChatConnection: () => void;
   disconnectChat: () => void;
+  /** Start /api/events subscription once (app-wide for approval badge). */
+  ensureEventsSubscription: () => void;
+  respondApproval: (id: string, approve: boolean) => Promise<void>;
 }
 
 let chatConn: HermesChatConnection | null = null;
+let eventsUnsub: (() => void) | null = null;
 
 export const useHermesStore = create<HermesStore>((set, get) => ({
   sessions: [],
@@ -148,6 +233,8 @@ export const useHermesStore = create<HermesStore>((set, get) => ({
   loadingSessions: false,
   loadingMessages: false,
   error: null,
+  approvals: [],
+  eventsConnected: false,
 
   loadSessions: async () => {
     set({ loadingSessions: true, error: null });
@@ -193,9 +280,19 @@ export const useHermesStore = create<HermesStore>((set, get) => ({
   },
 
   applyGatewayEvent: (ev) => {
+    // Approvals are session-keyed but must be collected for *all* sessions
+    // (inbox badge / background turns). Always reduce first.
+    const nextApprovals = reduceApprovalEvent(get().approvals, ev);
+    if (nextApprovals !== get().approvals) {
+      set({ approvals: nextApprovals });
+    }
+
+    // Chat stream is scoped to the active session only.
     const active = get().activeSessionId;
-    // Drop events for other sessions when we know the target.
     if (ev.session_id && active && ev.session_id !== active) {
+      return;
+    }
+    if (ev.type === 'approval.request') {
       return;
     }
 
@@ -288,10 +385,49 @@ export const useHermesStore = create<HermesStore>((set, get) => ({
       const wasActive = get().activeSessionId === id;
       set((s) => ({
         sessions: s.sessions.filter((sess) => sess.id !== id),
+        approvals: s.approvals.filter((a) => a.sessionId !== id),
         ...(wasActive
           ? { activeSessionId: null, messages: [], pending: '', streaming: false }
           : {}),
       }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ error: message });
+    }
+  },
+
+  ensureEventsSubscription: () => {
+    if (eventsUnsub) return;
+    eventsUnsub = hermesClient.connectEvents((ev) => {
+      get().applyGatewayEvent(ev);
+    });
+    set({ eventsConnected: true });
+  },
+
+  respondApproval: async (id, approve) => {
+    const entry = get().approvals.find((a) => a.id === id);
+    if (!entry) return;
+
+    get().ensureChatConnection();
+
+    // Wait briefly for the chat gateway socket to open (WS is async).
+    const deadline = Date.now() + 10_000;
+    while ((!chatConn || get().connectionState !== 'connected') && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    if (!chatConn || get().connectionState !== 'connected') {
+      set({ error: 'gateway not connected' });
+      return;
+    }
+
+    // Desktop: approval.respond { choice: "once" | "deny", session_id }
+    const choice: HermesApprovalChoice = approve ? 'once' : 'deny';
+    try {
+      await chatConn.request('approval.respond', {
+        choice,
+        session_id: entry.sessionId ?? undefined,
+      });
+      set({ approvals: removeApprovalById(get().approvals, id) });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       set({ error: message });

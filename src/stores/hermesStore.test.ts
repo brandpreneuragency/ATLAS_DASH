@@ -1,7 +1,14 @@
-// src/stores/hermesStore.test.ts — fixture events from hermes/types.ts (Task 7).
+// src/stores/hermesStore.test.ts — fixture events from hermes/types.ts (Task 7/10).
 import { describe, expect, it } from 'vitest';
-import { reduceGatewayEvent, type HermesChatReducerState } from './hermesStore';
+import {
+  reduceApprovalEvent,
+  reduceGatewayEvent,
+  removeApprovalById,
+  type HermesChatReducerState,
+  type PendingApproval,
+} from './hermesStore';
 import type {
+  HermesApprovalRequestEvent,
   HermesErrorEvent,
   HermesMessageCompleteEvent,
   HermesMessageDeltaEvent,
@@ -83,5 +90,67 @@ describe('reduceGatewayEvent', () => {
     const s1 = reduceGatewayEvent(empty(), { type: 'tool.start' } as never);
     expect(s1.messages).toHaveLength(0);
     expect(s1.pending).toBe('');
+  });
+});
+
+describe('reduceApprovalEvent', () => {
+  const approvalFixture = (sessionId: string, command: string): HermesApprovalRequestEvent => ({
+    type: 'approval.request',
+    session_id: sessionId,
+    payload: {
+      command,
+      description: 'dangerous command',
+      allow_permanent: true,
+      smart_denied: false,
+    },
+  });
+
+  it('adds one entry for approval.request', () => {
+    const next = reduceApprovalEvent([], approvalFixture('sess-1', 'rm -rf /tmp/x'));
+    expect(next).toHaveLength(1);
+    expect(next[0].id).toBe('sess-1');
+    expect(next[0].sessionId).toBe('sess-1');
+    expect(next[0].command).toBe('rm -rf /tmp/x');
+    expect(next[0].risk).toBe('dangerous command');
+  });
+
+  it('does not double-add duplicate request ids (same session)', () => {
+    const a = reduceApprovalEvent([], approvalFixture('sess-1', 'rm a'));
+    const b = reduceApprovalEvent(a, approvalFixture('sess-1', 'rm b'));
+    expect(b).toHaveLength(1);
+    expect(b[0].command).toBe('rm b');
+  });
+
+  it('removes the session approval on message.complete', () => {
+    const a = reduceApprovalEvent([], approvalFixture('sess-1', 'rm -rf /'));
+    const b = reduceApprovalEvent(a, {
+      type: 'message.complete',
+      session_id: 'sess-1',
+      payload: { text: 'done' },
+    } satisfies HermesMessageCompleteEvent);
+    expect(b).toHaveLength(0);
+  });
+
+  it('removes the session approval on error', () => {
+    const a = reduceApprovalEvent([], approvalFixture('sess-1', 'rm -rf /'));
+    const b = reduceApprovalEvent(a, {
+      type: 'error',
+      session_id: 'sess-1',
+      payload: { message: 'failed' },
+    } satisfies HermesErrorEvent);
+    expect(b).toHaveLength(0);
+  });
+
+  it('removeApprovalById drops the entry (respondApproval success path)', () => {
+    const list: PendingApproval[] = [
+      {
+        id: 'sess-1',
+        sessionId: 'sess-1',
+        command: 'rm x',
+        risk: 'dangerous command',
+        requestedAt: 1,
+      },
+    ];
+    expect(removeApprovalById(list, 'sess-1')).toHaveLength(0);
   });
 });

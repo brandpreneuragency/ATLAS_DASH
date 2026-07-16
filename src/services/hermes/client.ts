@@ -48,10 +48,18 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
 
 export interface HermesChatConnection {
   send(text: string, sessionId?: string | null): void;
+  /** JSON-RPC request/response on the chat gateway socket (approval.respond, etc.). */
+  request(method: string, params: Record<string, unknown>): Promise<unknown>;
   close(): void;
 }
 
 let _rpcId = 0;
+
+type PendingRpc = {
+  resolve: (value: unknown) => void;
+  reject: (err: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+};
 
 export const hermesClient = {
   listSessions: () =>
@@ -78,10 +86,53 @@ export const hermesClient = {
     onClose?: () => void;
   }): HermesChatConnection {
     const ws = new WebSocket(wsUrlFor('/hermes/api/ws'));
+    const pending = new Map<number, PendingRpc>();
+
+    const rejectAll = (reason: string) => {
+      for (const [, p] of pending) {
+        clearTimeout(p.timer);
+        p.reject(new Error(reason));
+      }
+      pending.clear();
+    };
+
     ws.onopen = () => handlers.onOpen?.();
-    ws.onclose = () => handlers.onClose?.();
+    ws.onclose = () => {
+      rejectAll('WebSocket closed');
+      handlers.onClose?.();
+    };
     ws.onmessage = (m) => {
-      const ev = parseGatewayFrame(typeof m.data === 'string' ? m.data : String(m.data));
+      const raw = typeof m.data === 'string' ? m.data : String(m.data);
+      try {
+        const frame = JSON.parse(raw) as {
+          id?: number | string;
+          result?: unknown;
+          error?: { message?: string };
+          method?: string;
+        };
+        // JSON-RPC response (no method) — settle a pending request.
+        if (
+          frame.id != null &&
+          frame.method === undefined &&
+          (frame.result !== undefined || frame.error !== undefined)
+        ) {
+          const idNum = typeof frame.id === 'number' ? frame.id : Number(frame.id);
+          const p = pending.get(idNum);
+          if (p) {
+            clearTimeout(p.timer);
+            pending.delete(idNum);
+            if (frame.error) {
+              p.reject(new Error(frame.error.message ?? 'RPC error'));
+            } else {
+              p.resolve(frame.result);
+            }
+            return;
+          }
+        }
+      } catch {
+        // fall through to event parse
+      }
+      const ev = parseGatewayFrame(raw);
       if (ev) handlers.onEvent(ev);
     };
     return {
@@ -98,7 +149,31 @@ export const hermesClient = {
           }),
         );
       },
-      close: () => ws.close(),
+      request: (method, params) =>
+        new Promise((resolve, reject) => {
+          if (ws.readyState !== WebSocket.OPEN) {
+            reject(new Error('gateway not connected'));
+            return;
+          }
+          const id = ++_rpcId;
+          const timer = setTimeout(() => {
+            pending.delete(id);
+            reject(new Error(`RPC timeout: ${method}`));
+          }, 30_000);
+          pending.set(id, { resolve, reject, timer });
+          ws.send(
+            JSON.stringify({
+              jsonrpc: '2.0',
+              id,
+              method,
+              params,
+            }),
+          );
+        }),
+      close: () => {
+        rejectAll('WebSocket closed');
+        ws.close();
+      },
     };
   },
 
