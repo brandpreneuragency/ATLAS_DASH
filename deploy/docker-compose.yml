@@ -1,0 +1,39 @@
+services:
+  caddy:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    container_name: tabs_caddy
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      TABS_BASIC_AUTH_USER: ${TABS_BASIC_AUTH_USER}
+      TABS_BASIC_AUTH_HASH: ${TABS_BASIC_AUTH_HASH}
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+      - /var/www/wagneratelier:/var/www/wagneratelier:ro
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    container_name: tabs_api
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      TABS_API_PORT: "4010"
+      TABS_FS_ROOTS: ${TABS_FS_ROOTS}
+      HERMES_DASHBOARD_URL: "http://127.0.0.1:9119"
+      HERMES_DASHBOARD_SESSION_TOKEN: ${HERMES_DASHBOARD_SESSION_TOKEN}
+    volumes:
+      - /home/admin:/home/admin
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4010/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  caddy_data:
+  caddy_config:
