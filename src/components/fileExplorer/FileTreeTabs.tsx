@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Brain } from 'lucide-react';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { getFolderConnector } from '../../services/runtime';
 import type { FolderConnector } from '../../services/folder-connector';
 import type { FsRoot } from '../../services/tabsApi';
+import { sortDocModeRoots } from './sortDocModeRoots';
 
 /** Duck-type for RemoteFolderConnector extras (avoids a static import that breaks code-splitting). */
 type RemoteConnector = FolderConnector & {
@@ -66,11 +68,17 @@ export function FileTreeTabs() {
     };
   }, []);
 
-  const remoteLabel =
+  const sortedRemoteRoots = useMemo(
+    () => (remoteRoots ? sortDocModeRoots(remoteRoots) : null),
+    [remoteRoots],
+  );
+
+  const activeRemoteRoot =
     remoteRoots && folderPath
       ? remoteRoots.find((r) => folderPath === `${r.id}:` || folderPath.startsWith(`${r.id}:`))
-          ?.label
       : undefined;
+  const remoteLabel = activeRemoteRoot?.label;
+  const isMemoriesFolder = activeRemoteRoot?.id === 'memories';
 
   const label = hasFolder
     ? (remoteLabel ?? folderPath!)
@@ -96,7 +104,7 @@ export function FileTreeTabs() {
     await connectFolderInWorkspace(activeWorkspaceId, path);
   };
 
-  const showRemotePicker = remoteReady && remoteRoots !== null && !hasFolder;
+  const showRemotePicker = remoteReady && sortedRemoteRoots !== null && !hasFolder;
 
   return (
     <div
@@ -123,12 +131,12 @@ export function FileTreeTabs() {
       }}
     >
       {showRemotePicker ? (
-        remoteRoots.length === 0 ? (
+        sortedRemoteRoots.length === 0 ? (
           <p className="subtle" style={{ margin: 0, padding: '4px 8px', fontSize: 'var(--fs-xs)' }}>
             {t('explorer.noRemoteRoots')}
           </p>
         ) : (
-          remoteRoots.map((root) => (
+          sortedRemoteRoots.map((root) => (
             <button
               key={root.id}
               type="button"
@@ -141,6 +149,9 @@ export function FileTreeTabs() {
               aria-label={t('explorer.connectRemoteRoot', { label: root.label })}
               title={root.label}
             >
+              {root.id === 'memories' ? (
+                <Brain size={14} className="filetree-select-folder-icon" aria-hidden />
+              ) : null}
               <span className="filetree-select-folder-label">{root.label}</span>
             </button>
           ))
@@ -155,6 +166,9 @@ export function FileTreeTabs() {
           aria-label={ariaLabel}
           title={hasFolder ? (remoteLabel ?? folderPath!) : t('explorer.selectFolder')}
         >
+          {isMemoriesFolder ? (
+            <Brain size={14} className="filetree-select-folder-icon" aria-hidden />
+          ) : null}
           <span className="filetree-select-folder-label">{label}</span>
         </button>
       )}

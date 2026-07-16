@@ -3957,6 +3957,11 @@ button.calendar-task-row {
   background: var(--c-background-3);
 }
 
+.filetree-select-folder-icon {
+  flex-shrink: 0;
+  color: var(--c-text-2);
+}
+
 .filetree-select-folder-label {
   flex: 1;
   min-width: 0;
