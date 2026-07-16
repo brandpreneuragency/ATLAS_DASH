@@ -311,8 +311,9 @@ export const useHermesStore = create<HermesStore>((set, get) => ({
     // durable stored id. If the caller passed the live id for the active chat,
     // re-home to the stored id so list highlight + transcript fetch work.
     let restId = id;
-    if (get().liveSessionId === id && get().storedSessionId) {
-      restId = get().storedSessionId;
+    const mappedStored = get().storedSessionId;
+    if (get().liveSessionId === id && mappedStored) {
+      restId = mappedStored;
     }
 
     set({
