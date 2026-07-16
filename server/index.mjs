@@ -4,14 +4,26 @@ import http from 'node:http';
 import { URL } from 'node:url';
 import { createFsHandlers, HttpError } from './lib/fs-handlers.mjs';
 import { createHermesProxy } from './lib/hermes-proxy.mjs';
+import { createHermesSession } from './lib/hermes-session.mjs';
 
 const PORT = Number(process.env.TABS_API_PORT || 4010);
 const roots = JSON.parse(process.env.TABS_FS_ROOTS || '[]');
 const allowSensitive = process.env.TABS_FS_ALLOW_SENSITIVE === '1';
 const fsHandlers = createFsHandlers({ roots, allowSensitive });
+const hermesTarget = process.env.HERMES_DASHBOARD_URL || 'http://127.0.0.1:9119';
+const hermesSession = createHermesSession({
+  target: hermesTarget,
+  username: process.env.HERMES_BASIC_AUTH_USER || '',
+  password: process.env.HERMES_BASIC_AUTH_PASSWORD || '',
+  // Local mint path (HMAC with dashboard.basic_auth.secret) when password is unset
+  secret: process.env.HERMES_BASIC_AUTH_SECRET || '',
+  provider: process.env.HERMES_BASIC_AUTH_PROVIDER || 'basic',
+  accessTtlSeconds: Number(process.env.HERMES_BASIC_AUTH_TTL_SECONDS || 0) || undefined,
+});
 const hermes = createHermesProxy({
-  target: process.env.HERMES_DASHBOARD_URL || 'http://127.0.0.1:9119',
+  target: hermesTarget,
   token: process.env.HERMES_DASHBOARD_SESSION_TOKEN || '',
+  session: hermesSession,
 });
 
 async function readJsonBody(req) {
@@ -29,7 +41,7 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': 'application/json' });
       return res.end('{"ok":true}');
     }
-    if (hermes.handleHttp(req, res)) return;
+    if (await hermes.handleHttp(req, res)) return;
 
     const url = new URL(req.url, 'http://x');
     const params = Object.fromEntries(url.searchParams);
@@ -62,7 +74,14 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.on('upgrade', (req, socket, head) => {
-  if (!hermes.handleUpgrade(req, socket, head)) socket.destroy();
+  Promise.resolve(hermes.handleUpgrade(req, socket, head))
+    .then((handled) => {
+      if (!handled) socket.destroy();
+    })
+    .catch((err) => {
+      console.error('[tabs_api] ws upgrade error:', err.message);
+      socket.destroy();
+    });
 });
 
 server.listen(PORT, '127.0.0.1', () => console.log(`tabs_api on 127.0.0.1:${PORT}`));
