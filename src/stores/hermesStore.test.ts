@@ -1,6 +1,7 @@
 // src/stores/hermesStore.test.ts — fixture events from hermes/types.ts (Task 7/10).
 import { describe, expect, it } from 'vitest';
 import {
+  eventBelongsToActiveChat,
   reduceApprovalEvent,
   reduceGatewayEvent,
   removeApprovalById,
@@ -90,6 +91,42 @@ describe('reduceGatewayEvent', () => {
     const s1 = reduceGatewayEvent(empty(), { type: 'tool.start' } as never);
     expect(s1.messages).toHaveLength(0);
     expect(s1.pending).toBe('');
+  });
+});
+
+describe('eventBelongsToActiveChat', () => {
+  it('matches live gateway session ids', () => {
+    expect(
+      eventBelongsToActiveChat(
+        { type: 'message.delta', session_id: '04f7477b' },
+        '04f7477b',
+        '20260716_224218_bd1d59',
+      ),
+    ).toBe(true);
+  });
+
+  it('matches stored REST ids', () => {
+    expect(
+      eventBelongsToActiveChat(
+        { type: 'message.complete', session_id: '20260716_224218_bd1d59' },
+        '04f7477b',
+        '20260716_224218_bd1d59',
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects events for other sessions', () => {
+    expect(
+      eventBelongsToActiveChat(
+        { type: 'message.delta', session_id: 'other' },
+        '04f7477b',
+        '20260716_224218_bd1d59',
+      ),
+    ).toBe(false);
+  });
+
+  it('accepts events without session_id', () => {
+    expect(eventBelongsToActiveChat({ type: 'gateway.ready' }, null, null)).toBe(true);
   });
 });
 

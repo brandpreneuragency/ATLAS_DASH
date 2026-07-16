@@ -193,8 +193,28 @@ export function removeApprovalById(
   return approvals.filter((a) => a.id !== id);
 }
 
+/**
+ * True when an inbound event belongs to the chat the UI is viewing.
+ * Gateway events use the short *live* session_id; REST list uses *stored* ids.
+ */
+export function eventBelongsToActiveChat(
+  ev: HermesGatewayEvent,
+  liveSessionId: string | null,
+  storedSessionId: string | null,
+): boolean {
+  if (!ev.session_id) return true;
+  if (liveSessionId && ev.session_id === liveSessionId) return true;
+  if (storedSessionId && ev.session_id === storedSessionId) return true;
+  return false;
+}
+
 interface HermesStore {
   sessions: HermesSession[];
+  /** Durable REST session id (list / history). Null = new draft chat. */
+  storedSessionId: string | null;
+  /** Live gateway session id for prompt.submit + stream events. */
+  liveSessionId: string | null;
+  /** @deprecated use storedSessionId — kept as alias for UI selection highlight */
   activeSessionId: string | null;
   messages: HermesChatBubble[];
   pending: string;
@@ -209,11 +229,11 @@ interface HermesStore {
   loadSessions: () => Promise<void>;
   openSession: (id: string) => Promise<void>;
   newSession: () => void;
-  sendPrompt: (text: string) => void;
+  sendPrompt: (text: string) => Promise<void>;
   applyGatewayEvent: (ev: HermesGatewayEvent) => void;
   renameSession: (id: string, title: string) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
-  ensureChatConnection: () => void;
+  ensureChatConnection: () => HermesChatConnection;
   disconnectChat: () => void;
   /** Start /api/events subscription once (app-wide for approval badge). */
   ensureEventsSubscription: () => void;
@@ -223,8 +243,47 @@ interface HermesStore {
 let chatConn: HermesChatConnection | null = null;
 let eventsUnsub: (() => void) | null = null;
 
+async function ensureGatewayReady(): Promise<HermesChatConnection> {
+  const conn = useHermesStore.getState().ensureChatConnection();
+  await conn.whenOpen();
+  return conn;
+}
+
+/**
+ * Bind a live gateway session for the current chat.
+ * - New draft: session.create
+ * - Existing stored chat without live id: session.resume
+ */
+async function ensureLiveSession(
+  conn: HermesChatConnection,
+  storedSessionId: string | null,
+  liveSessionId: string | null,
+): Promise<{ liveSessionId: string; storedSessionId: string | null }> {
+  if (liveSessionId) {
+    return { liveSessionId, storedSessionId };
+  }
+  if (storedSessionId) {
+    try {
+      const resumed = await conn.resumeSession(storedSessionId);
+      return {
+        liveSessionId: resumed.sessionId,
+        storedSessionId: resumed.storedSessionId ?? storedSessionId,
+      };
+    } catch {
+      // Resume can fail if the row is gone; fall through to create.
+    }
+  }
+  const created = await conn.createSession();
+  return {
+    liveSessionId: created.sessionId,
+    storedSessionId: created.storedSessionId ?? storedSessionId,
+  };
+}
+
 export const useHermesStore = create<HermesStore>((set, get) => ({
   sessions: [],
+  storedSessionId: null,
+  liveSessionId: null,
   activeSessionId: null,
   messages: [],
   pending: '',
@@ -249,7 +308,10 @@ export const useHermesStore = create<HermesStore>((set, get) => ({
 
   openSession: async (id) => {
     set({
+      storedSessionId: id,
       activeSessionId: id,
+      // Drop any previous live binding — must resume this stored id.
+      liveSessionId: null,
       loadingMessages: true,
       error: null,
       pending: '',
@@ -262,6 +324,23 @@ export const useHermesStore = create<HermesStore>((set, get) => ({
         .filter((m) => m.role === 'user' || m.role === 'assistant' || m.content);
       set({ messages, loadingMessages: false });
       get().ensureChatConnection();
+      // Best-effort resume so the first send is fast and events match.
+      void (async () => {
+        try {
+          const conn = await ensureGatewayReady();
+          // Bail if user switched sessions while we waited.
+          if (get().storedSessionId !== id) return;
+          const bound = await ensureLiveSession(conn, id, null);
+          if (get().storedSessionId !== id) return;
+          set({
+            liveSessionId: bound.liveSessionId,
+            storedSessionId: bound.storedSessionId ?? id,
+            activeSessionId: bound.storedSessionId ?? id,
+          });
+        } catch {
+          // Non-fatal: sendPrompt will resume/create on demand.
+        }
+      })();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       set({ loadingMessages: false, error: message, messages: [] });
@@ -270,6 +349,8 @@ export const useHermesStore = create<HermesStore>((set, get) => ({
 
   newSession: () => {
     set({
+      storedSessionId: null,
+      liveSessionId: null,
       activeSessionId: null,
       messages: [],
       pending: '',
@@ -287,9 +368,8 @@ export const useHermesStore = create<HermesStore>((set, get) => ({
       set({ approvals: nextApprovals });
     }
 
-    // Chat stream is scoped to the active session only.
-    const active = get().activeSessionId;
-    if (ev.session_id && active && ev.session_id !== active) {
+    // Chat stream is scoped to the active live/stored session only.
+    if (!eventBelongsToActiveChat(ev, get().liveSessionId, get().storedSessionId)) {
       return;
     }
     if (ev.type === 'approval.request') {
@@ -318,36 +398,39 @@ export const useHermesStore = create<HermesStore>((set, get) => ({
 
     set({ messages: next.messages, pending: next.pending });
 
-    // Gateway may assign a session_id on the first reply of a new chat.
-    if (!active && ev.session_id) {
-      set({ activeSessionId: ev.session_id });
+    // Capture live session_id if we somehow missed it from create/resume.
+    if (!get().liveSessionId && ev.session_id) {
+      set({ liveSessionId: ev.session_id });
     }
   },
 
   ensureChatConnection: () => {
-    if (chatConn) return;
+    if (chatConn) return chatConn;
     set({ connectionState: 'connecting' });
     chatConn = hermesClient.connectChat({
       onEvent: (ev) => get().applyGatewayEvent(ev),
       onOpen: () => set({ connectionState: 'connected' }),
       onClose: () => {
         chatConn = null;
-        set({ connectionState: 'disconnected' });
+        set({ connectionState: 'disconnected', liveSessionId: null });
       },
     });
+    return chatConn;
   },
 
   disconnectChat: () => {
     chatConn?.close();
     chatConn = null;
-    set({ connectionState: 'disconnected', streaming: false });
+    set({
+      connectionState: 'disconnected',
+      streaming: false,
+      liveSessionId: null,
+    });
   },
 
-  sendPrompt: (text) => {
+  sendPrompt: async (text) => {
     const trimmed = text.trim();
     if (!trimmed) return;
-
-    get().ensureChatConnection();
 
     const userBubble: HermesChatBubble = {
       id: `user-${Date.now()}`,
@@ -362,7 +445,36 @@ export const useHermesStore = create<HermesStore>((set, get) => ({
       error: null,
     }));
 
-    chatConn?.send(trimmed, get().activeSessionId);
+    try {
+      const conn = await ensureGatewayReady();
+      const bound = await ensureLiveSession(
+        conn,
+        get().storedSessionId,
+        get().liveSessionId,
+      );
+      set({
+        liveSessionId: bound.liveSessionId,
+        storedSessionId: bound.storedSessionId,
+        activeSessionId: bound.storedSessionId,
+      });
+      await conn.submitPrompt(bound.liveSessionId, trimmed);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      set((s) => ({
+        streaming: false,
+        pending: '',
+        error: message,
+        messages: [
+          ...s.messages,
+          {
+            id: `err-${Date.now()}`,
+            role: 'system',
+            content: message,
+            timestamp: Date.now(),
+          },
+        ],
+      }));
+    }
   },
 
   renameSession: async (id, title) => {
@@ -382,12 +494,22 @@ export const useHermesStore = create<HermesStore>((set, get) => ({
   deleteSession: async (id) => {
     try {
       await hermesClient.deleteSession(id);
-      const wasActive = get().activeSessionId === id;
+      const wasActive =
+        get().storedSessionId === id || get().activeSessionId === id;
       set((s) => ({
         sessions: s.sessions.filter((sess) => sess.id !== id),
-        approvals: s.approvals.filter((a) => a.sessionId !== id),
+        approvals: s.approvals.filter(
+          (a) => a.sessionId !== id && a.sessionId !== s.liveSessionId,
+        ),
         ...(wasActive
-          ? { activeSessionId: null, messages: [], pending: '', streaming: false }
+          ? {
+              storedSessionId: null,
+              liveSessionId: null,
+              activeSessionId: null,
+              messages: [],
+              pending: '',
+              streaming: false,
+            }
           : {}),
       }));
     } catch (err) {
@@ -408,24 +530,15 @@ export const useHermesStore = create<HermesStore>((set, get) => ({
     const entry = get().approvals.find((a) => a.id === id);
     if (!entry) return;
 
-    get().ensureChatConnection();
-
-    // Wait briefly for the chat gateway socket to open (WS is async).
-    const deadline = Date.now() + 10_000;
-    while ((!chatConn || get().connectionState !== 'connected') && Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 50));
-    }
-    if (!chatConn || get().connectionState !== 'connected') {
-      set({ error: 'gateway not connected' });
-      return;
-    }
-
-    // Desktop: approval.respond { choice: "once" | "deny", session_id }
-    const choice: HermesApprovalChoice = approve ? 'once' : 'deny';
     try {
-      await chatConn.request('approval.respond', {
+      const conn = await ensureGatewayReady();
+      // Prefer live id when approval was emitted with it; fall back to stored.
+      const sessionId =
+        entry.sessionId ?? get().liveSessionId ?? get().storedSessionId ?? undefined;
+      const choice: HermesApprovalChoice = approve ? 'once' : 'deny';
+      await conn.request('approval.respond', {
         choice,
-        session_id: entry.sessionId ?? undefined,
+        session_id: sessionId,
       });
       set({ approvals: removeApprovalById(get().approvals, id) });
     } catch (err) {
