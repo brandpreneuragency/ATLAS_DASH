@@ -139,6 +139,38 @@
   letter-spacing: 0.04em;
   color: var(--c-text-3);
 }
+.settings-provider-group-head--collapsible {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  min-height: var(--control-height-sm);
+}
+.settings-provider-group-head--collapsible:hover {
+  background: var(--c-background-3);
+  color: var(--c-text-2);
+}
+.settings-provider-group-head-toggle {
+  appearance: none;
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  padding: 0;
+}
+.settings-provider-group-head-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.settings-provider-group-head-label svg {
+  flex-shrink: 0;
+  color: var(--c-text-3);
+}
 .settings-provider-group-count {
   font-weight: 400;
   font-size: var(--fs-base);
@@ -151,7 +183,7 @@
   gap: 2px;
 }
 
-/* Scope toggle (writer/task) used by Actions + Agents. */
+/* Scope toggle (writer/task/crm) used by Actions + Agents. */
 .settings-scope-toggle {
   display: inline-flex;
   border: 1px solid var(--c-border-1);

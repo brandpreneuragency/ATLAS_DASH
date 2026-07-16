@@ -399,7 +399,7 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
                   <button
                     type="button"
                     className="btn-icon"
-                    style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}
+                    style={{ width: 24, height: 24, minWidth: 24, minHeight: 24 }}
                     onClick={(e) => { e.stopPropagation(); startNewFile(); }}
                     title={t('explorer.newFile')}
                     aria-label={t('explorer.newFile')}
@@ -409,7 +409,7 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
                   <button
                     type="button"
                     className="btn-icon"
-                    style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}
+                    style={{ width: 24, height: 24, minWidth: 24, minHeight: 24 }}
                     onClick={(e) => { e.stopPropagation(); startNewFolder(); }}
                     title={t('explorer.newFolder')}
                     aria-label={t('explorer.newFolder')}
@@ -422,7 +422,7 @@ export function TreeNode({ node, depth, searchActive = false }: TreeNodeProps) {
                 ref={kebabRef}
                 type="button"
                 className="btn-icon"
-                style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)', marginRight: 4 }}
+                style={{ width: 24, height: 24, minWidth: 24, minHeight: 24, marginRight: 4 }}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (contextMenu) {

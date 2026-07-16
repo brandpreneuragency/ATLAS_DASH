@@ -255,7 +255,7 @@ export function SelectionToolbar({ editor, editorScrollRef }: SelectionToolbarPr
   return createPortal(
     <div
       ref={toolbarRef}
-      className="drop"
+      className="drop selection-toolbar"
       style={{
         position: 'fixed',
         top: pos.y + 30,
@@ -264,7 +264,6 @@ export function SelectionToolbar({ editor, editorScrollRef }: SelectionToolbarPr
         padding: 8,
         marginTop: 5,
         borderRadius: 8,
-        border: '2px solid var(--c-accent-2)',
       }}
       onMouseDown={(e) => e.preventDefault()}
     >

@@ -39,8 +39,15 @@ export function joinPath(parent: string, name: string): string {
   return normalize(parent).replace(/\/+$/, '') + '/' + name;
 }
 
+/** Browser File System Access API synthetic root prefix (see browser-folder-connector). */
+const BROWSER_ROOT_PREFIX = '__BROWSER_ROOT__:';
+
 export function basename(p: string): string {
-  return normalize(p).split('/').pop() ?? p;
+  const base = normalize(p).split('/').pop() ?? p;
+  // Browser roots are stored as "__BROWSER_ROOT__:FolderName" with no slash.
+  return base.startsWith(BROWSER_ROOT_PREFIX)
+    ? base.slice(BROWSER_ROOT_PREFIX.length)
+    : base;
 }
 
 export function getExt(p: string): string {

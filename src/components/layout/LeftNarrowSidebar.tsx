@@ -1,6 +1,5 @@
-import { ClipboardList, FileText, PanelLeft, Sparkles, Users, Settings as SettingsIcon } from 'lucide-react';
+import { CheckCircle, FileText, TerminalSquare, Users, Settings as SettingsIcon } from 'lucide-react';
 import { useUIStore } from '../../stores/uiStore';
-import { useTheme } from '../../hooks/useTheme';
 
 export function LeftNarrowSidebar() {
   const taskMode = useUIStore((s) => s.taskMode);
@@ -13,42 +12,12 @@ export function LeftNarrowSidebar() {
   const activeView = useUIStore((s) => s.activeView);
   const openSettings = useUIStore((s) => s.openSettings);
   const setActiveView = useUIStore((s) => s.setActiveView);
-  const primaryWrapperOpen = useUIStore((s) => s.primaryWrapperOpen);
-  const togglePrimaryWrapper = useUIStore((s) => s.togglePrimaryWrapper);
-  const { isCyberpunk, toggleTheme } = useTheme();
-
-  const workspaceLabel = primaryWrapperOpen ? 'Hide workspace' : 'Show workspace';
-
-  const handlePrimaryToggle = () => {
-    const primaryEl = document.getElementById('primary-workspace-wrapper');
-    const focusInside = Boolean(
-      primaryWrapperOpen && primaryEl?.contains(document.activeElement),
-    );
-    togglePrimaryWrapper();
-    if (focusInside) {
-      requestAnimationFrame(() => {
-        document.getElementById('nav-btn-toggle-panel')?.focus();
-      });
-    }
-  };
+  const terminalPanelOpen = useUIStore((s) => s.terminalPanelOpen);
+  const setTerminalPanelOpen = useUIStore((s) => s.setTerminalPanelOpen);
 
   return (
     <div id="nav-bar" className="nav-bar">
-      <div className="nav-section" style={{ paddingTop: 0, paddingBottom: 0, gap: 0, borderTop: 'none' }}>
-        <button
-          id="nav-btn-toggle-panel"
-          type="button"
-          onClick={handlePrimaryToggle}
-          title={workspaceLabel}
-          aria-label={workspaceLabel}
-          aria-pressed={primaryWrapperOpen}
-          className={`nav-btn${primaryWrapperOpen ? ' nav-btn--on' : ''}`}
-        >
-          <PanelLeft size={15} />
-        </button>
-      </div>
-
-      <div className="nav-section" style={{ width: 'fit-content', gap: 6, paddingTop: 10, paddingBottom: 10, borderTop: 'none' }}>
+      <div className="nav-section" style={{ width: 'fit-content', gap: 6, paddingTop: 6, paddingBottom: 6, borderTop: 'none' }}>
         <button
           id="nav-btn-documents"
           type="button"
@@ -80,7 +49,7 @@ export function LeftNarrowSidebar() {
           title="Tasks"
           className={`mode-btn${taskMode ? ' mode-btn--on' : ''}`}
         >
-          <ClipboardList size={15} />
+          <CheckCircle size={15} />
         </button>
 
         <button
@@ -117,15 +86,17 @@ export function LeftNarrowSidebar() {
         </button>
       </div>
 
-      <div className="nav-section" style={{ justifyContent: 'flex-end', paddingBottom: 0, gap: 8 }}>
+      <div className="nav-section nav-section-bottom">
         <button
-          id="nav-btn-theme"
+          id="nav-btn-terminal"
           type="button"
-          onClick={toggleTheme}
-          title={isCyberpunk ? 'Switch to Default theme' : 'Switch to Cyberpunk theme'}
-          className={`nav-btn${isCyberpunk ? ' theme-btn--cyberpunk' : ''}`}
+          onClick={() => setTerminalPanelOpen(!terminalPanelOpen)}
+          title={terminalPanelOpen ? 'Hide terminal (Ctrl+J)' : 'Show terminal (Ctrl+J)'}
+          aria-label={terminalPanelOpen ? 'Hide terminal' : 'Show terminal'}
+          aria-pressed={terminalPanelOpen}
+          className={`nav-btn${terminalPanelOpen ? ' nav-btn--on' : ''}`}
         >
-          <Sparkles size={15} />
+          <TerminalSquare size={15} />
         </button>
       </div>
     </div>

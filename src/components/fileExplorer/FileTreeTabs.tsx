@@ -1,27 +1,57 @@
-import { Plus, ChevronDown } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 
+/**
+ * Workspace folder control for the file tree.
+ *
+ * Each workspace tab has at most one attached folder (the AI agent root).
+ * Empty: full-width "CONNECT FOLDER" opens the native picker.
+ * Selected: shows the full folder path; click is a no-op (no replace/clear).
+ */
 export function FileTreeTabs() {
   const { t } = useTranslation();
-  const {
-    activeWorkspaceId,
-    connectFolderInWorkspace,
-  } = useWorkspaceStore();
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const loading = useWorkspaceStore((s) => s.loading);
+  const connectFolderInWorkspace = useWorkspaceStore((s) => s.connectFolderInWorkspace);
+  const getActiveConnectedFolders = useWorkspaceStore((s) => s.getActiveConnectedFolders);
+  const getActiveFolderId = useWorkspaceStore((s) => s.getActiveFolderId);
+
+  const connectedFolders = getActiveConnectedFolders();
+  const activeFolderId = getActiveFolderId();
+  const activeFolder =
+    connectedFolders.find((f) => f.id === activeFolderId) ?? connectedFolders[0] ?? null;
+  // Prefer absolute path so the user sees the full route, not only the basename.
+  const folderPath = activeFolder?.path ?? activeFolder?.rootNode?.fullPath ?? null;
+  const hasFolder = Boolean(folderPath);
+  const canSelect = Boolean(activeWorkspaceId) && !hasFolder && !loading;
+
+  const label = hasFolder
+    ? folderPath!
+    : loading
+      ? t('explorer.opening')
+      : t('explorer.selectFolder');
+
+  const ariaLabel = hasFolder
+    ? t('explorer.workspaceFolderAria', { name: folderPath })
+    : t('explorer.selectFolder');
+
+  const handleClick = () => {
+    if (!canSelect || !activeWorkspaceId) return;
+    void connectFolderInWorkspace(activeWorkspaceId);
+  };
 
   return (
     <div
       id="filetree-root-row"
       style={{
         display: 'flex',
-        height: '56px',
+        height: '32px',
         alignItems: 'center',
         marginBottom: '0px',
         marginLeft: '0px',
         marginRight: '0px',
-        paddingTop: '0px',
-        paddingBottom: '0px',
+        paddingTop: '8px',
+        paddingBottom: '8px',
         paddingLeft: '0px',
         paddingRight: '8px',
         borderRadius: '8px 8px 0 0',
@@ -34,146 +64,15 @@ export function FileTreeTabs() {
     >
       <button
         type="button"
-        onClick={() => { if (activeWorkspaceId) void connectFolderInWorkspace(activeWorkspaceId); }}
-        title={t('explorer.openFolder')}
-        className="tbar-btn"
+        className={`filetree-select-folder-btn${hasFolder ? ' is-selected' : ''}`}
+        onClick={handleClick}
+        disabled={!canSelect}
+        aria-disabled={!canSelect}
+        aria-label={ariaLabel}
+        title={hasFolder ? folderPath! : t('explorer.selectFolder')}
       >
-        <Plus size={14} />
+        <span className="filetree-select-folder-label">{label}</span>
       </button>
-      <FolderDropdown />
-    </div>
-  );
-}
-
-/**
- * Custom dropdown for the active folder selector.
- *
- * Replaces the native <select> so the open menu can be styled
- * (padding, border, active-item background). Native <select>
- * popups are rendered by the OS and ignore most CSS.
- */
-function FolderDropdown() {
-  const { t } = useTranslation();
-  const {
-    activeWorkspaceId,
-    getActiveConnectedFolders,
-    getActiveFolderId,
-    setActiveFolderInWorkspace,
-  } = useWorkspaceStore();
-  const connectedFolders = getActiveConnectedFolders();
-  const activeFolderId = getActiveFolderId();
-  const [open, setOpen] = useState(false);
-  const [highlightIndex, setHighlightIndex] = useState<number>(-1);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-
-  const activeFolder = connectedFolders.find((f) => f.id === activeFolderId);
-  const displayText = activeFolder?.rootNode?.name ?? t('explorer.noFoldersConnected');
-  const hasItems = connectedFolders.length > 0;
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    const onMouseDown = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onMouseDown);
-    return () => document.removeEventListener('mousedown', onMouseDown);
-  }, [open]);
-
-  // Reset highlight when opening
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => {
-    if (open) {
-      const idx = connectedFolders.findIndex((f) => f.id === activeFolderId);
-      setHighlightIndex(idx >= 0 ? idx : 0);
-    }
-  }, [open, activeFolderId, connectedFolders]);
-
-  const select = (id: string) => {
-    if (activeWorkspaceId) setActiveFolderInWorkspace(activeWorkspaceId, id);
-    setOpen(false);
-    triggerRef.current?.focus();
-  };
-
-  const onTriggerKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      setOpen(true);
-    }
-  };
-
-  const onMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      setOpen(false);
-      triggerRef.current?.focus();
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setHighlightIndex((i) => (i + 1) % Math.max(connectedFolders.length, 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setHighlightIndex((i) =>
-        i <= 0 ? Math.max(connectedFolders.length - 1, 0) : i - 1,
-      );
-    } else if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      const folder = connectedFolders[highlightIndex];
-      if (folder) select(folder.id);
-    }
-  };
-
-  return (
-    <div
-      ref={containerRef}
-      className={`folder-dropdown ${open ? 'is-open' : ''}`}
-    >
-      <button
-        ref={triggerRef}
-        type="button"
-        className="folder-dropdown-trigger"
-        onClick={() => setOpen((o) => !o)}
-        onKeyDown={onTriggerKeyDown}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-      >
-        <span className="folder-dropdown-label">{displayText}</span>
-        <ChevronDown size={14} className="folder-dropdown-chevron" />
-      </button>
-      {open && (
-        <div
-          className="folder-dropdown-menu"
-          role={hasItems ? 'listbox' : undefined}
-          tabIndex={hasItems ? -1 : undefined}
-          onKeyDown={hasItems ? onMenuKeyDown : undefined}
-        >
-          {!hasItems && (
-            <div className="folder-dropdown-item is-empty">
-              {t('explorer.noFoldersConnected')}
-            </div>
-          )}
-          {connectedFolders.map((f, i) => {
-            const isActive = f.id === activeFolderId;
-            const isHighlighted = i === highlightIndex;
-            return (
-              <div
-                key={f.id}
-                role="option"
-                aria-selected={isActive}
-                className={`folder-dropdown-item ${isActive ? 'is-active' : ''} ${
-                  isHighlighted ? 'is-highlighted' : ''
-                }`}
-                onMouseEnter={() => setHighlightIndex(i)}
-                onClick={() => select(f.id)}
-              >
-                {f.rootNode?.name ?? 'Unnamed'}
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

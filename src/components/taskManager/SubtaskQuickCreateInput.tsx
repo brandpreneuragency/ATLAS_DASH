@@ -9,7 +9,7 @@ import {
 } from '../ui/Composer';
 import { useTaskStore } from '../../stores/taskStore';
 import { useUIStore } from '../../stores/uiStore';
-import { useThemedPlaceholder } from '../../utils/placeholders';
+import { usePlaceholder } from '../../utils/placeholders';
 import { parseTaskInput } from '../../services/nlpParser';
 import { getTodayIso, getTomorrowIso } from '../../services/taskFormat';
 import { TASK_TITLE_MAX_LENGTH } from '../../types';
@@ -78,7 +78,7 @@ export function SubtaskQuickCreateInput({ parentTaskId }: SubtaskQuickCreateInpu
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
   const datePickerRef = useRef<HTMLDivElement>(null);
-  const addSubtaskPlaceholder = useThemedPlaceholder('addSubtaskFooter');
+  const addSubtaskPlaceholder = usePlaceholder('addSubtaskFooter');
   const parsed = value.trim() ? parseTaskInput(value) : null;
 
   const effectiveDate = assignedDate ?? null;

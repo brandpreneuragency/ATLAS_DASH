@@ -78,7 +78,7 @@ export function AIModelSelector() {
           <div className="header-dropdown-separator">
             <button
               type="button"
-              onClick={() => { openSettings('models'); setOpen(false); }}
+              onClick={() => { openSettings('tools'); setOpen(false); }}
               className="drop-item drop-item--brand"
             >
               <Settings size={14} />

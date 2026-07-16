@@ -4,6 +4,7 @@ import type { ChatMessage } from '../../types';
 import { formatRelativeTime } from '../../utils/timeFormat';
 import { ChatBubbleContextMenu } from './ChatBubbleContextMenu';
 import { useChatStore } from '../../stores/chatStore';
+import { AttachmentPreviewItem, AttachmentPreviewList } from '../ui/AttachmentPreview';
 
 interface UserMessageProps {
   message: ChatMessage;
@@ -67,16 +68,20 @@ export function UserMessage({ message, onReplyMessage }: UserMessageProps) {
         </div>
       )}
       {message.attachments && message.attachments.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <AttachmentPreviewList className="composer-attachments--message">
           {message.attachments.map((att, i) => (
-            <img
-              key={i}
-              src={att.dataUrl}
-              alt={att.name}
-              style={{ height: 80, maxWidth: '100%', borderRadius: 8, objectFit: 'cover', border: '1px solid rgba(255,255,255,0.2)' }}
+            <AttachmentPreviewItem
+              key={`${att.path || att.name}-${i}`}
+              item={{
+                name: att.name,
+                kind: att.kind,
+                dataUrl: att.dataUrl,
+                mimeType: att.mimeType,
+                displayPath: att.displayPath,
+              }}
             />
           ))}
-        </div>
+        </AttachmentPreviewList>
       )}
       <div
         className="user-message-bubble"

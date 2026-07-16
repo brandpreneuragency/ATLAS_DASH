@@ -1,55 +1,19 @@
-import { useTheme } from '../hooks/useTheme';
-
 /**
- * Returns a placeholder string that may differ per theme.
- * The cyberpunk theme prepends ">" for that terminal feel.
+ * Shared placeholder copy for inputs across the app.
  */
-export function useThemedPlaceholder(key: keyof typeof PLACEHOLDERS, themeOverride?: 'default' | 'cyberpunk'): string {
-  const { theme } = useTheme();
-  const active = themeOverride ?? theme;
-  const map = PLACEHOLDERS[key];
-  return map[active] ?? map.default;
+export function usePlaceholder(key: keyof typeof PLACEHOLDERS): string {
+  return PLACEHOLDERS[key];
 }
 
 const PLACEHOLDERS = {
-  addTask: {
-    default: 'Add a task...',
-    cyberpunk: '> Add a task...',
-  },
-  transmitMessage: {
-    default: 'Write a comment...',
-    cyberpunk: '> Transmit message...',
-  },
-  queryAI: {
-    default: 'Ask AI...',
-    cyberpunk: '> Query AI...',
-  },
-  addSubtask: {
-    default: 'Add another subtask...',
-    cyberpunk: '> Add another subtask...',
-  },
-  addSubtaskFooter: {
-    default: 'Add a subtask...',
-    cyberpunk: '> Add a subtask...',
-  },
-  find: {
-    default: 'Find',
-    cyberpunk: '> Find',
-  },
-  replace: {
-    default: 'Replace',
-    cyberpunk: '> Replace',
-  },
-  searchFiles: {
-    default: 'Search files...',
-    cyberpunk: '> Search files...',
-  },
-  linkUrl: {
-    default: 'https://example.com',
-    cyberpunk: '> https://example.com',
-  },
-  altText: {
-    default: 'Alt text',
-    cyberpunk: '> Alt text',
-  },
+  addTask: 'Add a task...',
+  transmitMessage: 'Write a comment...',
+  queryAI: 'Ask AI...',
+  addSubtask: 'Add another subtask...',
+  addSubtaskFooter: 'Add a subtask...',
+  find: 'Find',
+  replace: 'Replace',
+  searchFiles: 'Search files...',
+  linkUrl: 'https://example.com',
+  altText: 'Alt text',
 } as const;

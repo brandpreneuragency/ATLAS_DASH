@@ -75,7 +75,7 @@ export function SidebarHeader() {
               <div className="border-t border-border mt-1 pt-1">
                 <button
                   type="button"
-                  onClick={() => { openSettings('models'); setModelDropdownOpen(false); }}
+                  onClick={() => { openSettings('tools'); setModelDropdownOpen(false); }}
                   className="w-full text-left px-3 py-2 text-xs text-brand hover:bg-highlight transition-colors"
                 >
                   {t('sidebar.manageModels')}

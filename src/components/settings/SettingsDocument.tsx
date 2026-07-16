@@ -1,5 +1,4 @@
 import { useUIStore } from '../../stores/uiStore';
-import { ModelsSection } from './ModelsSection';
 import { ActionsSection } from './ActionsSection';
 import { AppearanceSection } from './AppearanceSection';
 import { AgentsSection } from './AgentsSection';
@@ -12,8 +11,8 @@ export function SettingsDocument() {
   return (
     <div className="settings-document">
       <div className="settings-document-body">
-        {activeSettingsSubTab === 'models' && (
-          <ModelsSection />
+        {activeSettingsSubTab === 'tools' && (
+          <ToolsSection />
         )}
         {activeSettingsSubTab === 'actions' && (
           <ActionsSection />
@@ -23,9 +22,6 @@ export function SettingsDocument() {
         )}
         {activeSettingsSubTab === 'agents' && (
           <AgentsSection />
-        )}
-        {activeSettingsSubTab === 'tools' && (
-          <ToolsSection />
         )}
       </div>
     </div>

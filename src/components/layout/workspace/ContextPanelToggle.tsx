@@ -18,7 +18,7 @@ interface ContextPanelToggleProps {
 
 /**
  * Inner primary-wrapper control: collapses the mode contextual panel only.
- * Distinct from nav-btn-toggle-panel (whole primary wrapper).
+ * Distinct from header-btn-workspace (whole primary wrapper).
  */
 export function ContextPanelToggle({ mode, available }: ContextPanelToggleProps) {
   const open = useUIStore((s) => s.contextPanelOpenByMode[mode]);
@@ -39,7 +39,7 @@ export function ContextPanelToggle({ mode, available }: ContextPanelToggleProps)
       aria-label={label}
       aria-pressed={open}
     >
-      <Columns2 size={14} />
+      <Columns2 size={12} />
     </button>
   );
 }

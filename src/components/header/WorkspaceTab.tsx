@@ -5,6 +5,14 @@ import type { Workspace } from '../../types';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 
+const BROWSER_ROOT_PREFIX = '__BROWSER_ROOT__:';
+
+function tabLabel(name: string): string {
+  return name.startsWith(BROWSER_ROOT_PREFIX)
+    ? name.slice(BROWSER_ROOT_PREFIX.length)
+    : name;
+}
+
 interface WorkspaceTabProps {
   workspace: Workspace;
   isActive: boolean;
@@ -13,12 +21,33 @@ interface WorkspaceTabProps {
   onRename: (newName: string) => void;
   charLimit: number;
   colorIndex?: number;
+  /** Drag-to-reorder (optional; wired by TabBar). */
+  isDragging?: boolean;
+  dragOverSide?: 'before' | 'after' | null;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+  onDragEnd?: () => void;
 }
 
-export function WorkspaceTab({ workspace, isActive, onSelect, onClose, onRename, charLimit }: WorkspaceTabProps) {
+export function WorkspaceTab({
+  workspace,
+  isActive,
+  onSelect,
+  onClose,
+  onRename,
+  charLimit,
+  isDragging = false,
+  dragOverSide = null,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+}: WorkspaceTabProps) {
   const { t } = useTranslation();
+  const label = tabLabel(workspace.name ?? '');
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(workspace.name);
+  const [editValue, setEditValue] = useState(label);
   const [confirmClose, setConfirmClose] = useState(false);
   const saveCurrentFile = useWorkspaceStore((s) => s.saveCurrentFile);
 
@@ -30,13 +59,13 @@ export function WorkspaceTab({ workspace, isActive, onSelect, onClose, onRename,
 
   const handleDoubleClick = () => {
     if (isActive) {
-      setEditValue(workspace.name);
+      setEditValue(label);
       setIsEditing(true);
     }
   };
 
   const commitEdit = () => {
-    if (editValue.trim() && editValue !== workspace.name) {
+    if (editValue.trim() && editValue !== label) {
       onRename(editValue.trim());
     }
     setIsEditing(false);
@@ -52,11 +81,38 @@ export function WorkspaceTab({ workspace, isActive, onSelect, onClose, onRename,
     onClose();
   };
 
+  const dragClass = [
+    isDragging ? 'ws-tab--dragging' : '',
+    dragOverSide ? `ws-tab--drag-over ws-tab--drag-over-${dragOverSide}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <div
       id={`tab-ws-${isActive ? 'active' : 'passive'}-${workspace.id}`}
+      data-ws-tab-id={workspace.id}
+      role="tab"
+      aria-selected={isActive}
+      draggable={!isEditing}
       onClick={onSelect}
       onDoubleClick={handleDoubleClick}
+      onDragStart={(e) => {
+        if (isEditing) {
+          e.preventDefault();
+          return;
+        }
+        // Don't start a drag from the close button or rename input.
+        const target = e.target as HTMLElement;
+        if (target.closest('button, input')) {
+          e.preventDefault();
+          return;
+        }
+        onDragStart?.(e);
+      }}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
       onMouseDown={(e) => {
         e.stopPropagation();
         if (e.button === 1) {
@@ -64,7 +120,8 @@ export function WorkspaceTab({ workspace, isActive, onSelect, onClose, onRename,
           if (hasDirtyFile) { setConfirmClose(true); } else { onClose(); }
         }
       }}
-      className={`group relative justify-start min-w-0 pl-3 pr-1 ${isActive ? 'tab-active' : 'tab-passive'}`}
+      className={`group relative justify-start min-w-0 pl-3 pr-1 ${isActive ? 'tab-active' : 'tab-passive'}${dragClass ? ` ${dragClass}` : ''}`}
+      title={label}
     >
       <>
         {isEditing ? (
@@ -78,6 +135,7 @@ export function WorkspaceTab({ workspace, isActive, onSelect, onClose, onRename,
               if (e.key === 'Escape') { setIsEditing(false); }
             }}
             onClick={(e) => e.stopPropagation()}
+            draggable={false}
             title={t('tabs.renameTab') ?? 'Rename'}
             placeholder={t('tabs.tabNamePlaceholder') ?? 'Name'}
             className="txt-xs med bg-transparent outline-none w-24"
@@ -87,7 +145,7 @@ export function WorkspaceTab({ workspace, isActive, onSelect, onClose, onRename,
           <>
             <Folder size={12} className="mr-1 flex-shrink-0" />
             <span className="txt-xs med trunc">
-              {(workspace.name ?? '').slice(0, charLimit)}{(workspace.name ?? '').length > charLimit ? '…' : ''}
+              {label.slice(0, charLimit)}{label.length > charLimit ? '…' : ''}
             </span>
             {hasDirtyFile && (
               <span
@@ -109,6 +167,7 @@ export function WorkspaceTab({ workspace, isActive, onSelect, onClose, onRename,
         <button
           type="button"
           title={t('tabs.closeTab') ?? 'Close'}
+          draggable={false}
           onClick={(e) => {
             e.stopPropagation();
             if (hasDirtyFile) { setConfirmClose(true); } else { onClose(); }

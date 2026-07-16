@@ -36,12 +36,22 @@
   position: relative;
 }
 
+.composer-mode-toggle {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 .composer-mode-toggle[data-active='true'] {
   color: var(--c-accent-2);
-  background: var(--c-background-3);
+  background: transparent;
   border-radius: 6px;
 }
 
+.composer-mode-toggle:hover,
 #task-comment-card .composer-tool-button:hover {
   background: transparent;
 }
@@ -160,7 +170,13 @@
   margin-bottom: 0px;
   padding-top: 0;
   padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
   background-color: transparent;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  border-left: 1px solid var(--c-border-1);
 }
 
 /* tdp-meta-controls is now rendered inside .subtasks-toggle-bar
@@ -327,13 +343,12 @@
   white-space: nowrap;
 }
 
-.subtask-due-date-drop {
-  position: absolute;
-  top: 100%;
-  right: 0;
+:root .drop.subtask-due-date-drop {
+  position: fixed;
   min-width: 140px;
-  margin-top: 2px;
-  z-index: 1000;
+  margin-top: 0;
+  background: var(--c-background-3) !important;
+  border: none !important;
 }
 #tdc-subtasks-toggle {
   background: none;
@@ -398,14 +413,14 @@
   padding-left: 0px;
   padding-right: 0px;
   padding-bottom: 0;
-  height: 66px;
+  min-height: 66px;
+  height: auto;
   position: relative;
 }
 #task-comment-card .composer-input {
   border: none;
   background-color: rgba(255, 255, 255, 0);
   padding: 18px 18px 0;
-  height: fit-content;
   min-height: 42px;
   line-height: var(--line-normal);
   /* Native resize handle is replaced by a custom top-right handle. */
@@ -425,8 +440,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2;
+  z-index: 5;
   color: var(--c-text-3, #999);
+  touch-action: none;
+  user-select: none;
 }
 #task-comment-card .composer-resize-handle::before {
   content: '';
@@ -451,24 +468,7 @@
   border-image: none;
   background: unset;
 }
-#task-comment-card .comment-attachment-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0px;
-}
-#task-comment-card .comment-attachment-chip {
-  background: var(--c-background-4);
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: var(--fs-xs);
-}
-#task-comment-card .comment-attachment-chip button {
-  color: var(--c-text-2);
-}
-#task-comment-card .comment-attachment-progress {
-  align-self: center;
-  font-size: var(--fs-sm);
-}
+/* Attachment previews use shared ui/composer.css styles. */
 #task-comment-card .comment-file-input {
   display: none;
 }

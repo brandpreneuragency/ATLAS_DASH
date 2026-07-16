@@ -12,15 +12,15 @@ import type { TreeNode } from '../../stores/workspaceStore';
 import { readBinaryFile, basename, getExt } from '../../services/fs-adapter';
 import { isImageFile } from '../../utils/fileType';
 import { db } from '../../services/db';
-import { useThemedPlaceholder } from '../../utils/placeholders';
+import { usePlaceholder } from '../../utils/placeholders';
 import {
-  ComposerAttachments,
   ComposerCard,
   ComposerIconButton,
   ComposerRow,
   ComposerSendButton,
   ComposerTextarea,
 } from '../ui/Composer';
+import { AttachmentPreviewItem, AttachmentPreviewList } from '../ui/AttachmentPreview';
 import { ReasoningDropup } from './ReasoningDropup';
 import type { Attachment, ChatMessage, QuickPrompt } from '../../types';
 
@@ -39,7 +39,16 @@ function maxHeightVw(): number {
   return Math.round(window.innerWidth * 0.5);
 }
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+/** Vision-friendly image MIME types sent as multimodal image_url parts. */
+const IMAGE_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/bmp',
+  'image/svg+xml',
+]);
 
 /** Convert raw bytes to a base64 string (chunked to avoid call-stack limits). */
 function uint8ToBase64(bytes: Uint8Array): string {
@@ -128,7 +137,7 @@ export function ChatInput({ mode, threadId, workspaceId, taskId, settingsTab, re
   const accentColor = 'var(--c-accent-2)';
   const [value, setValue] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const queryAIPlaceholder = useThemedPlaceholder('queryAI');
+  const queryAIPlaceholder = usePlaceholder('queryAI');
 
   // Dropdown states
   const [actionsDropdownOpen, setActionsDropdownOpen] = useState(false);
@@ -255,6 +264,7 @@ export function ChatInput({ mode, threadId, workspaceId, taskId, settingsTab, re
     setValue('');
     setAttachments([]);
     onClearReply?.();
+    userHeightRef.current = 0;
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
@@ -314,6 +324,7 @@ export function ChatInput({ mode, threadId, workspaceId, taskId, settingsTab, re
 
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     const ta = textareaRef.current;
     if (!ta) return;
     const startY = e.clientY;
@@ -337,15 +348,45 @@ export function ChatInput({ mode, threadId, workspaceId, taskId, settingsTab, re
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = '';
+    const toast = (msg: string) => useUIStore.getState().showToast(msg, 'error');
     for (const file of files) {
-      if (!ALLOWED_TYPES.includes(file.type)) continue;
-      if (file.size > MAX_FILE_BYTES) continue;
+      if (file.size > MAX_FILE_BYTES) {
+        toast(`"${file.name}" is too large (max ${Math.round(MAX_FILE_BYTES / (1024 * 1024))} MB).`);
+        continue;
+      }
+      if (file.size === 0) {
+        toast(`"${file.name}" is empty.`);
+        continue;
+      }
+
+      const mimeType =
+        file.type ||
+        (isImageFile(file.name) ? imageMimeFromPath(file.name) : 'application/octet-stream');
+      const asImage =
+        IMAGE_MIME_TYPES.has(mimeType) ||
+        (mimeType.startsWith('image/') && isImageFile(file.name));
+
       const reader = new FileReader();
       reader.onload = () => {
-        setAttachments((prev) => [
-          ...prev,
-          { name: file.name, dataUrl: reader.result as string, mimeType: file.type },
-        ]);
+        const dataUrl = reader.result as string;
+        if (asImage) {
+          addAttachment({
+            name: file.name,
+            dataUrl,
+            mimeType,
+            kind: 'image',
+          });
+        } else {
+          addAttachment({
+            name: file.name,
+            dataUrl,
+            mimeType,
+            kind: 'file',
+          });
+        }
+      };
+      reader.onerror = () => {
+        toast(`Failed to read "${file.name}".`);
       };
       reader.readAsDataURL(file);
     }
@@ -403,7 +444,7 @@ export function ChatInput({ mode, threadId, workspaceId, taskId, settingsTab, re
         const bytes = await readBinaryFile(fullPath);
         const mime = imageMimeFromPath(fullPath);
         const dataUrl = `data:${mime};base64,${uint8ToBase64(bytes)}`;
-        addAttachment({ name, dataUrl, mimeType: mime });
+        addAttachment({ name, dataUrl, mimeType: mime, kind: 'image' });
       } catch {
         /* ignore unreadable images */
       }
@@ -592,47 +633,26 @@ export function ChatInput({ mode, threadId, workspaceId, taskId, settingsTab, re
           title="Drag up to expand"
         />
         {attachments.length > 0 && (
-          <ComposerAttachments>
-            {attachments.map((att, i) =>
-              att.kind === 'file' || att.kind === 'folder' ? (
-                <div key={i} className="composer-chip" title={(att.kind === 'folder' ? 'Folder: ' : 'File: ') + (att.displayPath || att.name)}>
-                  {att.kind === 'folder' ? (
-                    <Folder size={13} className="composer-chip-icon" />
-                  ) : (
-                    <File size={13} className="composer-chip-icon" />
-                  )}
-                  <span className="composer-chip-name">{att.displayPath || att.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeAttachment(i)}
-                    title={t('chat.removeFileAttachment')}
-                    className="composer-chip-remove"
-                  >
-                    <X size={9} style={{ color: '#fff' }} />
-                  </button>
-                </div>
-              ) : (
-                <div key={i} className="relative" style={{ display: 'inline-block' }}>
-                  <img
-                    src={att.dataUrl}
-                    alt={att.name}
-                    style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--c-border-1)' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeAttachment(i)}
-                    title={t('chat.removeAttachment')}
-                    className="absolute"
-                    style={{ top: -6, right: -6, width: 16, height: 16, background: 'var(--c-text-1)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0 }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0'; }}
-                  >
-                    <X size={9} style={{ color: '#fff' }} />
-                  </button>
-                </div>
-              )
-            )}
-          </ComposerAttachments>
+          <AttachmentPreviewList>
+            {attachments.map((att, i) => (
+              <AttachmentPreviewItem
+                key={`${att.path || att.name}-${i}`}
+                item={{
+                  name: att.name,
+                  kind: att.kind,
+                  dataUrl: att.dataUrl,
+                  mimeType: att.mimeType,
+                  displayPath: att.displayPath,
+                }}
+                onRemove={() => removeAttachment(i)}
+                removeTitle={
+                  att.kind === 'file' || att.kind === 'folder'
+                    ? t('chat.removeFileAttachment')
+                    : t('chat.removeAttachment')
+                }
+              />
+            ))}
+          </AttachmentPreviewList>
         )}
 
         <ComposerTextarea
@@ -643,7 +663,7 @@ export function ChatInput({ mode, threadId, workspaceId, taskId, settingsTab, re
           onKeyDown={handleKeyDown}
           placeholder={queryAIPlaceholder || t('chat.askPlaceholder', { name: activeAgent.name })}
           rows={1}
-          style={{ height: 'fit-content', padding: '18px 18px 0' }}
+          style={{ padding: '18px 18px 0' }}
         />
 
         {mentionOpen && (
@@ -680,16 +700,15 @@ export function ChatInput({ mode, threadId, workspaceId, taskId, settingsTab, re
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/gif,image/webp"
                 multiple
-                aria-label={t('chat.attachImage')}
+                aria-label={t('chat.attachFile')}
                 style={{ display: 'none' }}
                 onChange={handleFileChange}
               />
               <ComposerIconButton
                 onClick={() => fileInputRef.current?.click()}
                 className="composer-attach-button"
-                title={t('chat.attachImage')}
+                title={t('chat.attachFile')}
               >
                 <Plus size={14} />
               </ComposerIconButton>
@@ -758,7 +777,7 @@ export function ChatInput({ mode, threadId, workspaceId, taskId, settingsTab, re
                 <span className="trunc med chat-input-dropup-label">{activeAgent.name}</span>
               </button>
               {agentDropdownOpen && (
-                <div className="drop" style={{ right: 0, bottom: '100%', marginBottom: 4, minWidth: 180 }}>
+                <div className="drop" style={{ left: 0, bottom: '100%', marginBottom: 4, minWidth: 180 }}>
                   {scopedAgents.map((agent) => (
                     <button
                       type="button"
@@ -819,7 +838,7 @@ export function ChatInput({ mode, threadId, workspaceId, taskId, settingsTab, re
                   <div style={{ borderTop: '1px solid var(--c-border-1)', marginTop: 0, paddingTop: 0 }}>
                     <button
                       type="button"
-                      onClick={() => { openSettings('models'); setModelDropdownOpen(false); }}
+                      onClick={() => { openSettings('tools'); setModelDropdownOpen(false); }}
                       className="drop-item drop-item--brand"
                     >
                       {t('sidebar.manageModels')}

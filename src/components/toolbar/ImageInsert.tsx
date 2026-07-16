@@ -31,7 +31,7 @@ export function ImageInsert({ editor, onClose }: ImageInsertProps) {
 
   const insertUrl = () => {
     if (!editor || !url.trim()) return;
-    (editor.chain().focus() as any).setImage({ src: url.trim() }).run();
+    editor.chain().focus().setImage({ src: url.trim() }).run();
     onClose();
   };
 
@@ -44,7 +44,7 @@ export function ImageInsert({ editor, onClose }: ImageInsertProps) {
 
   const insertUpload = () => {
     if (!editor || !preview) return;
-    (editor.chain().focus() as any).setImage({ src: preview }).run(); // eslint-disable-line @typescript-eslint/no-explicit-any
+    editor.chain().focus().setImage({ src: preview }).run();
     onClose();
   };
 

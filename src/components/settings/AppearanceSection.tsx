@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { useThemeStore, getTokenDisplayValue } from '../../stores/themeStore';
-import { useTheme } from '../../hooks/useTheme';
 import { useUIStore } from '../../stores/uiStore';
 import { THEME_TOKEN_CATEGORIES, THEME_FONT_OPTIONS, type TokenCategory, type TokenDescriptor } from './themeTokenCatalog';
 import { SettingsContent } from './GeneralSettingsContent';
@@ -16,13 +15,12 @@ export function AppearanceSection() {
   const setToken = useThemeStore((s) => s.setToken);
   const resetToken = useThemeStore((s) => s.resetToken);
   const resetAll = useThemeStore((s) => s.resetAll);
-  const { theme, setTheme, available } = useTheme();
   const { editorFontFamily, editorFontSize, setEditorFontFamily, setEditorFontSize } = useUIStore();
 
   const [activeCategory, setActiveCategory] = useState<string>(GENERAL_CATEGORY_ID);
 
   const categories: TokenCategory[] = useMemo(
-    () => [{ id: GENERAL_CATEGORY_ID, label: 'General', hint: 'Theme, text size, font & language.', tokens: [] }, ...THEME_TOKEN_CATEGORIES],
+    () => [{ id: GENERAL_CATEGORY_ID, label: 'General', hint: 'Text size, font & language.', tokens: [] }, ...THEME_TOKEN_CATEGORIES],
     [],
   );
   const active = categories.find((c) => c.id === activeCategory) ?? categories[0];
@@ -45,16 +43,6 @@ export function AppearanceSection() {
     <div className="settings-detail-body">
       {active.id === GENERAL_CATEGORY_ID && (
         <>
-          <div>
-            <label className="semibold" style={{ display: 'block', fontSize: 'var(--fs-base)', color: 'var(--c-text-2)', marginBottom: 8 }}>Theme</label>
-            <div className="settings-scope-toggle">
-              {available.map((th) => (
-                <button key={th.id} className={theme === th.id ? 'is-active' : ''} onClick={() => setTheme(th.id)}>
-                  {th.label}
-                </button>
-              ))}
-            </div>
-          </div>
           <SettingsContent />
           <div>
             <label className="semibold" style={{ display: 'block', fontSize: 'var(--fs-base)', color: 'var(--c-text-2)', marginBottom: 8 }}>Editor font</label>
@@ -101,9 +89,7 @@ export function AppearanceSection() {
 
   return (
     <SettingsPanels
-      leftHeader={<div className="settings-list-head"><h3>Categories</h3></div>}
       leftMain={leftMain}
-      centerHeader={<div className="settings-list-head"><h3>{active.label}</h3></div>}
       centerMain={centerMain}
     />
   );

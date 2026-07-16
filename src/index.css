@@ -29,15 +29,15 @@ select:focus-visible {
   --right-bg: var(--c-background-3);
 
   /* Soft warm palette inspired by screenshots */
-  --c-background-1: #333;
+  --c-background-1: #222;
   --c-background-2: #222;
   --c-background-3: #111;
   --c-background-4: #000;
 
   /* Panel Accents */
   --c-accent-1: #df3f00;
-  --c-accent-2:#d35115;
-  --c-accent-3:#af3200;
+  --c-accent-2:#a53d0d;
+  --c-accent-3:#611e04;
 
   /* Text Layers */
   --c-text-1: #e7e7e7;
@@ -272,9 +272,8 @@ input.ctrl-xs.editor-topbar-title-input {
   background: transparent !important;
 }
 
-/* Cyberpunk overrides for TaskListPanel */
 #task-list-content {
-  padding-top: 12px;
+  padding-top: 0;
 }
 
 /*TABS*/
@@ -346,8 +345,8 @@ input.ctrl-xs.editor-topbar-title-input {
   align-items: stretch;
   min-width: 0;
   min-height: 0;
-  height: fit-content;
-  padding-left: 12px;
+  height: 32px;
+  padding-left: 6px;
   padding-right: 0;
   background-color: rgba(17, 17, 17, 0);
   user-select: none;
@@ -383,8 +382,8 @@ input.ctrl-xs.editor-topbar-title-input {
 }
 
 .app-titlebar__window-control {
-  width: 46px;
-  min-width: 46px;
+  width: 39px;
+  min-width: 32px;
   height: 100%;
   display: inline-flex;
   align-items: center;
@@ -510,6 +509,9 @@ input.ctrl-xs.editor-topbar-title-input {
 .subtasks-toggle-bar-row > .context-panel-toggle {
   flex: 0 0 auto;
 }
+.subtasks-toggle-bar-row > .tdp-meta-swap-btn {
+  margin-left: auto;
+}
 
 .subtasks-title-input {
   font-size: var(--fs-base);
@@ -565,13 +567,16 @@ button.subtasks-title-input {
   width: 100%;
   flex: 1;
   margin-bottom: 0;
-  padding: 0;
-  border: none;
-  border-width: 0;
-  border-color: transparent;
-  border-style: none;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 10px;
+  padding-right: 10px;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  border-left: 1px solid var(--c-border-1);
   border-image: none;
-  border-radius: 8px;
+  border-radius: 0;
   background-color: transparent;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 600;
@@ -584,12 +589,15 @@ button.subtasks-title-input:focus,
 button.subtasks-title-input:focus-visible,
 button.subtasks-title-input:active {
   outline: none;
-  border: none;
-  border-width: 0;
-  border-color: transparent;
-  border-style: none;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  border-left: 1px solid var(--c-border-1);
   border-image: none;
-  padding: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 10px;
+  padding-right: 10px;
   box-shadow: none;
   background-color: transparent;
 }
@@ -623,8 +631,8 @@ input.subtasks-title-input:focus-visible {
 }
 
 .subtasks-complete-btn {
-  flex: 0 0 42px;
-  width: fit-content;
+  flex: 0 0 32px;
+  width: 32px;
   height: 32px;
   min-height: 32px;
   padding: 0;
@@ -641,14 +649,14 @@ input.subtasks-title-input:focus-visible {
   transition: background-color 0.15s, color 0.15s;
 }
 .subtasks-complete-btn:hover:not(:disabled) {
-  background-color: var(--c-background-2);
+  background-color: transparent;
   color: var(--c-emerald-600, #059669);
 }
 .subtasks-complete-btn--completed {
   color: var(--c-emerald-600, #059669);
 }
 .subtasks-complete-btn--completed:hover:not(:disabled) {
-  background-color: var(--c-background-2);
+  background-color: transparent;
   color: var(--c-text-2);
 }
 .subtasks-complete-btn:disabled {
@@ -712,7 +720,7 @@ input.subtasks-title-input:focus-visible {
   flex: 1 1 auto;
   min-width: 0;
   gap: 0;
-  height: 100%;
+  height: 32px;
   vertical-align: middle;
   padding: 0;
   overflow-x: auto;
@@ -773,6 +781,47 @@ input.subtasks-title-input:focus-visible {
   color: var(--c-text-2);
 }
 
+/* Workspace tab drag-to-reorder (subtle) */
+.tabs-row--reordering {
+  cursor: grabbing;
+}
+
+.tabs-row > [data-ws-tab-id] {
+  will-change: transform;
+}
+
+.ws-tab--dragging {
+  opacity: 0.38;
+  cursor: grabbing;
+  z-index: 2;
+}
+
+.ws-tab--drag-over {
+  position: relative;
+}
+
+/* Thin vertical insert indicator between tabs */
+.ws-tab--drag-over::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--c-accent-2, var(--c-accent-center-panel, #6b8afd));
+  pointer-events: none;
+  opacity: 0.85;
+  transition: opacity 0.12s ease;
+}
+
+.ws-tab--drag-over-before::before {
+  left: 0;
+}
+
+.ws-tab--drag-over-after::before {
+  right: 0;
+}
+
 /* Per-tab-type base styling (id hooks for doc vs task) */
 [id^="tab-doc-active"],
 [id^="tab-doc-passive"],
@@ -805,15 +854,15 @@ input.subtasks-title-input:focus-visible {
 
 [id^="tab-module-active"] {
   border-radius: 8px 8px 0 0;
-  height: 28px;
+  height: 32px;
   margin-top: 4px;
   margin-bottom: 0;
 }
 
 [id^="tab-ws-active"] {
   border-radius: 8px 8px 0 0;
-  height: 28px;
-  margin-top: 6px;
+  height: 32px;
+  margin-top: 4px;
   margin-bottom: 0;
 }
 
@@ -832,7 +881,7 @@ input.subtasks-title-input:focus-visible {
 [id^="tab-module-active"].tab-active {
   border: none;
   border-radius: 8px 8px 0 0;
-  height: 28px;
+  height: 32px;
   margin-top: 4px;
   margin-bottom: 0;
   padding-top: 8px;
@@ -843,8 +892,8 @@ input.subtasks-title-input:focus-visible {
 [id^="tab-ws-active"].tab-active {
   border: none;
   border-radius: 8px 8px 0 0;
-  height: 28px;
-  margin-top: 6px;
+  height: 32px;
+  margin-top: 4px;
   margin-bottom: 0;
   gap: 4px;
   background: var(--c-accent-1);
@@ -889,14 +938,14 @@ input.subtasks-title-input:focus-visible {
 
 [id^="tab-module-passive"] {
   border-radius: 8px 8px 0 0;
-  height: 28px;
+  height: 32px;
   margin-top: 4px;
   margin-bottom: 0;
 }
 
 [id^="tab-ws-passive"] {
   border-radius: 8px 8px 0 0;
-  height: 28px;
+  height: 32px;
   margin-top: 4px;
   margin-bottom: 0;
   padding-top: 8px;
@@ -1108,7 +1157,7 @@ input.subtasks-title-input:focus-visible {
   background: unset;
   background-color: rgba(211, 211, 211, 0);
   border-radius: 8px 8px 0 0;
-  height: 28px;
+  height: 32px;
   margin-top: 4px;
   margin-bottom: 0;
 }
@@ -1116,7 +1165,7 @@ input.subtasks-title-input:focus-visible {
 [id^="tab-ws-passive"].tab-passive,
 [id^="tab-ws-passive"].tab-passive:hover {
   background-color: rgba(30, 30, 30, 0);
-  height: 28px;
+  height: 32px;
   margin-top: 4px;
   margin-bottom: 0;
 }
@@ -1156,8 +1205,8 @@ input.subtasks-title-input:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 28px;
-  min-height: 28px;
+  height: 32px;
+  min-height: 32px;
   width: var(--div-h-1);
   flex-shrink: 0;
   margin: 4px 0 0;
@@ -1417,6 +1466,17 @@ input.subtasks-title-input:focus-visible {
   height: fit-content;
   margin-right: 10px;
 }
+.filetree-actions .btn-icon {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  box-sizing: border-box;
+}
+.filetree-actions .btn-icon:hover {
+  background: transparent;
+}
 .filetree-search {
   position: relative;
   display: flex;
@@ -1443,11 +1503,12 @@ input.subtasks-title-input:focus-visible {
   min-width: 0;
   height: fit-content;
   margin-right: 4px;
-  border: 1px solid var(--c-border-1);
-  border-radius: 8px;
+  border: none;
+  border-bottom: 1px solid var(--c-border-1);
+  border-radius: 0;
   padding: 8px 12px;
   outline: none;
-  background: var(--c-background-2);
+  background: transparent;
   color: var(--c-text-1);
   font-size: var(--fs-base);
   transition: border-color 0.15s, background 0.15s;
@@ -1459,8 +1520,8 @@ input.subtasks-title-input:focus-visible {
   color: var(--c-text-2);
 }
 .filetree-search-input:focus {
-  border-color: var(--c-accent-1);
-  background: var(--c-background-3);
+  border-bottom-color: var(--c-accent-1);
+  background: transparent;
 }
 .filetree-search-clear {
   position: absolute;
@@ -1659,6 +1720,20 @@ ul {
   column-gap: 0px; row-gap: 0px;
 }
 
+#editor-topbar .tbar-btn {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  box-sizing: border-box;
+}
+
+#editor-topbar .tbar-btn:hover,
+#editor-topbar .tbar-btn--on,
+#editor-topbar .tbar-btn--on:hover {
+  background: transparent !important;
+}
+
 .editor-pane {
   display: flex;
   flex-direction: column;
@@ -1666,7 +1741,7 @@ ul {
 }
 
 #editor-topbar-find.tbar-btn--on {
-  background-color: var(--c-background-2);
+  background-color: transparent;
 }
 .editor-topbar-search {
   position: absolute;
@@ -1861,7 +1936,7 @@ ul {
   font-size: var(--fs-base);
 }
 .tiptap-editor pre {
-  background: #1F2937;
+  background: var(--c-background-3);
   color: #F9FAFB;
   padding: 1rem;
   border-radius: 8px;
@@ -2097,11 +2172,14 @@ input.ctrl-xs.editor-topbar-search-input {
 
 /* Global button baseline Ã¢â‚¬â€ all 199 buttons connect to these tokens */
 button {
-  min-height: var(--control-height-sm);
-  min-width: var(--control-height-sm);
   height: var(--control-height-sm);
   width: var(--control-height-sm);
   box-sizing: border-box;
+}
+
+button:hover {
+  background: none;
+  color: var(--c-accent-1);
 }
 
 /* Task list items: `.task-item` auto-sizes to its content
@@ -2139,7 +2217,7 @@ button.task-item--on:hover,
 .task-item--on,
 .task-item--on:hover {
   background: transparent;
-  background-color: var(--c-accent-3);
+  background-color: var(--c-background-3);
   border: none;
   border-image: none;
 }
@@ -2209,6 +2287,9 @@ button.calendar-task-row {
 .btn-icon:hover {
   background: var(--c-background-2);
   color: var(--c-accent-1);
+}
+.btn-icon.composer-tool-button:hover {
+  background: transparent;
 }
 .btn-icon .lucide-folder-plus {
   height: 13px;
@@ -2302,7 +2383,7 @@ button.calendar-task-row {
   color: var(--c-accent-1);
 }
 .nav-btn:hover {
-  background: var(--c-background-2);
+  background: transparent;
   color: var(--c-accent-1);
 }
 #nav-btn-settings {
@@ -2312,31 +2393,6 @@ button.calendar-task-row {
 #nav-btn-settings.nav-btn--on:hover {
   background-color: var(--c-accent-2);
   color: var(--c-accent-2);
-}
-#nav-btn-toggle-panel {
-  width: var(--div-h-1);
-  height: var(--div-h-1);
-  padding: 0;
-  border-radius: 8px;
-  border-top: none;
-  border-bottom: none;
-  border-left: none;
-  border-right: none;
-}
-#nav-btn-toggle-panel:hover {
-  background: transparent;
-  color: var(--c-accent-1);
-}
-#nav-btn-toggle-panel:active {
-  color: var(--c-text-3);
-}
-#nav-btn-toggle-panel.nav-btn--on {
-  background-color: rgba(30, 41, 59, 0);
-  color: var(--c-text-2);
-}
-#nav-btn-toggle-panel.nav-btn--on:hover {
-  background-color: rgba(30, 41, 59, 0);
-  color: var(--c-accent-1);
 }
 
 /* Mode buttons in universal header */
@@ -2393,7 +2449,6 @@ button.calendar-task-row {
 #nav-btn-tasks:hover,
 #nav-btn-crm:hover,
 #nav-btn-settings:hover,
-#nav-btn-theme:hover,
 #nav-btn-documents.mode-btn--on:hover,
 #nav-btn-tasks.mode-btn--on:hover,
 #nav-btn-crm.mode-btn--on:hover,
@@ -2449,7 +2504,7 @@ button.calendar-task-row {
 }
 
 .nav-bar > .nav-section:last-child {
-  margin-top: auto;
+  margin-top: 0;
 }
 
 .nav-section-center {
@@ -2457,8 +2512,11 @@ button.calendar-task-row {
 }
 
 .nav-section-bottom {
+  height: 100%;
+  margin-top: auto;
   justify-content: flex-end;
   padding-bottom: 12px;
+  border-top: none;
 }
 
 .nav-toggle-bar {
@@ -2584,15 +2642,28 @@ button.calendar-task-row {
 /* File explorer search dropdown â€” matches chat composer drop styling */
 .fep-header .filetree-search {
   width: 100%;
-  margin: 0 5px;
+  margin: 0;
+  padding: 6px 0;
   height: auto;
 }
 
 .fep-header .filetree-search .drop {
-  width: 250px;
+  width: 182px;
   min-width: 0;
   max-height: 280px;
   overflow-y: auto;
+  margin-top: 0;
+  margin-right: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border: none;
+  background: var(--c-background-3);
+}
+
+:root .fep-header .filetree-search .drop {
+  background: var(--c-background-3) !important;
+  border: none !important;
+  border-image: none !important;
 }
 .drop-item {
   display: flex;
@@ -3483,7 +3554,7 @@ button.calendar-task-row {
   padding: 0px;
 }
 :root #header-bar .tabs-row {
-  height: 100%;
+  height: 32px;
 }
 
 /* AI Sidebar Toggle Column */
@@ -3496,17 +3567,23 @@ button.calendar-task-row {
   flex-shrink: 0;
 }
 .ai-toggle-btn {
-  width: fit-content;
-  height: 100%;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  box-sizing: border-box;
   background: transparent;
   border: none;
   cursor: pointer;
   color: var(--c-text-2);
 }
 .ai-toggle-btn:hover {
+  background: transparent;
   color: var(--c-accent-1);
 }
 .ai-toggle-btn--on {
@@ -3573,7 +3650,7 @@ button.calendar-task-row {
 :root [id^="tab-module-active"].tab-active {
   border: none;
   border-radius: 8px 8px 0 0;
-  height: 28px;
+  height: 32px;
   margin-top: 4px;
   margin-bottom: 0;
   padding-top: 8px;
@@ -3583,8 +3660,8 @@ button.calendar-task-row {
 :root [id^="tab-ws-active"].tab-active {
   border: none;
   border-radius: 8px 8px 0 0;
-  height: 28px;
-  margin-top: 6px;
+  height: 32px;
+  margin-top: 4px;
   margin-bottom: 0;
   gap: 4px;
   background: var(--c-accent-1);
@@ -3637,7 +3714,7 @@ button.calendar-task-row {
   background: unset;
   background-color: rgba(211, 211, 211, 0);
   border-radius: 8px 8px 0 0;
-  height: 28px;
+  height: 32px;
   margin-top: 4px;
   margin-bottom: 0;
 }
@@ -3645,7 +3722,7 @@ button.calendar-task-row {
 :root [id^="tab-ws-passive"].tab-passive,
 :root [id^="tab-ws-passive"].tab-passive:hover {
   background-color: rgba(30, 30, 30, 0);
-  height: 28px;
+  height: 32px;
   margin-top: 4px;
   margin-bottom: 0;
   padding-top: 8px;
@@ -3659,8 +3736,8 @@ button.calendar-task-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 28px;
-  min-height: 28px;
+  height: 32px;
+  min-height: 32px;
   width: var(--topbar-height);
   flex-shrink: 0;
   margin-top: 4px;
@@ -3825,124 +3902,67 @@ button.calendar-task-row {
   border-radius: 8px !important;
 }
 
+/* Selection toolbar floating menu */
+:root .drop.selection-toolbar {
+  background: var(--c-background-3) !important;
+  border: none !important;
+  border-image: none !important;
+}
+
 :root select,
 :root option {
   font-family: var(--c-font-1) !important;
 }
 
-#filetree-root-row .tbar-btn {
-  width: var(--div-h-1);
-  height: var(--div-h-1);
-  padding: 0;
-}
-
-#filetree-root-row .tbar-btn:hover {
-  background: var(--c-background-2);
-  color: var(--c-accent-1);
-}
-
-/* Custom folder dropdown (replaces native <select>) */
-.folder-dropdown {
-  position: relative;
+/* Single full-width workspace folder button (one folder per tab) */
+.filetree-select-folder-btn {
   flex: 1;
-  min-width: 0;
-  height: 100%;
-  margin-left: 8px;
-}
-
-.folder-dropdown-trigger {
   width: 100%;
-  height: 100%;
+  min-width: 0;
+  height: 32px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 8px;
-  background: transparent;
-  border: none;
-  padding: 0 4px 0 0;
-  cursor: pointer;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px solid var(--c-border-1);
+  border-radius: 8px;
+  background: var(--c-background-4);
+  color: var(--c-text-1);
   font-family: var(--c-font-1) !important;
   font-size: var(--fs-base);
-  color: var(--c-text-1);
-  text-align: left;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-align: center;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
-.folder-dropdown-trigger:focus,
-.folder-dropdown-trigger:focus-visible {
+.filetree-select-folder-btn:hover:not(:disabled):not(.is-selected) {
+  background-color: var(--c-background-3);
+}
+
+.filetree-select-folder-btn:focus,
+.filetree-select-folder-btn:focus-visible {
   outline: none;
 }
 
-.folder-dropdown.is-open .folder-dropdown-trigger {
-  color: var(--c-accent-1);
+.filetree-select-folder-btn:disabled,
+.filetree-select-folder-btn.is-selected {
+  cursor: default;
+  opacity: 1;
+  color: var(--c-text-1);
+  background: var(--c-background-3);
 }
 
-.folder-dropdown-label {
+.filetree-select-folder-label {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.folder-dropdown-chevron {
-  flex-shrink: 0;
-  color: var(--c-text-2);
-  transition: transform 120ms ease;
-}
-
-.folder-dropdown.is-open .folder-dropdown-chevron {
-  transform: rotate(180deg);
-  color: var(--c-accent-1);
-}
-
-.folder-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  margin-top: -16px;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  background-color: var(--c-background-1);
-  border: 1px solid var(--c-accent-1);
-  border-radius: 6px;
-  padding: 6px;
-  max-height: 320px;
-  overflow-y: auto;
-  box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.35);
-  font-family: var(--c-font-1) !important;
-  font-size: var(--fs-base);
-  color: var(--c-text-1);
-}
-
-.folder-dropdown-item {
-  padding: 6px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  color: var(--c-text-1);
-  margin-bottom: 4px;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-.folder-dropdown-item:last-child {
-  margin-bottom: 0;
-}
-
-.folder-dropdown-item.is-active,
-.folder-dropdown-item.is-highlighted,
-.folder-dropdown-item:hover {
-  background-color: var(--c-background-2);
-  color: var(--c-accent-1);
-}
-
-.folder-dropdown-item.is-empty {
-  color: var(--c-text-2);
-  cursor: default;
-}
-
-.folder-dropdown-item.is-empty:hover {
-  background-color: transparent;
-  color: var(--c-text-2);
 }
 
 /* File-tree search input (shell rules moved to src/styles/panels.css) */
@@ -3966,7 +3986,8 @@ button.calendar-task-row {
   padding-left: 0px;
   padding-right: 0px;
   padding-bottom: 0;
-  height: 66px;
+  min-height: 66px;
+  height: auto;
 }
 :root #task-comment-card .task-comment-bottom-row {
   display: grid;
@@ -4077,7 +4098,7 @@ button.calendar-task-row {
   align-items: center;
   height: fit-content;
   min-height: 0;
-  padding: 0 12px 6px;
+  padding: 0 12px 6px 6px;
   gap: 0;
   overflow: visible;
   z-index: 2;
@@ -4093,17 +4114,17 @@ button.calendar-task-row {
 :root #chat-input-card .chat-input-bottom-col--left {
   display: flex;
   align-items: center;
-  column-gap: 0px; row-gap: 0px;
+  gap: 4px;
   width: 100%;
   min-width: 0;
   overflow: visible;
-  padding: 0;
+  padding: 0 4px;
   height: fit-content;
 }
 :root #chat-input-card .chat-input-bottom-col--tools {
   display: flex;
   gap: 4px;
-  padding: 0 0 0 6px;
+  padding: 0;
   min-width: 0;
   overflow: visible;
 }
@@ -4118,27 +4139,39 @@ button.calendar-task-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: fit-content;
-  width: auto;
-  min-width: 0;
-  padding: 6px;
-  gap: 6px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  gap: 0;
+  box-sizing: border-box;
+  flex-shrink: 0;
   border: none;
-  border-radius: 0;
+  border-radius: 8px;
   background: transparent;
   color: var(--c-text-2);
   font-size: var(--fs-base);
-  text-align: left;
+  text-align: center;
   cursor: pointer;
   vertical-align: middle;
   overflow: hidden;
 }
 :root #chat-input-card .chat-input-bottom-col--tools .chat-input-dropup-btn {
-  width: var(--div-h-1);
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
 }
 :root #chat-input-card .chat-input-bottom-col--tools .chat-input-dropup-btn:hover {
   background: transparent;
+}
+:root #chat-input-card .composer-tool-button {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  box-sizing: border-box;
 }
 :root #chat-input-card .composer-tool-button:hover {
   background: transparent;
@@ -4157,10 +4190,10 @@ button.calendar-task-row {
   z-index: 3;
 }
 :root #chat-input-card .chat-input-bottom-col--model .chat-input-dropup-btn {
-  width: fit-content;
+  width: 32px;
+  height: 32px;
   margin-right: 4px;
-  padding-left: 10px;
-  padding-right: 10px;
+  padding: 0;
 }
 :root #chat-input-card .chat-input-bottom-col--agent {
   width: fit-content;
@@ -4170,10 +4203,14 @@ button.calendar-task-row {
   z-index: 3;
 }
 :root #chat-input-card .chat-input-bottom-col--agent .chat-input-dropup-btn {
-  width: fit-content;
+  width: 32px;
+  height: 32px;
   margin-right: 4px;
-  padding-left: 10px;
-  padding-right: 10px;
+  padding: 0;
+}
+:root #chat-input-card .chat-input-dropup-label,
+:root #chat-input-card .chat-input-dropup-chevron {
+  display: none;
 }
 :root .btn-send svg {
   width: 14px;
@@ -4214,12 +4251,9 @@ button.calendar-task-row {
 }
 @container (max-width: 280px) {
   :root #chat-input-card .chat-input-dropup-btn {
-    width: var(--div-h-1);
+    width: 32px;
+    height: 32px;
     padding: 0;
-  }
-  :root #chat-input-card .chat-input-dropup-label,
-  :root #chat-input-card .chat-input-dropup-chevron {
-    display: none;
   }
 }
 :root #chat-input {
@@ -4227,7 +4261,6 @@ button.calendar-task-row {
   min-height: 42px;
   display: flex;
   flex-wrap: nowrap;
-  height: fit-content;
   vertical-align: middle;
   padding: 18px 18px 0;
   line-height: var(--line-normal);
@@ -4251,8 +4284,10 @@ button.calendar-task-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2;
+  z-index: 5;
   color: var(--c-text-2, #999);
+  touch-action: none;
+  user-select: none;
 }
 :root #chat-input-card .composer-resize-handle::before {
   content: '';
@@ -4271,7 +4306,8 @@ button.calendar-task-row {
   padding-left: 0px;
   padding-right: 0px;
   padding-bottom: 0;
-  height: 66px;
+  min-height: 66px;
+  height: auto;
 }
 :root #chat-input-root {
   background: transparent;
@@ -4757,12 +4793,25 @@ button.calendar-task-row {
   gap: 4px;
 }
 
-.right-panel-subheader-actions .tbar-btn:hover {
-  background: var(--c-background-2);
+.right-panel-subheader .tbar-btn {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  box-sizing: border-box;
+}
+
+.right-panel-subheader-actions .tbar-btn:hover,
+.right-panel-subheader .tbar-btn:hover {
+  background: transparent !important;
 }
 
 .right-panel-subheader .tbar-btn--on {
-  background-color: var(--c-background-2);
+  background-color: transparent;
+}
+
+.right-panel-subheader .tbar-btn--on:hover {
+  background: transparent !important;
 }
 
 .right-panel-subheader .editor-topbar-col {

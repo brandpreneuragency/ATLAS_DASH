@@ -8,7 +8,7 @@ import {
   ComposerSendButton,
 } from '../ui/Composer';
 import { useTaskStore } from '../../stores/taskStore';
-import { useThemedPlaceholder } from '../../utils/placeholders';
+import { usePlaceholder } from '../../utils/placeholders';
 import { useProjectStore } from '../../stores/projectStore';
 import { parseTaskInput } from '../../services/nlpParser';
 import { getTodayIso, getTomorrowIso } from '../../services/taskFormat';
@@ -138,7 +138,7 @@ export function QuickCreateInput({
   const dateInputRef = useRef<HTMLInputElement>(null);
   const projectRef = useRef<HTMLDivElement>(null);
   const datePickerRef = useRef<HTMLDivElement>(null);
-  const addTaskPlaceholder = useThemedPlaceholder('addTask');
+  const addTaskPlaceholder = usePlaceholder('addTask');
   const parsed = value.trim() ? parseTaskInput(value) : null;
 
   // Track which NLP tokens have already been transferred to dropdown state

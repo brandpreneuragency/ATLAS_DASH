@@ -6,6 +6,7 @@ import { ProviderStatusBadge } from '../../modals/modelProvider/ProviderStatusBa
 import { ProviderTabs, type ProviderTabId } from './ProviderTabs';
 import { ProviderConnectionTab } from './ProviderConnectionTab';
 import { ProviderModelsTab } from './ProviderModelsTab';
+import { isPresetProviderId } from './providerPresets';
 
 interface ProviderDetailPanelProps {
   provider: AIProviderConfig;
@@ -70,6 +71,8 @@ export function ProviderDetailPanel({
   }, [confirmDelete]);
 
   const status = provider.status ?? 'not_connected';
+  const isPreset = isPresetProviderId(provider.id);
+  const deleteLabel = isPreset ? t('models.resetProvider') : t('models.deleteProvider');
   const modelCount = (provider.models ?? []).length;
   const enabledCount = (provider.models ?? []).filter(
     (m) => !hiddenModels.includes(`${provider.id}:${m.id}`),
@@ -108,8 +111,8 @@ export function ProviderDetailPanel({
               type="button"
               onClick={() => setConfirmDelete(true)}
               className="btn-icon"
-              title={t('models.deleteProvider')}
-              aria-label={t('models.deleteProvider')}
+              title={deleteLabel}
+              aria-label={deleteLabel}
             >
               <Trash2 size={14} />
             </button>
@@ -137,7 +140,7 @@ export function ProviderDetailPanel({
                   }}
                   className="btn-xs settings-delete-confirm-btn"
                 >
-                  {t('models.deleteProvider')}
+                  {deleteLabel}
                 </button>
               </div>
             )}

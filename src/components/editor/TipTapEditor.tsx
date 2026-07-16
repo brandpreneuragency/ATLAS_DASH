@@ -17,6 +17,7 @@ import { Extension } from '@tiptap/core';
 import { UndoRedo } from '@tiptap/extensions/undo-redo';
 import { Fragment, Slice } from '@tiptap/pm/model';
 import type { EditorView } from '@tiptap/pm/view';
+import { ClearFormattingOnEnter } from './ClearFormattingOnEnter';
 import { InlineTextPreset } from './InlineTextPreset';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import { useUIStore } from '../../stores/uiStore';
@@ -165,6 +166,7 @@ export function TipTapEditor({
       TaskItem.configure({ nested: true }),
       Placeholder.configure({ placeholder: 'Start writing...' }),
       Typography,
+      ClearFormattingOnEnter,
       EditorShortcuts,
     ],
     []
@@ -225,17 +227,19 @@ export function TipTapEditor({
   }, [editor, editable]);
 
   useEffect(() => {
-    if (!editor) return;
-    const el = editor.view.dom as HTMLElement;
-    el.style.fontFamily = editorFontFamily; // eslint-disable-line react-hooks/immutability
-    el.classList.remove('font-size-14', 'font-size-16');
-    if (editorFontSize !== 12) el.classList.add(`font-size-${editorFontSize}`);
-    // Sync font-size class to the wrapper so the title input inherits the correct sizing
+    // Apply font styles via wrapper DOM (not editor.view) so React Compiler
+    // immutability rules do not treat this as mutating the useEditor return value.
     const wrapper = wrapperRef.current;
-    if (wrapper) {
-      wrapper.classList.remove('font-size-14', 'font-size-16');
-      if (editorFontSize !== 12) wrapper.classList.add(`font-size-${editorFontSize}`);
+    if (!wrapper) return;
+    const el = wrapper.querySelector('.ProseMirror') as HTMLElement | null;
+    if (el) {
+      el.style.fontFamily = editorFontFamily;
+      el.classList.remove('font-size-14', 'font-size-16');
+      if (editorFontSize !== 12) el.classList.add(`font-size-${editorFontSize}`);
     }
+    // Sync font-size class to the wrapper so the title input inherits the correct sizing
+    wrapper.classList.remove('font-size-14', 'font-size-16');
+    if (editorFontSize !== 12) wrapper.classList.add(`font-size-${editorFontSize}`);
   }, [editor, editorFontFamily, editorFontSize]);
 
   // Load content when file changes, preserving full editor state (including

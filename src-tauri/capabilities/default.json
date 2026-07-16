@@ -31,6 +31,7 @@
     "dialog:default",
     "http:default",
     "updater:default",
+    "process:default",
     {
       "identifier": "http:default",
       "allow": [
@@ -38,6 +39,8 @@
         { "url": "https://api.openai.com/*" },
         { "url": "https://generativelanguage.googleapis.com/*" },
         { "url": "https://openrouter.ai/*" },
+        { "url": "https://integrate.api.nvidia.com/*" },
+        { "url": "https://opencode.ai/*" },
         { "url": "https://api.tavily.com/*" },
         { "url": "https://api.firecrawl.dev/*" },
         { "url": "https://github.com/*" },

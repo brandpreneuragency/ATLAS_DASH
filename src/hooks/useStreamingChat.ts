@@ -16,6 +16,8 @@ import { invokeWebSearch, formatSearchResultsAsContext } from '../services/searc
 import type { AIProviderConfig } from '../types';
 import { secureStorage } from '../services/secureStorage';
 import { estimateTokens, estimateMessageTokens } from '../utils/tokens';
+import { decodeDataUrlText } from '../utils/fileData';
+import { getFileCategory, isTextFile } from '../utils/fileType';
 import { useAgentLoop } from './useAgentLoop';
 import {
   AI_TOOLS,
@@ -32,10 +34,47 @@ function shortId() {
 
 const MAX_CONTEXT_BYTES = 64 * 1024;
 
-/** Read file/folder attachments into a text block for the AI. File contents are
- *  read fresh at send time (not persisted on the message) and truncated to
- *  MAX_CONTEXT_BYTES; folders emit a shallow name listing only. Images are
- *  handled separately as image_url parts and skipped here. */
+/** Heuristic: content looks textual if the sample has no NUL bytes. */
+function looksLikeText(content: string): boolean {
+  if (!content) return true;
+  const sample = content.slice(0, 8192);
+  for (let i = 0; i < sample.length; i++) {
+    if (sample.charCodeAt(i) === 0) return false;
+  }
+  return true;
+}
+
+function isTextLikeAttachment(att: Attachment): boolean {
+  const category = getFileCategory(att.name, att.mimeType);
+  if (category === 'text' || category === 'code') return true;
+  if (isTextFile(att.name)) return true;
+  const mime = (att.mimeType || '').toLowerCase();
+  if (mime.startsWith('text/')) return true;
+  if (
+    mime === 'application/json' ||
+    mime === 'application/xml' ||
+    mime === 'application/javascript' ||
+    mime === 'application/typescript' ||
+    mime === 'application/x-yaml' ||
+    mime === 'application/yaml' ||
+    mime === 'application/csv' ||
+    mime === 'application/sql'
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function truncateContext(content: string): string {
+  if (content.length <= MAX_CONTEXT_BYTES) return content;
+  return content.slice(0, MAX_CONTEXT_BYTES) + '\n…[truncated]';
+}
+
+/** Read file/folder attachments into a text block for the AI.
+ *  - Path-based attachments: contents are read fresh at send time.
+ *  - Picker attachments (dataUrl, no path): decoded inline when text-like.
+ *  - Folders: shallow name listing only.
+ *  Images are handled separately as image_url parts and skipped here. */
 async function buildAttachmentContext(attachments?: Attachment[]): Promise<string> {
   if (!attachments || attachments.length === 0) return '';
   const blocks: string[] = [];
@@ -44,13 +83,27 @@ async function buildAttachmentContext(attachments?: Attachment[]): Promise<strin
     const label = att.displayPath || att.name;
     if (att.kind === 'file' && att.path) {
       try {
-        let content = await readTextFile(att.path);
-        if (content.length > MAX_CONTEXT_BYTES) {
-          content = content.slice(0, MAX_CONTEXT_BYTES) + '\n…[truncated]';
-        }
+        const content = truncateContext(await readTextFile(att.path));
         blocks.push(`[File: ${label}]\n${content}`);
       } catch {
         blocks.push(`[File: ${label}]\n<Unable to read file>`);
+      }
+    } else if (att.kind === 'file' && att.dataUrl) {
+      // File-picker attachments without a workspace path.
+      try {
+        const preferText = isTextLikeAttachment(att);
+        const decoded = decodeDataUrlText(att.dataUrl);
+        if (preferText || looksLikeText(decoded)) {
+          blocks.push(`[File: ${label}]\n${truncateContext(decoded)}`);
+        } else {
+          const mime = att.mimeType || 'application/octet-stream';
+          blocks.push(
+            `[File: ${label}]\n<Binary file (${mime}); content not included as text. ` +
+              `Describe or convert it if you need its contents.>`,
+          );
+        }
+      } catch {
+        blocks.push(`[File: ${label}]\n<Unable to read attached file>`);
       }
     } else if (att.kind === 'folder' && att.path) {
       try {

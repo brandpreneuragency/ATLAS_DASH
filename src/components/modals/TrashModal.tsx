@@ -26,9 +26,8 @@ export function TrashModal({ onClose }: TrashModalProps) {
     setLoading(false);
   };
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
-    loadDeleted();
+    void loadDeleted(); // eslint-disable-line react-hooks/set-state-in-effect -- initial fetch of soft-deleted tasks
   }, []);
 
   const handleRestore = async (id: string) => {

@@ -28,10 +28,9 @@ export function AgentEditorForm({ agentId, scope, onDone }: AgentEditorFormProps
   const [avatarUrl, setAvatarUrl] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (editingAgent) {
-      setName(editingAgent.name);
+      setName(editingAgent.name); // eslint-disable-line react-hooks/set-state-in-effect -- hydrate form when selected agent changes
       setAvatarUrl(editingAgent.avatarUrl);
       setSystemPrompt(editingAgent.systemPrompt);
     } else {

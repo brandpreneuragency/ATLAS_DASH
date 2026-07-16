@@ -253,7 +253,6 @@ export function FileExplorerPanel() {
                 title={t('explorer.newFile')}
                 aria-label={t('explorer.newFile')}
                 className="btn-icon"
-                style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}
               >
                 <FilePlus size={14} />
               </button>
@@ -263,7 +262,6 @@ export function FileExplorerPanel() {
                 title={t('explorer.newFolder')}
                 aria-label={t('explorer.newFolder')}
                 className="btn-icon"
-                style={{ width: 'var(--control-height-sm)', height: 'var(--control-height-sm)' }}
               >
                 <FolderPlus size={12} />
               </button>
@@ -273,7 +271,7 @@ export function FileExplorerPanel() {
                 className="drop"
                 role="listbox"
                 aria-label={t('explorer.searchFiles')}
-                style={{ left: 0, top: '100%', marginTop: 4, minWidth: 0, width: 250 }}
+                style={{ left: 0, top: '100%', marginTop: 0, marginRight: 0, minWidth: 0, width: 182 }}
               >
                 {searchIndexing && (
                   <div className="subtle" style={{ padding: '8px 12px', fontSize: 'var(--fs-base)' }}>
@@ -312,7 +310,7 @@ export function FileExplorerPanel() {
       </div>
 
       {/* Body */}
-      <div className="panel-body ai-scroll flex-1 overflow-y-a" style={{ minHeight: 0, padding: '8px 0' }}>
+      <div className="panel-body ai-scroll flex-1 overflow-y-a" style={{ minHeight: 0, padding: '8px 8px 8px 0' }}>
         {error && (
           <p style={{ fontSize: 'var(--fs-xs)', color: '#EF4444', marginBottom: 8, lineHeight: 1.375 }}>{error}</p>
         )}

@@ -78,15 +78,18 @@ export function ActionsSection() {
   const leftMain = (
     <div className="settings-list-body">
       <div className="settings-scope-toggle" style={{ marginBottom: 8 }}>
-        {(['writer', 'task'] as const).map((s) => (
-          <button key={s} className={scope === s ? 'is-active' : ''} onClick={() => setScope(s)}>
-            {s === 'writer' ? 'Writer' : 'Task'}
+        {([
+          { id: 'writer', label: 'Writer' },
+          { id: 'task', label: 'Task' },
+          { id: 'crm', label: 'CRM' },
+        ] as const).map((s) => (
+          <button key={s.id} className={scope === s.id ? 'is-active' : ''} onClick={() => setScope(s.id)}>
+            {s.label}
           </button>
         ))}
       </div>
 
       <button className="settings-add-btn" onClick={handleNewAction}><Plus size={14} /> New action</button>
-      <button className="settings-add-btn" onClick={() => void createGroup('New group')}><FolderPlus size={14} /> New group</button>
 
       {groups.map((g) => {
         const items = actionsInGroup(g.id);
@@ -164,9 +167,7 @@ export function ActionsSection() {
   return (
     <>
       <SettingsPanels
-        leftHeader={<div className="settings-list-head"><h3>Actions</h3><span className="subtle" style={{ fontSize: 'var(--fs-base)' }}>{actions.length}</span></div>}
         leftMain={leftMain}
-        centerHeader={<div className="settings-list-head"><h3>{selected ? 'Edit action' : 'Actions'}</h3></div>}
         centerMain={centerMain}
       />
       {menu && (
@@ -210,9 +211,13 @@ function ActionDetail({ action, groups, onSave, onDelete }: ActionDetailProps) {
   const [icon, setIcon] = useState('');
   const [groupId, setGroupId] = useState<string | undefined>(undefined);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
-    if (action) { setTitle(action.title); setPrompt(action.prompt); setIcon(action.icon ?? ''); setGroupId(action.groupId); }
+    if (action) {
+      setTitle(action.title); // eslint-disable-line react-hooks/set-state-in-effect -- hydrate detail form when selection changes
+      setPrompt(action.prompt);
+      setIcon(action.icon ?? '');
+      setGroupId(action.groupId);
+    }
   }, [action]);
 
   if (!action) {

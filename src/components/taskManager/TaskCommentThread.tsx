@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { TaskComment, FileViewerItem } from '../../types';
-import { Paperclip, Play, Reply, Sparkles, Trash2 } from 'lucide-react';
+import { Reply, Sparkles, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useLongPress } from '../../hooks/useLongPress';
 import { useTaskCommentStore } from '../../stores/taskCommentStore';
 import { useUIStore } from '../../stores/uiStore';
 import { getFileCategory, inferMimeTypeFromDataUrl, synthesizeAttachmentName } from '../../utils/fileType';
+import { AttachmentPreviewItem, AttachmentPreviewList } from '../ui/AttachmentPreview';
+import type { AttachmentPreviewKind } from '../ui/AttachmentPreview';
 
 interface TaskCommentThreadProps {
   comments: TaskComment[];
@@ -156,7 +158,14 @@ function CommentContextMenu({
   );
 }
 
-function AttachmentPreview({
+function commentAttachmentKind(name: string, mimeType?: string): AttachmentPreviewKind {
+  const category = getFileCategory(name, mimeType);
+  if (category === 'image') return 'image';
+  if (category === 'video') return 'video';
+  return 'file';
+}
+
+function CommentAttachmentPreview({
   comment,
   onOpenFileViewer,
 }: {
@@ -165,100 +174,23 @@ function AttachmentPreview({
 }) {
   const fileItem = getCommentAttachmentFile(comment);
   if (!fileItem) return null;
-  const category = getFileCategory(fileItem.name, fileItem.mimeType);
+  const kind = commentAttachmentKind(fileItem.name, fileItem.mimeType);
   const src = fileItem.dataUrl || fileItem.path || '';
 
-  const handleClick = () => {
-    onOpenFileViewer(fileItem);
-  };
-
-  if (category === 'image' && src) {
-    return (
-      <button
-        type="button"
-        onClick={handleClick}
-        className="media-thumb"
-        style={{ padding: 0, border: 'none', background: 'transparent' }}
-      >
-        <img
-          src={src}
-          alt={fileItem.name}
-          style={{
-            display: 'block',
-            maxWidth: 200,
-            width: 181,
-            height: 'auto',
-            objectFit: 'contain',
-          }}
-        />
-      </button>
-    );
-  }
-
-  if (category === 'video' && src) {
-    if (!comment.attachmentPreviewDataUrl) {
-      return (
-        <button
-          type="button"
-          onClick={handleClick}
-          className="row-xs c-ptr trans-opacity" style={{background:'transparent',padding:12,borderRadius:8,border:'none',color:'var(--c-accent-2)',fontSize:'var(--fs-xs)',width:'100%',textAlign:'left',height:'fit-content'}}
-        >
-          <Paperclip size={11} />
-          <span className="trunc">{fileItem.name}</span>
-        </button>
-      );
-    }
-
-    return (
-      <button
-        type="button"
-        onClick={handleClick}
-        className="media-thumb"
-        style={{ padding: 0, border: 'none', background: 'transparent' }}
-      >
-        <div style={{ position: 'relative' }}>
-          <img
-            src={comment.attachmentPreviewDataUrl}
-            alt={fileItem.name}
-            style={{
-              display: 'block',
-              maxWidth: 200,
-              width: '100%',
-              height: 'auto',
-              objectFit: 'contain',
-            }}
-          />
-          <span
-            style={{
-              position: 'absolute',
-              right: 10,
-              bottom: 10,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 30,
-              height: 30,
-              borderRadius: '999px',
-              background: 'rgba(0, 0, 0, 0.66)',
-              color: '#fff',
-            }}
-          >
-            <Play size={14} fill="currentColor" />
-          </span>
-        </div>
-      </button>
-    );
-  }
-
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className="row-xs c-ptr trans-opacity" style={{background:'transparent',padding:12,borderRadius:8,border:'none',color:'var(--c-accent-2)',fontSize:'var(--fs-xs)',width:'100%',textAlign:'left',height:'fit-content'}}
-    >
-      <Paperclip size={11} />
-      <span className="trunc">{fileItem.name}</span>
-    </button>
+    <AttachmentPreviewList className="composer-attachments--inline">
+      <AttachmentPreviewItem
+        item={{
+          name: fileItem.name,
+          kind,
+          mimeType: fileItem.mimeType,
+          dataUrl: kind === 'image' ? src : undefined,
+          previewUrl: kind === 'video' ? comment.attachmentPreviewDataUrl : kind === 'image' ? src : undefined,
+          sizeLabel: fileItem.size,
+        }}
+        onClick={() => onOpenFileViewer(fileItem)}
+      />
+    </AttachmentPreviewList>
   );
 }
 
@@ -334,7 +266,7 @@ function CommentBubble({
             <p className="txt-xs" style={{whiteSpace:'pre-wrap',color:'var(--c-text-1)'}}>{comment.text}</p>
           )}
           {hasAttachment && (
-            <AttachmentPreview comment={comment} onOpenFileViewer={onOpenFileViewer} />
+            <CommentAttachmentPreview comment={comment} onOpenFileViewer={onOpenFileViewer} />
           )}
         </div>
       </div>

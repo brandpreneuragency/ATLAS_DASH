@@ -92,12 +92,11 @@ export function EditorTopBar({ editor, onSave }: EditorTopBarProps) {
     return positions;
   };
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (searchOpen) {
       const saved = currentFile ? searchStateByDoc[currentFile.path] : undefined;
       const q = saved?.query ?? '';
-      setQuery(q);
+      setQuery(q); // eslint-disable-line react-hooks/set-state-in-effect -- restore per-doc search UI when panel opens
       setReplaceText(saved?.replaceText ?? '');
       setFindState({ matches: computeMatches(q), index: 0 });
       setTimeout(() => findInputRef.current?.focus(), 0);

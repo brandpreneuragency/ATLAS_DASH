@@ -23,15 +23,17 @@ export interface WorkspaceFile {
   isDirty: boolean;
 }
 
-/** A workspace — the new tab entity. Each workspace has its own connected
- *  folders, one file open in the editor at a time, and its own chat history. */
+/** A workspace — the new tab entity. Each workspace has at most one connected
+ *  folder (AI agent root), one file open in the editor at a time, and its own
+ *  chat history. `connectedFolders` is kept as an array for compatibility;
+ *  length is enforced to ≤ 1 at connect/load time. */
 export interface Workspace {
   id: string;
   /** Tab label (folder name or custom name). */
   name: string;
-  /** Per-workspace connected folders (isolated from other workspaces). */
+  /** Per-workspace connected folders (max one; isolated from other workspaces). */
   connectedFolders: ConnectedFolderRef[];
-  /** Which folder's tree is currently shown. */
+  /** Which folder's tree is currently shown (the single attached folder). */
   activeFolderId: string | null;
   /** The file open in the editor (null = empty workspace). */
   currentFile: WorkspaceFile | null;
@@ -56,8 +58,9 @@ export interface ConnectedFolderRef {
 
 export interface Attachment {
   name: string;
-  /** Present for image attachments (base64 data URL). Absent for file/folder
-   *  context attachments, whose contents are read fresh at send time. */
+  /** Present for image attachments and for file-picker attachments without a
+   *  workspace path (base64 data URL). Path-based file/folder attachments are
+   *  read fresh at send time and may omit this. */
   dataUrl?: string;
   mimeType: string;
   /** Attachment flavour. `undefined` is treated as a legacy image attachment. */
@@ -293,11 +296,14 @@ export interface AppSettings {
   value: string | number | boolean | Record<string, unknown>;
 }
 
+/** Scope for custom quick-actions (Settings → Actions and chat action pickers). */
+export type ActionScope = 'writer' | 'task' | 'crm';
+
 export interface QuickPrompt {
   id: string;
   title: string;
   prompt: string;
-  scope: 'writer' | 'task';
+  scope: ActionScope;
   createdAt: number;
   /** Folder/group the action belongs to (undefined = top-level / ungrouped). */
   groupId?: string;
@@ -311,7 +317,7 @@ export interface QuickPrompt {
 export interface ActionGroup {
   id: string;
   name: string;
-  scope: 'writer' | 'task';
+  scope: ActionScope;
   /** Sort order among groups of the same scope. */
   order: number;
   createdAt: number;

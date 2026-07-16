@@ -1,7 +1,169 @@
-/* Shared composer typography — imported with Composer.tsx so every
-   composer footer (chat, comments, quick-create) uses --fs-base even when
-   panel-specific CSS (e.g. aiSidebar.css) is not loaded. */
+/* Shared composer typography + attachment previews — imported with
+   Composer.tsx / AttachmentPreview.tsx so every surface (chat, comments,
+   CRM notes) matches even when panel-specific CSS is not loaded. */
+
 .composer-input {
   font-size: var(--fs-base);
   color: var(--c-text-1);
+}
+
+/* ── Attachment list (composer + message threads) ── */
+.composer-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 12px 0 12px;
+}
+/* Message/inline variants: beat :root .composer-attachments from aiSidebar.css. */
+:root .composer-attachments.composer-attachments--message {
+  padding: 0;
+  margin-bottom: 4px;
+  justify-content: flex-end;
+}
+:root .composer-attachments.composer-attachments--inline {
+  padding: 0;
+}
+
+/* File / folder chips */
+.composer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 8px;
+  border-radius: 6px;
+  background: var(--c-background-2);
+  border: none;
+  font-size: var(--fs-xs);
+  color: var(--c-text-1);
+  max-width: 240px;
+  line-height: 1.2;
+}
+.composer-chip--button {
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.composer-chip--button:hover {
+  background: var(--c-background-3);
+}
+.composer-chip-icon {
+  flex-shrink: 0;
+  color: var(--c-accent-2);
+}
+.composer-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  font-size: var(--fs-base);
+}
+.composer-chip-size {
+  flex-shrink: 0;
+  color: var(--c-text-2);
+  font-size: var(--fs-xs);
+}
+.composer-chip-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--c-text-2);
+  flex-shrink: 0;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+.composer-chip-remove:hover {
+  opacity: 0.85;
+}
+
+/* Compact image / video thumbnails (AI sidebar composer style) */
+.composer-attachment-thumb {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 34px;
+  flex-shrink: 0;
+  line-height: 0;
+}
+.composer-attachment-thumb-img {
+  display: block;
+  width: 32px;
+  height: 34px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  object-fit: cover;
+  border: none;
+  background: var(--c-background-3);
+}
+.composer-attachment-thumb-hit {
+  display: block;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+  line-height: 0;
+}
+.composer-attachment-thumb-hit:hover .composer-attachment-thumb-img {
+  opacity: 0.9;
+}
+.composer-attachment-thumb-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  color: #fff;
+}
+.composer-attachment-thumb-play::before {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+}
+.composer-attachment-thumb-play > svg {
+  position: relative;
+  z-index: 1;
+  margin-left: 1px;
+}
+.composer-attachment-thumb-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--c-background-4);
+  border: 1px solid var(--c-border-1);
+  color: var(--c-text-1);
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  z-index: 1;
+}
+.composer-attachment-thumb:hover .composer-attachment-thumb-remove,
+.composer-attachment-thumb:focus-within .composer-attachment-thumb-remove {
+  opacity: 1;
+}
+
+.composer-attachment-progress {
+  align-self: center;
+  font-size: var(--fs-sm);
+  color: var(--c-text-2);
 }

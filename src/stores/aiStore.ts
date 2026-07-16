@@ -14,6 +14,11 @@ import {
   type SyncModelsResult,
   type SyncModelsError,
 } from '../services/ai/importProviderModels';
+import {
+  PROVIDER_PRESETS,
+  createPresetProviderConfig,
+  isPresetProviderId,
+} from '../components/settings/modelProviders/providerPresets';
 import { useUIStore } from './uiStore';
 
 const DEFAULT_WRITER_AGENT: Agent = {
@@ -234,32 +239,54 @@ export const useAIStore = create<AIStore>((set, get) => ({
         }
       }
 
-      // Build default provider registry and merge saved state
-      // Load user-added providers directly from the database. No built-in
-      // providers are pre-populated — users add their own via the
-      // "Connect Provider" button in the model management UI.
-      // Filter out any previously-persisted built-in provider entries so
-      // they don't reappear after the migration to user-added providers.
-      const LEGACY_BUILTIN_IDS = new Set([
-        'openai',
-        'gemini',
-        'openrouter',
-        'nvidia',
+      // Drop truly obsolete built-in ids that are no longer in the product.
+      // Active presets (openai, anthropic, gemini, …) are seeded below.
+      const LEGACY_REMOVED_IDS = new Set([
         'mistral',
         'groq',
         'custom-endpoint',
-        'opencode-go',
       ]);
-      const providerConfigs: AIProviderConfig[] = providerConfigsFromDb.filter(
-        (p) => !LEGACY_BUILTIN_IDS.has(p.id)
-      );
-
-      // Delete legacy entries from the database so they don't come back
       for (const legacy of providerConfigsFromDb) {
-        if (LEGACY_BUILTIN_IDS.has(legacy.id)) {
+        if (LEGACY_REMOVED_IDS.has(legacy.id)) {
           await db.providerConfigs.delete(legacy.id).catch(() => undefined);
           await secureStorage.secureDelete(providerApiKeyName(legacy.id)).catch(() => undefined);
         }
+      }
+
+      // Merge seeded presets (stable ids) with user-added custom providers.
+      const savedById = new Map(
+        providerConfigsFromDb
+          .filter((p) => !LEGACY_REMOVED_IDS.has(p.id))
+          .map((p) => [p.id, p] as const),
+      );
+      const providerConfigs: AIProviderConfig[] = [];
+      for (const preset of PROVIDER_PRESETS) {
+        const existing = savedById.get(preset.id);
+        if (existing) {
+          // Ensure provider field stays the stable preset id (for OpenRouter headers, etc.).
+          const merged: AIProviderConfig = {
+            ...existing,
+            provider: existing.provider || preset.id,
+            name: existing.name || preset.name,
+            baseUrl: existing.baseUrl || preset.defaultBaseUrl,
+          };
+          providerConfigs.push(merged);
+          savedById.delete(preset.id);
+          if (
+            merged.provider !== existing.provider ||
+            merged.name !== existing.name ||
+            merged.baseUrl !== existing.baseUrl
+          ) {
+            await db.providerConfigs.put(merged).catch(() => undefined);
+          }
+        } else {
+          const seeded = createPresetProviderConfig(preset);
+          providerConfigs.push(seeded);
+          await db.providerConfigs.put(seeded).catch(() => undefined);
+        }
+      }
+      for (const custom of savedById.values()) {
+        providerConfigs.push(custom);
       }
 
       // Refresh connection status from secure storage
@@ -462,6 +489,35 @@ export const useAIStore = create<AIStore>((set, get) => ({
 
   deleteCustomProvider: async (id) => {
     try {
+      // Built-in presets are permanent list slots: reset credentials/models
+      // instead of removing the row from the left panel.
+      if (isPresetProviderId(id)) {
+        const preset = PROVIDER_PRESETS.find((p) => p.id === id);
+        if (!preset) return;
+        const reset = createPresetProviderConfig(preset);
+        await secureStorage.secureDelete(providerApiKeyName(id)).catch(() => undefined);
+        await db.providerConfigs.put(reset);
+        set((state) => {
+          const providerConfigs = state.providerConfigs.map((candidate) =>
+            candidate.id === id ? reset : candidate,
+          );
+          const nextActiveId =
+            state.activeProviderId === id
+              ? providerConfigs.find((p) => p.status === 'connected')?.id ??
+                providerConfigs[0]?.id ??
+                null
+              : state.activeProviderId;
+          const nextAppMgmtId =
+            state.appManagementProviderId === id ? null : state.appManagementProviderId;
+          return {
+            providerConfigs,
+            activeProviderId: nextActiveId,
+            appManagementProviderId: nextAppMgmtId,
+          };
+        });
+        return;
+      }
+
       await db.providerConfigs.delete(id);
       await secureStorage.secureDelete(providerApiKeyName(id)).catch(() => undefined);
 

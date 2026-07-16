@@ -95,7 +95,7 @@ button.task-item:hover .task-title {
 button.task-item--on,
 button.task-item--on:hover {
   background: transparent;
-  background-color: var(--c-accent-3);
+  background-color: var(--c-background-3);
 }
 #task-list-panel {
   background: unset;
@@ -115,24 +115,42 @@ button.task-item--on:hover {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding-top: 12px;
+  padding-top: 0;
   padding-bottom: 0;
   padding-left: 12px;
   padding-right: 12px;
   width: 100%;
   min-height: 0;
-  height: 100%;
+  flex: 1 1 0;
+  height: auto;
   background-color: rgba(233, 233, 233, 0);
   border-radius: 0px;
   border: none;
   outline: none;
 }
+/* Pinned header above the scrolling task list (clock + future controls).
+ * Lives outside #task-list-content so it never scrolls with the list —
+ * same flex-pin pattern as #task-quick-create-footer. */
+.task-list-sticky-header {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background-color: var(--c-background-1);
+  padding-top: 18px;
+  padding-bottom: 6px;
+  padding-left: 18px;
+  padding-right: 12px;
+  min-width: 0;
+}
+
 /* Clock panel header (live timestamp at top of task list) */
 .task-list-clock-header {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  flex-shrink: 0;
   vertical-align: middle;
   font-size: var(--fs-xs);
   font-weight: 600;
@@ -141,9 +159,9 @@ button.task-item--on:hover {
   letter-spacing: 0.05em;
   text-align: center;
   height: 20px;
-  background-color: var(--c-background-4);
+  background-color: var(--c-background-3);
   padding: 6px 0;
-  margin: 0 0 6px;
+  margin: 0;
   border-radius: 8px;
 }
 
@@ -156,12 +174,12 @@ button.task-item--on:hover {
   vertical-align: middle;
   font-size: var(--fs-xs);
   font-weight: 600;
-  color: var(--c-text-3);
+  color: var(--c-text-2);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   text-align: center;
   height: 20px;
-  background-color: var(--c-background-3);
+  background-color: var(--c-accent-3);
   padding: 6px 0;
   margin: 6px 0;
   border-radius: 8px;
@@ -386,7 +404,7 @@ button.task-item--on:hover {
   align-items: center;
   height: fit-content;
   min-height: 0;
-  padding: 0 12px 6px;
+  padding: 0 12px 6px 6px;
   gap: 0;
   overflow: visible;
 }
@@ -401,17 +419,17 @@ button.task-item--on:hover {
 #chat-input-card .chat-input-bottom-col--left {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   width: 100%;
   min-width: 0;
   overflow: visible;
-  padding: 0;
+  padding: 0 4px;
   height: fit-content;
 }
 #chat-input-card .chat-input-bottom-col--tools {
   display: flex;
   gap: 4px;
-  padding: 0 0 0 6px;
+  padding: 0;
   min-width: 0;
   overflow: visible;
 }
@@ -426,24 +444,32 @@ button.task-item--on:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: fit-content;
-  width: auto;
-  min-width: 0;
-  padding: 6px;
-  gap: 6px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  gap: 0;
+  box-sizing: border-box;
+  flex-shrink: 0;
   border: none;
   outline: none;
-  border-radius: 0;
+  border-radius: 8px;
   background: transparent;
   color: var(--c-text-2);
   font-size: var(--fs-base);
-  text-align: left;
+  text-align: center;
   cursor: pointer;
   vertical-align: middle;
   overflow: hidden;
 }
 #chat-input-card .chat-input-bottom-col--tools .chat-input-dropup-btn {
-  width: var(--div-h-1);
+  width: 32px;
+  height: 32px;
+}
+#chat-input-card .chat-input-dropup-label,
+#chat-input-card .chat-input-dropup-chevron {
+  display: none;
 }
 #chat-input-card .chat-input-dropup-btn .chat-input-dropup-icon {
   flex-shrink: 0;
@@ -458,7 +484,8 @@ button.task-item--on:hover {
   overflow: hidden;
 }
 #chat-input-card .chat-input-bottom-col--model .chat-input-dropup-btn {
-  width: fit-content;
+  width: 32px;
+  height: 32px;
 }
 #chat-input-card .chat-input-bottom-col--agent {
   width: fit-content;
@@ -467,7 +494,8 @@ button.task-item--on:hover {
   overflow: hidden;
 }
 #chat-input-card .chat-input-bottom-col--agent .chat-input-dropup-btn {
-  width: fit-content;
+  width: 32px;
+  height: 32px;
 }
 .btn-send svg {
   width: 14px;
@@ -513,7 +541,6 @@ button.task-item--on:hover {
   min-height: 42px;
   display: flex;
   flex-wrap: nowrap;
-  height: fit-content;
   vertical-align: middle;
   padding: 18px 18px 0;
   line-height: var(--line-normal);
@@ -786,7 +813,7 @@ button.task-item--on:hover {
 .task-item--on,
 .task-item--on:hover {
   background: transparent;
-  background-color: var(--c-accent-3);
+  background-color: var(--c-background-3);
   border: none;
   border-image: none;
 }
@@ -1113,7 +1140,7 @@ button.task-item--on:hover {
 :root button.task-item--on,
 :root button.task-item--on:hover {
   background: transparent;
-  background-color: var(--c-accent-3);
+  background-color: var(--c-background-3);
   border: none;
   border-image: none;
   outline: none;
@@ -1136,13 +1163,14 @@ button.task-item--on:hover {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding-top: 12px;
+  padding-top: 0;
   padding-bottom: 0;
   padding-left: 12px;
   padding-right: 12px;
   width: 100%;
   min-height: 0;
-  height: 100%;
+  flex: 1 1 0;
+  height: auto;
   background-color: rgba(233, 233, 233, 0);
   border-radius: 0px;
   border: none;
@@ -1609,7 +1637,7 @@ button.task-item--on:hover {
 :root .task-item--on,
 :root .task-item--on:hover {
   background: transparent;
-  background-color: var(--c-accent-3);
+  background-color: var(--c-background-3);
   border: none;
   border-image: none;
 }

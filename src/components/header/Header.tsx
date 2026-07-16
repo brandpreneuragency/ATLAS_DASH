@@ -1,4 +1,4 @@
-import { ArrowLeftRight, PanelRight, TerminalSquare } from 'lucide-react';
+import { ArrowLeftRight, PanelLeft, PanelRight } from 'lucide-react';
 import { TabBar } from './TabBar';
 import { selectCanSwapWrappers, useUIStore } from '../../stores/uiStore';
 
@@ -8,13 +8,27 @@ export function Header() {
   const wrappersSwapped = useUIStore((s) => s.wrappersSwapped);
   const toggleWrappersSwapped = useUIStore((s) => s.toggleWrappersSwapped);
   const canSwapWrappers = useUIStore(selectCanSwapWrappers);
-  const terminalPanelOpen = useUIStore((s) => s.terminalPanelOpen);
-  const setTerminalPanelOpen = useUIStore((s) => s.setTerminalPanelOpen);
+  const primaryWrapperOpen = useUIStore((s) => s.primaryWrapperOpen);
+  const togglePrimaryWrapper = useUIStore((s) => s.togglePrimaryWrapper);
 
+  const workspaceLabel = primaryWrapperOpen ? 'Hide workspace' : 'Show workspace';
   const assistantLabel = assistantOpen ? 'Hide assistant' : 'Show assistant';
   const swapLabel = wrappersSwapped
     ? 'Restore workspace and assistant order'
     : 'Swap workspace and assistant';
+
+  const handlePrimaryToggle = () => {
+    const primaryEl = document.getElementById('primary-workspace-wrapper');
+    const focusInside = Boolean(
+      primaryWrapperOpen && primaryEl?.contains(document.activeElement),
+    );
+    togglePrimaryWrapper();
+    if (focusInside) {
+      requestAnimationFrame(() => {
+        document.getElementById('header-btn-workspace')?.focus();
+      });
+    }
+  };
 
   const handleAssistantToggle = () => {
     const assistantEl = document.getElementById('assistant-wrapper');
@@ -34,16 +48,16 @@ export function Header() {
       <TabBar />
       <div className="ai-toggle-col">
         <button
-          id="header-btn-terminal"
+          id="header-btn-workspace"
           type="button"
-          title={terminalPanelOpen ? 'Hide terminal (Ctrl+J)' : 'Show terminal (Ctrl+J)'}
-          aria-label={terminalPanelOpen ? 'Hide terminal' : 'Show terminal'}
+          title={workspaceLabel}
+          aria-label={workspaceLabel}
+          aria-pressed={primaryWrapperOpen}
           onMouseDown={(event) => event.stopPropagation()}
-          onClick={() => setTerminalPanelOpen(!terminalPanelOpen)}
-          aria-pressed={terminalPanelOpen}
-          className={`ai-toggle-btn${terminalPanelOpen ? ' ai-toggle-btn--on' : ''}`}
+          onClick={handlePrimaryToggle}
+          className={`ai-toggle-btn${primaryWrapperOpen ? ' ai-toggle-btn--on' : ''}`}
         >
-          <TerminalSquare size={16} />
+          <PanelLeft size={16} />
         </button>
         <button
           id="header-btn-swap"

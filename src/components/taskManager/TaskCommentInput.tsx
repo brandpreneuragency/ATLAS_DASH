@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Calendar, ChevronDown, ListPlus, Loader2, Paperclip, Plus, Reply, X } from 'lucide-react';
+import { Calendar, ChevronDown, ListPlus, Loader2, Plus, Reply, X } from 'lucide-react';
 import {
   ComposerCard,
   ComposerIconButton,
@@ -9,14 +9,18 @@ import {
   ComposerSendButton,
   ComposerTextarea,
 } from '../ui/Composer';
+import { AttachmentPreviewItem, AttachmentPreviewList } from '../ui/AttachmentPreview';
+import type { AttachmentPreviewKind } from '../ui/AttachmentPreview';
 import type { TaskComment } from '../../types';
 import { useTaskCommentStore } from '../../stores/taskCommentStore';
 import { useTaskStore } from '../../stores/taskStore';
 import { useUIStore } from '../../stores/uiStore';
-import { useThemedPlaceholder } from '../../utils/placeholders';
+import { usePlaceholder } from '../../utils/placeholders';
 import { parseTaskInput } from '../../services/nlpParser';
 import { getTodayIso, getTomorrowIso } from '../../services/taskFormat';
 import { TASK_TITLE_MAX_LENGTH } from '../../types';
+import { getFileCategory, isImageFile } from '../../utils/fileType';
+import { generateVideoThumbnailDataUrl } from '../../utils/fileData';
 
 /** Max height for the comment box, expressed as 50vw in pixels. */
 function maxHeightVw(): number {
@@ -29,6 +33,28 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+interface PendingAttachment {
+  id: string;
+  name: string;
+  size: number;
+  file: File;
+  mimeType: string;
+  kind: AttachmentPreviewKind;
+  /** Object URL for image previews; revoked on remove/unmount. */
+  previewUrl?: string;
+}
+
+function nextAttachmentId(): string {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function classifyPendingFile(file: File): AttachmentPreviewKind {
+  const mime = file.type || '';
+  if (mime.startsWith('image/') || isImageFile(file.name)) return 'image';
+  if (mime.startsWith('video/') || getFileCategory(file.name, mime) === 'video') return 'video';
+  return 'file';
+}
+
 interface TaskCommentInputProps {
   replyToComment?: TaskComment | null;
   onClearReply?: () => void;
@@ -36,7 +62,7 @@ interface TaskCommentInputProps {
 
 export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentInputProps) {
   const [text, setText] = useState('');
-  const [attachments, setAttachments] = useState<{ name: string; size: number; file: File }[]>([]);
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(0);
   const [mode, setMode] = useState<'comment' | 'subtask'>('comment');
@@ -50,9 +76,23 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
   const dateInputRef = useRef<HTMLInputElement>(null);
   const datePickerRef = useRef<HTMLDivElement>(null);
   const userHeightRef = useRef<number>(0);
+  const attachmentsRef = useRef(attachments);
+
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
+
+  // Revoke object URLs when the composer unmounts.
+  useEffect(() => {
+    return () => {
+      for (const att of attachmentsRef.current) {
+        if (att.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(att.previewUrl);
+      }
+    };
+  }, []);
   const accentColor = 'var(--c-accent-2)';
-  const transmitPlaceholder = useThemedPlaceholder('transmitMessage');
-  const addSubtaskPlaceholder = useThemedPlaceholder('addSubtaskFooter');
+  const transmitPlaceholder = usePlaceholder('transmitMessage');
+  const addSubtaskPlaceholder = usePlaceholder('addSubtaskFooter');
   const isSubtaskMode = mode === 'subtask';
   const parsedSubtask = text.trim() ? parseTaskInput(text) : null;
   const effectiveDate = assignedDate ?? null;
@@ -139,6 +179,7 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
 
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     const ta = textareaRef.current;
     if (!ta) return;
     const startY = e.clientY;
@@ -161,16 +202,46 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
-    if (files.length === 0) return;
-    setAttachments((prev) => [
-      ...prev,
-      ...files.map((file) => ({ name: file.name, size: file.size, file })),
-    ]);
     e.target.value = '';
+    if (files.length === 0) return;
+
+    const pending: PendingAttachment[] = files.map((file) => {
+      const kind = classifyPendingFile(file);
+      const mimeType = file.type || 'application/octet-stream';
+      const previewUrl = kind === 'image' ? URL.createObjectURL(file) : undefined;
+      return {
+        id: nextAttachmentId(),
+        name: file.name,
+        size: file.size,
+        file,
+        mimeType,
+        kind,
+        previewUrl,
+      };
+    });
+
+    setAttachments((prev) => [...prev, ...pending]);
+
+    // Async video posters — update matching pending items when ready.
+    for (const att of pending) {
+      if (att.kind !== 'video') continue;
+      void generateVideoThumbnailDataUrl(att.file).then((thumb) => {
+        if (!thumb) return;
+        setAttachments((prev) =>
+          prev.map((p) => (p.id === att.id ? { ...p, previewUrl: thumb } : p)),
+        );
+      });
+    }
   };
 
   const removeAttachment = (index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index));
+    setAttachments((prev) => {
+      const target = prev[index];
+      if (target?.previewUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handleSend = async () => {
@@ -189,11 +260,16 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
     setSending(true);
     setProgress(0);
 
-    const totalItems = (trimmed ? 1 : 0) + attachments.length;
+    const snapshot = attachments;
+    const totalItems = (trimmed ? 1 : 0) + snapshot.length;
     let completedItems = 0;
     const baseTime = Date.now();
-    let failedAttachments: typeof attachments = [];
+    let failedAttachments: PendingAttachment[] = [];
     let sentAny = false;
+
+    const revokeIfBlob = (att: PendingAttachment) => {
+      if (att.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(att.previewUrl);
+    };
 
     try {
       if (trimmed) {
@@ -215,14 +291,14 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
           },
         );
         if (!textResult.comment) {
-          failedAttachments = attachments;
+          failedAttachments = snapshot;
           return;
         }
         sentAny = true;
         completedItems += 1;
       }
 
-      for (let i = 0; i < attachments.length; i++) {
+      for (let i = 0; i < snapshot.length; i++) {
         const result = await addComment(
           activeTaskId,
           {
@@ -231,7 +307,7 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
             replyTo: replyData,
             createdAt: baseTime + completedItems,
           },
-          attachments[i].file,
+          snapshot[i].file,
           {
             onProgress: (loaded, total) => {
               if (total > 0) {
@@ -241,7 +317,7 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
           },
         );
         if (!result.comment) {
-          failedAttachments = attachments.slice(i);
+          failedAttachments = snapshot.slice(i);
           return;
         }
         sentAny = true;
@@ -259,6 +335,10 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
       // Clear only the parts that were successfully sent; keep any failed
       // attachments (and the text if nothing was sent) so the user can retry.
       if (sentAny) {
+        const failedIds = new Set(failedAttachments.map((a) => a.id));
+        for (const att of snapshot) {
+          if (!failedIds.has(att.id)) revokeIfBlob(att);
+        }
         setText('');
         setAttachments(failedAttachments);
         if (textareaRef.current) {
@@ -327,27 +407,31 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
         )}
 
         {attachments.length > 0 && (
-          <div className="px-3 pt-3 pb-1 comment-attachment-list">
+          <AttachmentPreviewList
+            footer={
+              showProgress ? (
+                <span className="composer-attachment-progress">
+                  {Math.round(progress * 100)}%
+                </span>
+              ) : undefined
+            }
+          >
             {attachments.map((att, index) => (
-              <span
-                key={`${att.name}-${index}`}
-                className="row-xs comment-attachment-chip"
-              >
-                <Paperclip size={10} />
-                {att.name} ({formatSize(att.size)})
-                {!sending && (
-                  <button onClick={() => removeAttachment(index)} title="Remove attachment">
-                    <X size={10} />
-                  </button>
-                )}
-              </span>
+              <AttachmentPreviewItem
+                key={att.id}
+                item={{
+                  name: att.name,
+                  kind: att.kind,
+                  mimeType: att.mimeType,
+                  previewUrl: att.previewUrl,
+                  dataUrl: att.previewUrl,
+                  sizeLabel: formatSize(att.size),
+                }}
+                onRemove={sending ? undefined : () => removeAttachment(index)}
+                removeTitle="Remove attachment"
+              />
             ))}
-            {showProgress && (
-              <span className="subtle comment-attachment-progress">
-                {Math.round(progress * 100)}%
-              </span>
-            )}
-          </div>
+          </AttachmentPreviewList>
         )}
 
         <ComposerTextarea
@@ -367,7 +451,6 @@ export function TaskCommentInput({ replyToComment, onClearReply }: TaskCommentIn
           rows={1}
           disabled={sending}
           maxLength={isSubtaskMode ? TASK_TITLE_MAX_LENGTH : undefined}
-          style={{ height: 'fit-content' }}
         />
 
         <ComposerRow className="task-comment-bottom-row" style={{ height: 'fit-content' }}>

@@ -85,7 +85,6 @@ export const ComposerIconButton = forwardRef<HTMLButtonElement, ButtonHTMLAttrib
       ref={ref}
       type="button"
       className={cx('btn-icon composer-tool-button', className)}
-      style={{ height: 'var(--control-height-sm)' }}
       {...props}
     />
   )

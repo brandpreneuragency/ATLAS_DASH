@@ -1,5 +1,5 @@
 // ModelManagementContent extracted from the (now removed) ModelManagementModal
-// so it can be reused inline inside Settings → Models and by PageTemplatePage.
+// so it can be reused inline inside Settings → Tools (LLM) and by PageTemplatePage.
 // Uses `selectedProviderId` to show a specific provider's detail panel.
 //
 // Zustand is the canonical source of truth for provider configs and hidden
@@ -65,11 +65,10 @@ export function ModelManagementContent({ isInline = false, onClose, selectedProv
   }, [selectedProviderId, isOpen]);
 
   // ── Initialise base-URL draft when selection changes ───────────────────
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (!selectedProviderId) return;
     const provider = useAIStore.getState().providerConfigs.find((p) => p.id === selectedProviderId);
-    setDraftBaseUrl(provider?.baseUrl ?? '');
+    setDraftBaseUrl(provider?.baseUrl ?? ''); // eslint-disable-line react-hooks/set-state-in-effect -- seed draft from selected provider
   }, [selectedProviderId]);
 
   // ── Refresh all provider statuses when settings open ───────────────────

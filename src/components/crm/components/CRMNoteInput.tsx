@@ -43,6 +43,7 @@ export function CRMNoteInput({ onSubmit, placeholder = 'Add a note…', busy }: 
 
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     const ta = textareaRef.current;
     if (!ta) return;
     const startY = e.clientY;
@@ -106,7 +107,6 @@ export function CRMNoteInput({ onSubmit, placeholder = 'Add a note…', busy }: 
           title="Note input"
           rows={1}
           disabled={busy}
-          style={{ height: 'fit-content' }}
         />
         <ComposerRow className="task-comment-bottom-row" style={{ height: 'fit-content' }}>
           <ComposerLeft className="task-comment-bottom-col task-comment-bottom-col--left" style={{ height: 'fit-content' }}>

@@ -449,6 +449,7 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
 
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     const ta = textareaRef.current;
     if (!ta) return;
     const startY = e.clientY;
@@ -632,7 +633,7 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
                   : 'Select an item to get CRM Agent suggestions…'
               }
               rows={1}
-              style={{ height: 'fit-content', padding: '18px 18px 0' }}
+              style={{ padding: '18px 18px 0' }}
               aria-label="CRM Agent prompt"
             />
 
@@ -699,7 +700,7 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
                     <span className="trunc med chat-input-dropup-label">{activeAgentDef.name}</span>
                   </button>
                   {agentDropdownOpen && (
-                    <div className="drop" style={{ right: 0, bottom: '100%', marginBottom: 4, minWidth: 180 }}>
+                    <div className="drop" style={{ left: 0, bottom: '100%', marginBottom: 4, minWidth: 180 }}>
                       {CRM_AGENTS.map((agent) => (
                         <button
                           type="button"
@@ -776,7 +777,7 @@ export function CRMAISidebar({ crmContext }: CRMAISidebarProps) {
                         <button
                           type="button"
                           onClick={() => {
-                            openSettings('models');
+                            openSettings('tools');
                             setModelDropdownOpen(false);
                           }}
                           className="drop-item drop-item--brand"

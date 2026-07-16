@@ -63,9 +63,7 @@ export function AgentsSection() {
 
   return (
     <SettingsPanels
-      leftHeader={<div className="settings-list-head"><h3>Agents</h3><span className="subtle" style={{ fontSize: 'var(--fs-base)' }}>{agents.length}</span></div>}
       leftMain={leftMain}
-      centerHeader={<div className="settings-list-head"><h3>{selected ? 'Edit agent' : newScope ? 'New agent' : 'Agents'}</h3></div>}
       centerMain={centerMain}
     />
   );

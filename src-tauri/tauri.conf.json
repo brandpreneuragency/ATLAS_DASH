@@ -37,7 +37,7 @@
       "endpoints": [
         "https://github.com/brandpreneuragency/TABS/releases/latest/download/latest.json"
       ],
-      "pubkey": "",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ2NEM2MTA0NTdGQjQ3Q0YKUldUUFIvdFhCR0ZNUmlFMWVrUUttY3BQMXpCMm9zNFRsR2U5cWNGc2hFMnE1L3JOMWFZaHdFQjQK",
       "windows": {
         "installMode": "passive"
       }
@@ -46,6 +46,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "publisher": "TABS",
     "copyright": "© 2026",
     "shortDescription": "Writing and task manager",

@@ -1,569 +1,162 @@
-# AGENTS.md — TABS Universal Main Wrapper Refactor
+# AGENTS.md — TABS Repository Guide
 
-## 1. Purpose
+## Purpose and precedence
 
-This file defines mandatory rules for coding agents working on the TABS workspace layout refactor.
+This file applies to the entire repository. It defines the default working rules for coding agents; a more specific `AGENTS.md` in a subdirectory overrides it for that subtree.
 
-The current task is not a cosmetic panel reorder. It is a logical shell architecture change across Documents, Tasks, CRM, Forms, Settings, File Viewer, and shared header/navigation controls.
+Follow instructions in this order:
 
-The authoritative requirements are in:
+1. The user's current request and explicit approvals.
+2. The active canonical plan, specification, or handoff named by the user.
+3. This file.
+4. Existing repository conventions.
 
-```text
-docs/TABS-universal-main-wrapper-PRD.md
-docs/prompts.md
-```
+Do not revive requirements from deleted or superseded plans. If current code and a named source of truth disagree, inspect branch history and ask only when the intended behavior cannot be determined safely.
 
-If repository code and the PRD differ, re-check the current branch and follow the PRD unless doing so would break an explicitly newer user requirement.
-
----
-
-## 2. Required read order
+## Required start-up checks
 
 Before editing:
 
-1. Read this `AGENTS.md`.
-2. Read the full PRD.
-3. Read the prompt for the active phase only.
-4. Inspect `git status` and `git diff`.
-5. Read all files you plan to change.
-6. Search all references to any state, selector, class, ID, or component you plan to rename/remove.
+1. Run `git status --short` and inspect relevant diffs. This repository may contain substantial user WIP.
+2. Read the named plan, spec, handoff, and progress tracker before implementation.
+3. Read every file you intend to change and search all references to affected symbols, selectors, commands, persisted keys, and types.
+4. Identify which runtime is in scope: browser/Vite, Tauri desktop, deployed web, Node service, or more than one.
+5. Confirm the acceptance criteria and verification commands for the active scope.
 
-Do not infer behavior from one file.
+Use `rg` and `rg --files` for repository searches. Do not infer system behavior from a single component.
 
----
+## Current phased program
 
-## 3. Core architecture invariants
+The current repository program is **TABS Web on VPS as Hermes Client**.
 
-These are non-negotiable.
+- Entry point: `docs/MASTER_PLAN.md`
+- Progress tracker: `docs/PROGRESS.md`
+- Canonical implementation plan: `docs/superpowers/plans/2026-07-16-tabs-vps-hermes-client.md`
+- Phase handoffs: `docs/CODEX_HANDOFF/`
 
-### 3.1 Two logical wrappers
+When working on that program:
 
-The horizontal workspace has two logical top-level wrappers:
+1. Read `docs/PROGRESS.md`, then `docs/MASTER_PLAN.md`.
+2. Determine the next incomplete phase.
+3. Read only the canonical plan task mapped to that phase, plus directly referenced material needed to execute it.
+4. Implement only that phase. Do not pull later-phase work forward.
+5. Run its acceptance criteria, update `docs/PROGRESS.md`, and follow the phase's explicit commit/push instructions.
 
-```text
-Primary workspace wrapper
-Assistant/detail wrapper
+Do not mark a phase complete when any required check is failing or unverified. Record deviations and facts needed by the next phase tersely and factually.
+
+## Repository map
+
+- `src/components/<area>/`: React feature and shared UI components.
+- `src/stores/`: Zustand state and persisted application state.
+- `src/services/`: runtime adapters, persistence, AI providers, filesystem access, search, and external integrations.
+- `src/hooks/`: shared React behavior.
+- `src/types/`: cross-feature TypeScript contracts.
+- `src/i18n/`: English and Turkish UI strings.
+- `src/styles/` and feature CSS files: tokens, shell layout, and scoped feature styles.
+- `src-tauri/src/`: Rust desktop commands, AI tools, tray, and terminal backend.
+- `src-tauri/capabilities/`: Tauri permission scopes.
+- `server/`: deployed Node service when introduced by the active plan.
+- `deploy/`: deployment assets when introduced by the active plan.
+- `docs/`: plans, specifications, progress, and handoffs.
+
+Generated or runtime data is not source: `node_modules/`, `dist/`, `src-tauri/target/`, and `src-tauri/TASKS/`.
+
+## Runtime and architecture rules
+
+TABS has multiple runtime paths. A browser preview is not proof that Tauri behavior works, and a local desktop build is not proof that the deployed web path works.
+
+- Vite development uses port `1420` with a strict port setting.
+- Keep runtime detection and runtime-specific behavior in service/adaptor layers. Reuse `src/services/runtime.ts`, `src/services/http.ts`, and the `FolderConnector` abstraction instead of importing Tauri APIs into feature UI.
+- Browser-only features must degrade safely when native APIs are unavailable.
+- Tauri command changes must stay aligned across Rust command registration, frontend invocation, and `src-tauri/capabilities/default.json` permissions.
+- Preserve stable component identity for editors, chat, forms, and selections; avoid keys or conditional branches that remount stateful UI accidentally.
+- Put shared state invariants in Zustand actions rather than duplicating them in event handlers. Use narrow selectors in large components.
+- Follow existing Dexie patterns for persisted settings and provide deliberate migration/fallback behavior when keys change.
+
+## Implementation conventions
+
+### TypeScript and React
+
+- Strict TypeScript is enabled. Do not hide errors with `any`, `@ts-ignore`, or broad casts.
+- Prefer small, explicit types and pure helpers for logic that can be unit tested.
+- Keep feature components in their existing area and shared primitives under `src/components/ui/`.
+- Preserve accessibility: semantic controls, keyboard behavior, visible focus, accurate labels, and ARIA state where native semantics are insufficient.
+- Add or update Vitest tests for non-trivial logic and regressions. Tests are colocated as `*.test.ts` or `*.test.tsx` under `src/`.
+- When user-facing copy changes, update both `src/i18n/en.ts` and `src/i18n/tr.ts` unless the text is intentionally not localized.
+
+### Styling
+
+- Reuse tokens from `src/styles/tokens.css` and existing feature classes before adding new values.
+- Keep structural styles in scoped feature CSS rather than large inline style objects; inline values are appropriate for truly dynamic geometry or CSS custom properties.
+- Audit `min-width: 0`, `min-height: 0`, overflow ownership, and responsive behavior when changing nested layouts.
+- Remove obsolete selectors when their final use is removed, but do not perform unrelated global CSS cleanup.
+
+### Rust and Tauri
+
+- Keep commands focused and return actionable errors without leaking sensitive data.
+- Update capability scopes narrowly; never broaden filesystem, shell, or HTTP permissions merely to make a failing call pass.
+- Run Rust formatting and compile checks when Rust or Tauri configuration changes.
+- Distinguish the local debug executable from the installed application when diagnosing desktop behavior. Stop stale development processes before rebuilding a locked executable.
+
+### Node service and deployment
+
+- Follow the canonical plan for the `server/` and `deploy/` architecture; do not invent protocol fields or deployment topology.
+- Server code is ESM (`.mjs`). Put testable logic in pure modules under `server/lib/`.
+- Keep secrets in environment files that are ignored by Git. Never commit credentials, tokens, password hashes, or production `.env` files.
+
+## Security and operations
+
+- Never print API keys, access tokens, session tokens, password hashes, secure-storage values, or `.env` contents in commands, logs, tests, diffs, or chat.
+- Do not modify reference-only Hermes sources. They are evidence for protocol discovery, not part of this repository.
+- For the current VPS plan, use non-interactive SSH exactly as documented in the canonical plan.
+- Keep `tabs_api` bound to loopback. Never expose ports `4010`, `9119`, or `8642` publicly.
+- Preserve the existing Atlas and Wagner Atelier sites when changing Caddy or deployment assets.
+- Recreating or changing the Hermes container for the session token requires the user's exact in-session approval specified by the phase. Prior approval for a different destructive step does not transfer.
+- Before any destructive operation, verify the target, capture the required evidence, and confirm that the active phase explicitly authorizes it. Stop on unexpected infrastructure state.
+
+## Scope and repository safety
+
+- Make the smallest coherent change that satisfies the active request.
+- Preserve unrelated modifications and untracked files. If user WIP overlaps a target file, patch around it and call out any unavoidable conflict.
+- Do not add or upgrade dependencies unless the task requires it and no existing dependency or platform API fits.
+- Do not create worktrees, delegate work, or broaden the phase unless explicitly requested.
+- Do not commit or push unless the user request or an active, user-approved phase explicitly requires it.
+- Never run destructive Git commands such as `git reset --hard`, `git clean -fd`, bulk `git restore`, or force-push without explicit user authorization.
+- Do not weaken TypeScript, ESLint, tests, Tauri capabilities, authentication, or filesystem guards to make a check pass.
+
+## Verification
+
+Use the narrowest checks during iteration, then run the full gate required by the scope.
+
+Frontend/full code gate:
+
+```powershell
+npm run check
 ```
 
-The main resize handle sits between them.
+This runs typecheck, lint, Vitest, and the production build. If `server/` changed, also run its tests as specified by the active plan (normally `cd server; npm test`).
 
-### 3.2 Primary wrapper contents
+For Rust or Tauri changes, additionally run from `src-tauri/` as appropriate:
 
-The primary wrapper contains:
-
-```text
-optional contextual panel
-optional context resize handle
-center content panel
+```powershell
+cargo fmt --check
+cargo check
 ```
 
-The contextual panel and center content move together when wrappers are swapped.
+Run `cargo test` when Rust behavior has unit coverage. Use `npm run tauri:build` only when packaging is part of the acceptance criteria; it is heavier than a compile check.
 
-### 3.3 Logical controls
+Documentation-only changes do not require the full build gate. Inspect the rendered structure, links, and `git diff --check` instead.
 
-- Navigation rail panel button controls the primary wrapper.
-- Header assistant button controls the assistant wrapper.
-- Controls do not change meaning after swap.
-- Do not implement “toggle whichever panel is on the right.”
+Manual verification must name the runtime and path tested. Report browser preview, local Tauri debug, installed desktop, and deployed web checks separately. Never claim a command or flow passed unless it was actually run.
 
-### 3.4 At least one wrapper open
+## Handoff format
 
-Never allow both wrappers to be closed.
+End implementation work with a concise factual report containing:
 
-Store actions must enforce the invariant atomically.
+- Summary and files changed.
+- Behavior implemented and compatibility/migration notes.
+- Commands run and exact results.
+- Manual checks, including the runtime used.
+- Remaining risks, unverified paths, and the next phase when applicable.
 
-### 3.5 Swap prerequisites
-
-Swap is enabled only when both wrappers are open.
-
-The disabled button remains visible.
-
-### 3.6 No remount on swap
-
-Render each wrapper once.
-
-Use CSS Grid areas/order or equivalent CSS placement.
-
-Do not conditionally render reversed JSX branches.
-
-Do not change keys on swap.
-
-### 3.7 Main handle ownership
-
-The main handle always resizes the assistant/detail wrapper.
-
-It does not resize “the panel on the right.”
-
-### 3.8 Settings is a normal mode
-
-Settings participates in the same shell.
-
-It has:
-
-- contextual Settings list/category surface
-- center Settings detail surface
-- Settings AI sidebar scoped by active sub-tab
-
-Do not restore the old Settings shell exception.
-
-### 3.9 File Viewer ownership
-
-File Viewer is assistant-wrapper content.
-
-Hiding assistant does not destroy viewer selection.
-
-### 3.10 Responsive rule
-
-At `max-width: 900px`, assistant opens from the right regardless of stored swap state.
-
-Do not mutate stored swap state for responsive presentation.
-
----
-
-## 4. Phase discipline
-
-Only perform the active phase.
-
-Do not:
-
-- implement later phases early because they look convenient
-- combine broad cleanup with state migration
-- remove compatibility APIs before all call sites are migrated
-- redesign child features
-- commit unless asked
-
-At the end of each phase, provide a report suitable for the next agent.
-
----
-
-## 5. Repository safety
-
-### 5.1 Preserve user work
-
-Before editing:
-
-```bash
-git status
-git diff
-```
-
-Do not overwrite unrelated modifications.
-
-If a target file already contains unrelated user edits, preserve them and make a minimal compatible patch.
-
-### 5.2 No destructive git commands
-
-Never run without explicit user instruction:
-
-```bash
-git reset --hard
-git clean -fd
-git checkout -- .
-git restore .
-git push --force
-```
-
-### 5.3 No silent dependency changes
-
-Do not add packages unless:
-
-- the current phase truly requires them
-- the repository lacks an equivalent
-- the reason is documented
-
-This refactor should normally require no new runtime dependency.
-
----
-
-## 6. State management rules
-
-### 6.1 Logical names only
-
-Use:
-
-```text
-primaryWrapperOpen
-assistantWrapperOpen
-wrappersSwapped
-assistantWrapperWidth
-contextPanelWidth
-contextPanelOpenByMode
-```
-
-Do not introduce new APIs named around:
-
-```text
-rightPanel
-centerPanelOpen
-mainRowSwapped
-AIOnLeft
-```
-
-### 6.2 Centralize invariants
-
-Top-level wrapper invariants belong in Zustand actions, not scattered button handlers.
-
-Components call actions; components do not reimplement the rules.
-
-### 6.3 Select narrowly
-
-Avoid:
-
-```ts
-const entireStore = useUIStore();
-```
-
-in large shell components.
-
-Prefer selectors:
-
-```ts
-const primaryOpen = useUIStore((s) => s.primaryWrapperOpen);
-```
-
-Group only closely related values.
-
-### 6.4 Persistence
-
-Use existing Dexie settings patterns.
-
-- New keys may read old keys as fallback.
-- Stop writing deprecated keys after migration.
-- Do not delete old persisted keys if rollback compatibility is useful.
-- Do remove obsolete TypeScript state and actions after call sites are migrated.
-
-### 6.5 Drag persistence
-
-Do not write Dexie on every unthrottled pointermove.
-
-Preferred:
-
-- update in-memory width during drag
-- persist final width on pointerup
-
-A documented debounce is acceptable.
-
----
-
-## 7. React component rules
-
-### 7.1 Stable component identity
-
-Swapping must preserve:
-
-- editor instance
-- chat
-- local Settings forms
-- task/CRM/form selections
-
-Do not use swap-dependent keys.
-
-### 7.2 Extract by responsibility
-
-A component extraction is justified when it owns:
-
-- layout
-- state
-- events
-- overflow boundary
-- semantic identity
-- container-query context
-
-Do not create one-line wrapper components with no contract.
-
-### 7.3 Keep feature logic out of shell primitives
-
-`WorkspaceShell` should not know how CRM context is built.
-
-Mode resolution belongs in `App.tsx`, a mode-layout hook, or a dedicated adapter layer.
-
-### 7.4 Settings state ownership
-
-When splitting Settings left and center surfaces:
-
-- hoist shared selection/form state to a controller/provider
-- do not duplicate state in sibling components
-- do not lose unsaved values when swapping
-- do not create duplicate Settings navigation
-
----
-
-## 8. CSS and layout rules
-
-### 8.1 Use Grid for top-level wrapper placement
-
-Desktop shell should use explicit areas or equivalent:
-
-```text
-primary | handle | assistant
-assistant | handle | primary
-```
-
-### 8.2 Shrink safety
-
-Audit every relevant parent/child:
-
-```css
-min-width: 0;
-min-height: 0;
-```
-
-Apply scrolling to the intended body, not every ancestor.
-
-### 8.3 No swap animation
-
-Do not animate:
-
-- grid columns
-- wrapper order
-- widths during swap
-
-### 8.4 Avoid physical names
-
-Prefer:
-
-```text
-workspace-shell
-primary-workspace-wrapper
-assistant-wrapper
-contextual-panel
-center-content-panel
-main-resize-handle
-```
-
-### 8.5 Remove dead selectors
-
-When the last use is migrated, remove obsolete CSS in the same or cleanup phase.
-
-Do not leave comments claiming dead markup still exists.
-
-### 8.6 Inline styles
-
-Keep truly dynamic width values as CSS custom properties or inline styles.
-
-Move repeated structural styles to classes.
-
-Do not conduct an unrelated global style cleanup.
-
-### 8.7 Container queries
-
-Search all uses before changing container names.
-
-Migrate atomically.
-
----
-
-## 9. Resize implementation rules
-
-### 9.1 No sibling traversal
-
-Forbidden for the new handles:
-
-```ts
-previousElementSibling
-nextElementSibling
-```
-
-Use refs or stable queried elements with clear IDs/data attributes.
-
-### 9.2 Pointer lifecycle
-
-Preferred:
-
-- pointerdown
-- setPointerCapture
-- pointermove
-- pointerup
-- pointercancel
-- cleanup on unmount
-
-### 9.3 Geometry
-
-Main handle always computes assistant width.
-
-Account for assistant side.
-
-Clamp against:
-
-- assistant minimum
-- shell width
-- primary minimum
-- handle width
-
-### 9.4 Accessibility
-
-Use:
-
-```text
-role="separator"
-aria-orientation="vertical"
-aria-label
-aria-valuemin
-aria-valuemax
-aria-valuenow
-```
-
-Keyboard resize is recommended.
-
----
-
-## 10. Control and accessibility rules
-
-### Header order
-
-Exact order:
-
-```text
-terminal
-swap
-assistant
-```
-
-### Swap
-
-- visible in all main modes
-- native disabled unless both wrappers open
-- greyed-out disabled style
-- accurate label and pressed state
-
-### Workspace toggle
-
-- keeps `PanelLeft`
-- controls primary wrapper
-- label: Show/Hide workspace
-
-### Assistant toggle
-
-- keeps `PanelRight`
-- controls assistant wrapper
-- label: Show/Hide assistant
-
-### Focus
-
-When hiding a wrapper that contains focus, return focus to the corresponding toggle.
-
-Do not leave focus inside `display:none` or unmounted content.
-
----
-
-## 11. Settings AI security
-
-Settings AI may receive:
-
-- active settings sub-tab
-- non-secret labels
-- safe explanatory context
-
-It must never receive:
-
-- API keys
-- secure storage values
-- access tokens
-- raw secret fields
-- hidden credentials
-
-Do not log secret values while debugging.
-
----
-
-## 12. File Viewer rules
-
-Opening File Viewer:
-
-- ensures assistant wrapper is open
-- does not change swap
-- does not close primary
-
-Hiding assistant:
-
-- preserves viewer state
-
-Closing viewer:
-
-- returns assistant content to mode AI
-- does not misuse old sidebar restoration fields
-
----
-
-## 13. Validation requirements
-
-Run after every implementation phase:
-
-```bash
-npm run build
-npm run lint
-```
-
-If the repository adds tests, run the relevant suite.
-
-Do not change ESLint or TypeScript settings merely to pass.
-
-Document pre-existing failures separately from new failures.
-
-### Manual minimum
-
-At each relevant phase test:
-
-- normal and swapped
-- primary only
-- assistant only
-- both toggle directions
-- both resize directions
-- active mode
-- terminal
-- File Viewer
-- Settings when implemented
-- 900px responsive boundary when implemented
-
----
-
-## 14. Forbidden shortcuts
-
-Do not:
-
-- duplicate normal/swapped JSX
-- hide bugs with `any`
-- add `@ts-ignore` without explicit justification
-- use stale physical-side selectors
-- preserve obsolete wrappers “just in case”
-- rewrite unrelated features
-- silently reset persisted UI preferences
-- let both wrappers close
-- disable swap by removing it from the DOM
-- remount editor/chat during swap
-- expose secrets to Settings AI
-- claim tests passed without running them
-
----
-
-## 15. Required phase report
-
-Every phase response must contain:
-
-```text
-Summary
-Files changed
-Behavior implemented
-Temporary compatibility code
-Validation commands
-Validation results
-Manual checks
-Risks / next phase notes
-```
-
-Be factual. State what was not tested.
-
----
-
-## 16. Completion definition
-
-The task is not complete until:
-
-- all modes use the shared shell
-- Settings uses shared layout and AI
-- logical toggles work in both positions
-- swap is global and disabled correctly
-- responsive behavior matches PRD
-- obsolete state/CSS/components are removed
-- build and lint pass
-- manual regression matrix is reported
+Findings come before summaries on review tasks. Do not advance progress or mark completion until the stated pass gate is met.

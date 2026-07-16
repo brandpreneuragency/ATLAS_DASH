@@ -212,7 +212,7 @@ html[data-resizing='context'] .context-resize-handle {
 .main-resize-handle__line {
   width: 1px;
   height: 100%;
-  background: var(--c-background-1);
+  background-color: var(--c-accent-2);
 }
 
 .main-resize-handle:hover,
@@ -259,8 +259,9 @@ html[data-resizing='context'] .context-resize-handle {
 }
 
 .context-resize-handle__line {
-  width: 2px;
+  width: 1px;
   height: 100%;
+  background-color: var(--c-accent-2);
 }
 
 .context-resize-handle:hover,
@@ -290,10 +291,23 @@ html[data-resizing='context'] .context-resize-handle {
 
 .context-panel-toggle {
   flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  box-sizing: border-box;
 }
 
-.context-panel-toggle--on {
-  color: var(--c-accent-1);
+/* Beat :root .tbar-btn--on / :root .tbar-btn:hover accent color. */
+:root .context-panel-toggle.tbar-btn--on,
+:root .context-panel-toggle.tbar-btn--on:hover,
+:root .context-panel-toggle.context-panel-toggle--on {
+  color: var(--c-text-2);
+  background: transparent !important;
+}
+
+:root .context-panel-toggle.tbar-btn:hover {
+  background: transparent !important;
 }
 
 .assistant-panel {
@@ -723,7 +737,7 @@ html[data-resizing='context'] .context-resize-handle {
   height: auto;
   flex-direction: column;
   align-items: stretch;
-  padding: 0;
+  padding: 12px 0 0;
   gap: 0;
 }
 

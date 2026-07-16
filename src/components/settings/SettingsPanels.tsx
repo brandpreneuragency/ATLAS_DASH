@@ -3,9 +3,7 @@ import { useUIStore } from '../../stores/uiStore';
 import { ContextPanelToggle, PrimaryWorkspaceContent } from '../layout/workspace';
 
 interface SettingsPanelsProps {
-  leftHeader?: ReactNode;
   leftMain?: ReactNode;
-  centerHeader?: ReactNode;
   centerMain?: ReactNode;
 }
 
@@ -14,9 +12,7 @@ interface SettingsPanelsProps {
  * Selection / form state stays in parent section components.
  */
 export function SettingsPanels({
-  leftHeader,
   leftMain,
-  centerHeader,
   centerMain,
 }: SettingsPanelsProps) {
   const contextPanelWidth = useUIStore((s) => s.contextPanelWidth);
@@ -24,14 +20,12 @@ export function SettingsPanels({
 
   const contextPanel = (
     <div className="settings-surface settings-surface--list">
-      {leftHeader}
       <div className="settings-surface__body">{leftMain}</div>
     </div>
   );
 
   const centerPanel = (
     <div className="settings-surface settings-surface--detail">
-      {centerHeader}
       <div className="settings-surface__body">{centerMain}</div>
     </div>
   );

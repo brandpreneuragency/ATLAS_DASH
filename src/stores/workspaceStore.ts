@@ -237,6 +237,8 @@ interface WorkspaceStore {
   deleteWorkspace: (id: string) => Promise<void>;
   setActiveWorkspace: (id: string) => void;
   renameWorkspace: (id: string, name: string) => void;
+  /** Reorder workspace tabs by a full list of workspace ids (left → right). */
+  reorderWorkspaces: (orderedIds: string[]) => void;
   duplicateWorkspace: (id: string) => Promise<Workspace>;
   updateWorkspace: (id: string, updates: Partial<Workspace>) => void;
 
@@ -361,12 +363,36 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       // Sort by order
       rawWorkspaces.sort((a, b) => a.order - b.order);
 
-      // Rebuild folder trees for each workspace
+      // Rebuild folder trees for each workspace.
+      // One folder per workspace: keep the active folder (or first) and drop extras.
       for (const ws of rawWorkspaces) {
-        const { folders, validRefs } = await rebuildAllFolders(ws.connectedFolders);
+        let refs = ws.connectedFolders;
+        let migrated = false;
+
+        // Strip browser synthetic root marker from tab titles saved by older builds.
+        if (ws.name.startsWith('__BROWSER_ROOT__:')) {
+          ws.name = ws.name.slice('__BROWSER_ROOT__:'.length);
+          migrated = true;
+        }
+
+        if (refs.length > 1) {
+          const keep =
+            (ws.activeFolderId
+              ? refs.find((r) => r.id === ws.activeFolderId)
+              : undefined) ?? refs[0];
+          refs = [keep];
+          ws.connectedFolders = refs;
+          ws.activeFolderId = keep.id;
+          migrated = true;
+        } else if (refs.length === 1 && !ws.activeFolderId) {
+          ws.activeFolderId = refs[0].id;
+          migrated = true;
+        }
+
+        const { folders, validRefs } = await rebuildAllFolders(refs);
         setConnectedFolders(ws.id, folders);
         // Update refs if some folders were removed (path no longer exists)
-        if (validRefs.length !== ws.connectedFolders.length) {
+        if (validRefs.length !== refs.length || migrated) {
           ws.connectedFolders = validRefs;
           if (ws.activeFolderId && !validRefs.find((r) => r.id === ws.activeFolderId)) {
             ws.activeFolderId = validRefs[0]?.id ?? null;
@@ -479,6 +505,41 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }));
     const ws = get().workspaces.find((w) => w.id === id);
     if (ws) void persistWorkspace(ws);
+  },
+
+  reorderWorkspaces: (orderedIds) => {
+    const current = get().workspaces;
+    if (orderedIds.length === 0 || current.length === 0) return;
+
+    const byId = new Map(current.map((w) => [w.id, w]));
+    const next: Workspace[] = [];
+    const seen = new Set<string>();
+    const now = Date.now();
+
+    for (const id of orderedIds) {
+      const ws = byId.get(id);
+      if (!ws || seen.has(id)) continue;
+      seen.add(id);
+      next.push({ ...ws, order: next.length, updatedAt: now });
+    }
+    // Append any workspaces missing from orderedIds (safety net).
+    for (const ws of current) {
+      if (seen.has(ws.id)) continue;
+      next.push({ ...ws, order: next.length, updatedAt: now });
+    }
+
+    // No-op if order unchanged.
+    if (
+      next.length === current.length &&
+      next.every((w, i) => w.id === current[i]?.id && w.order === current[i]?.order)
+    ) {
+      return;
+    }
+
+    set({ workspaces: next });
+    for (const ws of next) {
+      void persistWorkspace(ws);
+    }
   },
 
   duplicateWorkspace: async (id) => {
@@ -716,6 +777,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     const ws = get().workspaces.find((w) => w.id === workspaceId);
     if (!ws) return null;
 
+    // One folder per workspace — no replace once a folder is attached.
+    const existingFolders = getConnectedFolders(ws);
+    if (existingFolders.length > 0 || ws.connectedFolders.length > 0) {
+      return existingFolders[0] ?? null;
+    }
+
     set({ loading: true, error: null });
     try {
       let resolvedPath = fullPath ?? undefined;
@@ -730,23 +797,20 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
       const name = basename(resolvedPath);
       const children = await buildChildren(resolvedPath, name);
-      const folders = getConnectedFolders(ws);
-      const usedSlots = new Set(folders.map((f) => parseInt(f.id)));
-      let slot = 0;
-      while (usedSlots.has(slot)) slot++;
-      const id = String(slot);
+      const id = '0';
       const rootNode: TreeNode = { name, path: name, fullPath: resolvedPath, kind: 'directory', children };
       const newFolder: ConnectedFolder = { id, path: resolvedPath, rootNode };
-      const newFolders = [...folders, newFolder];
+      const newFolders = [newFolder];
       setConnectedFolders(workspaceId, newFolders);
 
-      // Auto-update workspace name if it's still a default name
-      const isDefaultName = ws.name === 'New Workspace' || /^Workspace \d+$/.test(ws.name);
+      // Always rename the tab to the folder basename; reset tree UI state.
       const updates: Partial<Workspace> = {
+        name,
         connectedFolders: newFolders.map((f) => ({ id: f.id, path: f.path })),
-        activeFolderId: ws.activeFolderId ?? id,
+        activeFolderId: id,
+        expandedPaths: [],
+        selectedTreePath: null,
       };
-      if (isDefaultName) updates.name = name;
 
       get().updateWorkspace(workspaceId, updates);
       set({ loading: false, error: null });

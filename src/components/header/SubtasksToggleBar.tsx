@@ -20,9 +20,8 @@ export function SubtasksToggleBar() {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
-    setLocalTitle(activeTask?.title ?? '');
+    setLocalTitle(activeTask?.title ?? ''); // eslint-disable-line react-hooks/set-state-in-effect -- sync draft title when active task changes
   }, [activeTask?.id, activeTask?.title]);
 
   useEffect(() => {
@@ -129,6 +128,7 @@ export function SubtasksToggleBar() {
 
         <div className="subtasks-toggle-bar-row">
           <ContextPanelToggle mode="tasks" available />
+          <TaskMetadataControls />
           <button
             type="button"
             className="tdp-meta-swap-btn"
@@ -138,8 +138,6 @@ export function SubtasksToggleBar() {
           >
             <ArrowUpDown size={12} />
           </button>
-
-          <TaskMetadataControls />
         </div>
       </div>
     </div>

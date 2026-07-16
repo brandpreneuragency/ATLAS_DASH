@@ -6,7 +6,7 @@
 
 import { create } from 'zustand';
 import { db } from '../services/db';
-import type { QuickPrompt, ActionGroup } from '../types';
+import type { QuickPrompt, ActionGroup, ActionScope } from '../types';
 
 function shortId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
@@ -25,14 +25,14 @@ function sortGroups(list: ActionGroup[]): ActionGroup[] {
 }
 
 interface ActionsStore {
-  scope: 'writer' | 'task';
+  scope: ActionScope;
   actions: QuickPrompt[];
   groups: ActionGroup[];
   /** Actions without a groupId (top-level). */
   rootActions: () => QuickPrompt[];
   /** Actions belonging to a given group id. */
   actionsInGroup: (groupId: string) => QuickPrompt[];
-  setScope: (scope: 'writer' | 'task') => void;
+  setScope: (scope: ActionScope) => void;
   reload: () => Promise<void>;
   saveAction: (action: Partial<QuickPrompt> & { id?: string }) => Promise<QuickPrompt>;
   deleteAction: (id: string) => Promise<void>;

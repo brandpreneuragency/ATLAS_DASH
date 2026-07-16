@@ -3,7 +3,6 @@ import { nanoid } from 'nanoid';
 import { db } from '../services/db';
 import i18n from '../i18n';
 import type { FileViewerItem } from '../types';
-import { DEFAULT_THEME, isTheme, type Theme } from '../types/theme';
 import {
   applyAssistantWrapperOpen,
   applyPrimaryWrapperOpen,
@@ -50,7 +49,9 @@ export type FormsPage = 'dashboard' | 'list' | 'builder' | 'submissions' | 'temp
 export type TaskPage = 'list' | 'calendar' | 'projects';
 
 /** Sub-tabs rendered inside the Settings document. Fixed and non-closable. */
-export type SettingsSubTab = 'models' | 'actions' | 'appearance' | 'agents' | 'tools';
+export type SettingsSubTab = 'tools' | 'actions' | 'appearance' | 'agents';
+/** Legacy Settings sub-tab id kept for deep-link compatibility (maps to `tools`). */
+export type LegacySettingsSubTab = SettingsSubTab | 'models';
 /** Which doc-mode tab is active: a normal document or the special Settings doc. */
 export type DocActiveView = 'document' | 'settings';
 
@@ -81,7 +82,7 @@ interface UIStore {
     | 'actionsManagerModal'
     | 'appearanceSettings'
     | null;
-  actionsManagerScope: 'writer' | 'task';
+  actionsManagerScope: 'writer' | 'task' | 'crm';
   editingAgentId: string | null;
   findReplaceOpen: boolean;
   htmlViewOpen: boolean;
@@ -112,9 +113,6 @@ interface UIStore {
   activeView: DocActiveView;
   /** Active sub-tab inside the Settings document. */
   activeSettingsSubTab: SettingsSubTab;
-
-  /** Active UI theme */
-  theme: Theme;
 
   /** File viewer panel state (assistant-wrapper content selection). */
   fileViewerOpen: boolean;
@@ -151,7 +149,7 @@ interface UIStore {
   setSidebarTab: (tab: SidebarTab) => void;
   setSelectedText: (sel: SelectionState | null) => void;
   setActiveModal: (m: UIStore['activeModal']) => void;
-  setActionsManagerScope: (scope: 'writer' | 'task') => void;
+  setActionsManagerScope: (scope: 'writer' | 'task' | 'crm') => void;
   setEditingAgentId: (id: string | null) => void;
   setFindReplaceOpen: (v: boolean) => void;
   setHtmlViewOpen: (v: boolean) => void;
@@ -170,12 +168,11 @@ interface UIStore {
   setActiveFormsPage: (p: FormsPage) => void;
   setActiveTaskPage: (p: TaskPage) => void;
   setActiveView: (v: DocActiveView) => void;
-  setActiveSettingsSubTab: (tab: SettingsSubTab) => void;
+  setActiveSettingsSubTab: (tab: SettingsSubTab | LegacySettingsSubTab) => void;
   /** Switch to the Settings document tab, optionally targeting a sub-tab. */
-  openSettings: (subTab?: SettingsSubTab) => void;
+  openSettings: (subTab?: SettingsSubTab | LegacySettingsSubTab) => void;
   setActiveTaskId: (id: string | null) => void;
   setSubtasksOpen: (v: boolean) => void;
-  setTheme: (theme: Theme) => void;
   openFileViewer: (file: FileViewerItem) => void;
   closeFileViewer: () => void;
   setFileViewerFile: (file: FileViewerItem | null) => void;
@@ -303,9 +300,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
   activeFormsPage: 'list',
   activeTaskPage: 'list',
   activeView: 'document',
-  activeSettingsSubTab: 'models',
-
-  theme: DEFAULT_THEME,
+  activeSettingsSubTab: 'tools',
 
   fileViewerOpen: false,
   fileViewerFile: null,
@@ -495,14 +490,18 @@ export const useUIStore = create<UIStore>((set, get) => ({
     persistLayoutKeys({ primaryWrapperOpen: true });
   },
 
-  setActiveSettingsSubTab: (tab) => set({ activeSettingsSubTab: tab }),
+  setActiveSettingsSubTab: (tab) =>
+    set({ activeSettingsSubTab: tab === 'models' ? 'tools' : tab }),
 
   openSettings: (subTab) => {
     // Settings is a first-class shell mode (PRD 6.9). Deep links from Tasks/CRM
     // AI (models/agents/actions) must leave those modes or Settings never renders.
+    // Legacy `models` sub-tab is mapped to merged `tools` (LLM + search tools).
+    const resolved =
+      subTab === 'models' ? 'tools' : (subTab ?? undefined);
     set((s) => ({
       activeView: 'settings',
-      activeSettingsSubTab: subTab ?? s.activeSettingsSubTab,
+      activeSettingsSubTab: resolved ?? s.activeSettingsSubTab,
       primaryWrapperOpen: true,
       taskMode: false,
       crmMode: false,
@@ -518,12 +517,6 @@ export const useUIStore = create<UIStore>((set, get) => ({
   },
 
   setSubtasksOpen: (v) => set({ subtasksOpen: v }),
-
-  setTheme: (theme) => {
-    set({ theme });
-    document.documentElement.setAttribute('data-theme', theme);
-    void db.settings.put({ key: 'theme', value: theme });
-  },
 
   openFileViewer: (file) => {
     // File Viewer is assistant-wrapper content (PRD 6.10).
@@ -640,8 +633,11 @@ export const useUIStore = create<UIStore>((set, get) => ({
     void i18n.changeLanguage(lang);
     document.documentElement.lang = lang;
 
-    const theme: Theme = isTheme(themeSetting?.value) ? themeSetting.value : DEFAULT_THEME;
-    document.documentElement.setAttribute('data-theme', theme);
+    // Legacy named themes (e.g. cyberpunk) are no longer supported — force default.
+    if (themeSetting?.value != null && themeSetting.value !== 'default') {
+      void db.settings.put({ key: 'theme', value: 'default' });
+    }
+    document.documentElement.removeAttribute('data-theme');
 
     const crmModeStored = crmModeSetting ? Boolean(crmModeSetting.value) : false;
     const formsModeStored = formsModeSetting ? Boolean(formsModeSetting.value) : false;
@@ -712,7 +708,6 @@ export const useUIStore = create<UIStore>((set, get) => ({
       language: lang,
       taskMode: taskModeValue,
       activeTaskId: lastActiveTaskId ? String(lastActiveTaskId.value) : null,
-      theme,
       contextWindowOpen: false,
       contextWindowCollapsed: contextWindowCollapsed ? Boolean(contextWindowCollapsed.value) : true,
       terminalPanelOpen: terminalPanelOpen ? Boolean(terminalPanelOpen.value) : false,

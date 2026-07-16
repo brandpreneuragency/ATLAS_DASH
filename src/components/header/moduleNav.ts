@@ -1,5 +1,4 @@
 import {
-  Cpu,
   KanbanSquare,
   Palette,
   UserPlus,
@@ -52,9 +51,8 @@ export const TASK_HEADER_TABS: ModuleNavItem<TaskPage>[] = [
 ];
 
 export const SETTINGS_HEADER_TABS: ModuleNavItem<SettingsSubTab>[] = [
-  { key: 'models', label: 'Models', icon: Cpu },
+  { key: 'tools', label: 'Tools', icon: Wrench },
   { key: 'actions', label: 'Actions', icon: Zap },
   { key: 'appearance', label: 'Appearance', icon: Palette },
   { key: 'agents', label: 'Agents', icon: Users },
-  { key: 'tools', label: 'Tools', icon: Wrench },
 ];

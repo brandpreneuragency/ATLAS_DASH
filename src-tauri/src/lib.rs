@@ -31,20 +31,27 @@ fn test_notification(app: tauri::AppHandle) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
-        // Single-instance MUST be the first plugin. When a second copy is
-        // launched, it exits immediately and our callback focuses the
-        // already-running window.
-        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
-            if let Some(w) = app.get_webview_window("main") {
-                let _ = w.show();
-                let _ = w.set_focus();
-            }
-        }))
+    // Single-instance is release-only. If it is also enabled in debug, an
+    // already-running installed TABS (often hidden in the tray after close)
+    // causes `npm run tauri:dev` to start and immediately exit — looking
+    // like the dev command "keeps quitting".
+    let builder = tauri::Builder::default();
+
+    #[cfg(not(debug_assertions))]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+        // Second launch focuses the existing window instead of starting another.
+        if let Some(w) = app.get_webview_window("main") {
+            let _ = w.show();
+            let _ = w.set_focus();
+        }
+    }));
+
+    builder
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(terminal::TerminalRegistry::new())
         .plugin(

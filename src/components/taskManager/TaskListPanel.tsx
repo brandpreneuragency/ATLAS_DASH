@@ -95,47 +95,51 @@ export function TaskListPanel() {
     <div id="task-list-panel" className="panel flex-col h-full overflow-hidden" style={{ marginLeft: '0px', marginRight: '0px' }}>
       <div id="task-list-main-wrapper" className="panel-body" style={{ flex: '1 1 0', minHeight: 0, display: 'flex', flexDirection: 'column', borderRadius: '0px', backgroundColor: 'var(--c-background-1)', border: 'none' }}>
         {activeTab === 'list' && (
-          <div
-            id="task-list-content"
-            className="ai-scroll flex-1 overflow-y-a h-full"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              flex: 1,
-              height: '100%',
-              gap: '6px',
-              paddingLeft: '18px',
-              paddingRight: '12px',
-              paddingTop: '18px',
-              paddingBottom: '0px',
-              verticalAlign: 'middle',
-            }}
-          >
-            <div className="task-list-clock-header">
-              {clockLabel}
-            </div>
-            {filteredTasks.length === 0 && (
-              <div className="flex-col items-center justify-center py-12 text-center" style={{ padding: '6px 16px', verticalAlign: 'middle' }}>
-                <p className="txt-xs subtle">No tasks yet</p>
-                <p className="label mt-1">Type below to create your first task</p>
+          <>
+            <div className="task-list-sticky-header">
+              <div className="task-list-clock-header">
+                {clockLabel}
               </div>
-            )}
-            {categoriesWithTasks.map((category) => (
-              <React.Fragment key={category}>
-                <div className="task-list-category-header">
-                  {getCategoryLabel(category)}
+            </div>
+            <div
+              id="task-list-content"
+              className="ai-scroll flex-1 overflow-y-a"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                flex: '1 1 0',
+                minHeight: 0,
+                gap: '6px',
+                paddingLeft: '18px',
+                paddingRight: '12px',
+                paddingTop: '0px',
+                paddingBottom: '0px',
+                verticalAlign: 'middle',
+              }}
+            >
+              {filteredTasks.length === 0 && (
+                <div className="flex-col items-center justify-center py-12 text-center" style={{ padding: '6px 16px', verticalAlign: 'middle' }}>
+                  <p className="txt-xs subtle">No tasks yet</p>
+                  <p className="label mt-1">Type below to create your first task</p>
                 </div>
-                {groupedTasks[category].map((task) => (
-                  <TaskListItem
-                    key={task.id}
-                    task={task}
-                    isActive={task.id === activeTaskId}
-                    onClick={() => useTaskStore.getState().openTaskInActiveTab(task.id)}
-                  />
-                ))}
-              </React.Fragment>
-            ))}
-          </div>
+              )}
+              {categoriesWithTasks.map((category) => (
+                <React.Fragment key={category}>
+                  <div className="task-list-category-header">
+                    {getCategoryLabel(category)}
+                  </div>
+                  {groupedTasks[category].map((task) => (
+                    <TaskListItem
+                      key={task.id}
+                      task={task}
+                      isActive={task.id === activeTaskId}
+                      onClick={() => useTaskStore.getState().openTaskInActiveTab(task.id)}
+                    />
+                  ))}
+                </React.Fragment>
+              ))}
+            </div>
+          </>
         )}
 
         {activeTab === 'calendar' && (
