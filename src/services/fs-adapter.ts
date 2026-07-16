@@ -35,19 +35,47 @@ function normalize(p: string): string {
   return p.replace(/\\/g, '/');
 }
 
+/**
+ * Join a parent path and a child name.
+ *
+ * Supports:
+ * - OS paths: `/home/a` + `b` → `/home/a/b`
+ * - Remote VPS roots (`root:rel`): `atlas:` + `notes` → `atlas:notes`
+ *   (must not insert a slash after the colon when rel is empty)
+ * - Nested remote: `atlas:notes` + `a.md` → `atlas:notes/a.md`
+ */
 export function joinPath(parent: string, name: string): string {
-  return normalize(parent).replace(/\/+$/, '') + '/' + name;
+  const norm = normalize(parent).replace(/\/+$/, '');
+  // Multi-char id + trailing colon = remote root with empty rel (not Windows `C:`).
+  if (/^[A-Za-z][A-Za-z0-9_-]+:$/.test(norm)) {
+    return norm + name;
+  }
+  return norm + '/' + name;
 }
 
 /** Browser File System Access API synthetic root prefix (see browser-folder-connector). */
 const BROWSER_ROOT_PREFIX = '__BROWSER_ROOT__:';
 
+/** Multi-char remote root id + colon (e.g. `atlas:`), not a Windows drive letter. */
+const REMOTE_ROOT_ONLY = /^[A-Za-z][A-Za-z0-9_-]+:$/;
+
 export function basename(p: string): string {
-  const base = normalize(p).split('/').pop() ?? p;
+  const norm = normalize(p);
+  const base = norm.split('/').pop() ?? p;
   // Browser roots are stored as "__BROWSER_ROOT__:FolderName" with no slash.
-  return base.startsWith(BROWSER_ROOT_PREFIX)
-    ? base.slice(BROWSER_ROOT_PREFIX.length)
-    : base;
+  if (base.startsWith(BROWSER_ROOT_PREFIX)) {
+    return base.slice(BROWSER_ROOT_PREFIX.length);
+  }
+  // Remote root-only path "atlas:" → "atlas"
+  if (REMOTE_ROOT_ONLY.test(base)) {
+    return base.slice(0, -1);
+  }
+  // Remote top-level entry "atlas:file.md" (no slash in the full path) → "file.md"
+  if (!norm.includes('/')) {
+    const m = norm.match(/^([A-Za-z][A-Za-z0-9_-]+):(.+)$/);
+    if (m) return m[2];
+  }
+  return base;
 }
 
 export function getExt(p: string): string {

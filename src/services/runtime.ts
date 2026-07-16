@@ -30,7 +30,13 @@ export async function getFolderConnector(): Promise<FolderConnector> {
     const { TauriFolderConnector } = await import('./tauri-folder-connector');
     _connector = new TauriFolderConnector();
   } else {
-    _connector = new BrowserFolderConnector();
+    const { tabsApi } = await import('./tabsApi');
+    if (await tabsApi.available()) {
+      const { RemoteFolderConnector } = await import('./remote-folder-connector');
+      _connector = new RemoteFolderConnector();
+    } else {
+      _connector = new BrowserFolderConnector();
+    }
   }
 
   return _connector;

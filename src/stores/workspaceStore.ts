@@ -32,6 +32,7 @@ import {
   pickSaveTabsPath,
   getExt,
 } from '../services/fs-adapter';
+import { getFolderConnector } from '../services/runtime';
 
 // ── Re-export tree types so consumers can import from workspaceStore ──
 export type TreeNode = {
@@ -162,7 +163,13 @@ async function loadSubtree(
 
 function getParentFullPath(fullPath: string): string {
   const idx = fullPath.lastIndexOf('/');
-  return idx === -1 ? fullPath : fullPath.slice(0, idx);
+  if (idx !== -1) return fullPath.slice(0, idx);
+  // Remote scheme top-level: "atlas:file.md" → "atlas:" (not the path itself).
+  const colon = fullPath.indexOf(':');
+  if (colon > 0 && colon < fullPath.length - 1) {
+    return fullPath.slice(0, colon + 1);
+  }
+  return fullPath;
 }
 
 function validateName(name: string, siblings: TreeNode[]): string | null {
@@ -766,12 +773,19 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   // ── Folder operations within workspace ──
 
   connectFolderInWorkspace: async (workspaceId, fullPath) => {
-    if (!isNativeFsAvailable()) {
-      const message =
-        'Folder access is not available in this browser. Use Chrome/Edge, or the TABS desktop app.';
-      set({ error: message });
-      toast(message);
-      return null;
+    // fullPath is set by the VPS root picker (RemoteFolderConnector.connectRoot).
+    // Native/browser pickers leave it undefined and use openFolderDialog instead.
+    // Do not gate remote paths on isNativeFsAvailable() — tabs_api has no showDirectoryPicker.
+    if (!fullPath && !isNativeFsAvailable()) {
+      // Still allow when tabs_api selected RemoteFolderConnector (isAvailable always true).
+      const connector = await getFolderConnector();
+      if (!connector.isAvailable()) {
+        const message =
+          'Folder access is not available in this browser. Use Chrome/Edge, or the TABS desktop app.';
+        set({ error: message });
+        toast(message);
+        return null;
+      }
     }
 
     const ws = get().workspaces.find((w) => w.id === workspaceId);
