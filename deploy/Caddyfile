@@ -1,7 +1,5 @@
 # ATLAS_DASH web + API (basic-auth protected)
-# Primary: atlasdash.brandpreneur.net
-# Temporary alias: tabs.brandpreneur.net (remove after clients switch)
-atlasdash.brandpreneur.net, tabs.brandpreneur.net {
+atlasdash.brandpreneur.net {
 	encode zstd gzip
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
