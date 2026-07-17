@@ -10,8 +10,8 @@ Single source of truth for naming and the local → git → VPS loop.
 | Legacy local | `C:\02_APPS\TABS` — do not deploy from; leave unless user says otherwise |
 | Git remote | `https://github.com/brandpreneuragency/ATLAS_DASH.git` |
 | Deploy branch | `main` |
-| Public host | `https://atlasdash.brandpreneur.net` (Caddy basic-auth) |
-| Temporary alias | `https://tabs.brandpreneur.net` (same site until DNS + client switch; then remove from Caddyfile) |
+| Public host (target) | `https://atlasdash.brandpreneur.net` (needs DNS A → 142.132.230.137) |
+| Public host (live until DNS) | `https://tabs.brandpreneur.net` (Caddy basic-auth; see `deploy/Caddyfile`) |
 | VPS clone | `/home/admin/atlas_dash/app` |
 | Compose project | `atlas_dash` (`-p atlas_dash`) |
 | Compose file | `deploy/docker-compose.yml` |
