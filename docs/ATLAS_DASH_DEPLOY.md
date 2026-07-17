@@ -11,6 +11,7 @@ Single source of truth for naming and the local → git → VPS loop.
 | Git remote | `https://github.com/brandpreneuragency/ATLAS_DASH.git` |
 | Deploy branch | `main` |
 | Public host | `https://atlasdash.brandpreneur.net` (Caddy basic-auth) |
+| Temporary alias | `https://tabs.brandpreneur.net` (same site until DNS + client switch; then remove from Caddyfile) |
 | VPS clone | `/home/admin/atlas_dash/app` |
 | Compose project | `atlas_dash` (`-p atlas_dash`) |
 | Compose file | `deploy/docker-compose.yml` |
