@@ -1,8 +1,10 @@
 # ATLAS_DASH web + API (basic-auth protected)
-# Primary host: atlasdash.brandpreneur.net
-# Temporary alias: tabs.brandpreneur.net until DNS for atlasdash is live and clients switch.
-# Remove the tabs.brandpreneur.net site after DNS + client cutover.
-atlasdash.brandpreneur.net, tabs.brandpreneur.net {
+# Temporary public host: tabs.brandpreneur.net (DNS live today).
+# When DNS A record for atlasdash.brandpreneur.net → 142.132.230.137 exists,
+# change the site line to:
+#   atlasdash.brandpreneur.net, tabs.brandpreneur.net {
+# or switch to atlasdash-only after clients move.
+tabs.brandpreneur.net {
 	encode zstd gzip
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
