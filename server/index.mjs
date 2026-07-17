@@ -6,9 +6,9 @@ import { createFsHandlers, HttpError } from './lib/fs-handlers.mjs';
 import { createHermesProxy } from './lib/hermes-proxy.mjs';
 import { createHermesSession } from './lib/hermes-session.mjs';
 
-const PORT = Number(process.env.TABS_API_PORT || 4010);
-const roots = JSON.parse(process.env.TABS_FS_ROOTS || '[]');
-const allowSensitive = process.env.TABS_FS_ALLOW_SENSITIVE === '1';
+const PORT = Number(process.env.ATLAS_DASH_API_PORT || 4010);
+const roots = JSON.parse(process.env.ATLAS_DASH_FS_ROOTS || '[]');
+const allowSensitive = process.env.ATLAS_DASH_FS_ALLOW_SENSITIVE === '1';
 const fsHandlers = createFsHandlers({ roots, allowSensitive });
 const hermesTarget = process.env.HERMES_DASHBOARD_URL || 'http://127.0.0.1:9119';
 const hermesSession = createHermesSession({
@@ -79,9 +79,9 @@ server.on('upgrade', (req, socket, head) => {
       if (!handled) socket.destroy();
     })
     .catch((err) => {
-      console.error('[tabs_api] ws upgrade error:', err.message);
+      console.error('[atlas_dash_api] ws upgrade error:', err.message);
       socket.destroy();
     });
 });
 
-server.listen(PORT, '127.0.0.1', () => console.log(`tabs_api on 127.0.0.1:${PORT}`));
+server.listen(PORT, '127.0.0.1', () => console.log(`atlas_dash_api on 127.0.0.1:${PORT}`));

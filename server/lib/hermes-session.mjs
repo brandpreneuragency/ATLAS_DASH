@@ -1,4 +1,4 @@
-// server/lib/hermes-session.mjs — Hermes gated-mode session for tabs_api.
+// server/lib/hermes-session.mjs — Hermes gated-mode session for atlas_dash_api.
 // When the dashboard binds non-loopback, Bearer HERMES_DASHBOARD_SESSION_TOKEN is ignored;
 // only a session cookie (and single-use ?ticket= for WebSockets) authenticates API calls.
 //

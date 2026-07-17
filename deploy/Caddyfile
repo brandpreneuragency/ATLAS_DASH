@@ -1,5 +1,5 @@
-# TABS web + API (basic-auth protected)
-tabs.brandpreneur.net {
+# ATLAS_DASH web + API (basic-auth protected)
+atlasdash.brandpreneur.net {
 	encode zstd gzip
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -8,7 +8,7 @@ tabs.brandpreneur.net {
 		-Server
 	}
 	basic_auth {
-		{$TABS_BASIC_AUTH_USER} {$TABS_BASIC_AUTH_HASH}
+		{$ATLAS_DASH_BASIC_AUTH_USER} {$ATLAS_DASH_BASIC_AUTH_HASH}
 	}
 	handle /fs/* {
 		reverse_proxy 127.0.0.1:4010
@@ -17,7 +17,7 @@ tabs.brandpreneur.net {
 		reverse_proxy 127.0.0.1:4010
 	}
 	handle {
-		root * /srv/tabs-web
+		root * /srv/atlas-dash-web
 		try_files {path} /index.html
 		file_server
 	}

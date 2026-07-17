@@ -1,8 +1,10 @@
-# AGENTS.md — TABS Repository Guide
+# AGENTS.md — ATLAS_DASH Repository Guide
 
 ## Purpose and precedence
 
 This file applies to the entire repository. It defines the default working rules for coding agents; a more specific `AGENTS.md` in a subdirectory overrides it for that subtree.
+
+**Source of truth:** develop and deploy only from `C:\02_APPS\ATLAS_DASH`. Do not use `C:\02_APPS\TABS` unless the user explicitly asks.
 
 Follow instructions in this order:
 
@@ -25,24 +27,23 @@ Before editing:
 
 Use `rg` and `rg --files` for repository searches. Do not infer system behavior from a single component.
 
-## Current phased program
+## Product and deploy identity
 
-The current repository program is **TABS Web on VPS as Hermes Client**.
+| Item | Value |
+|------|--------|
+| Local workspace | `C:\02_APPS\ATLAS_DASH` |
+| GitHub remote (target) | `brandpreneuragency/ATLAS_DASH` |
+| Public host | `https://atlasdash.brandpreneur.net` |
+| VPS clone | `/home/admin/atlas_dash/app` |
+| Compose project | `atlas_dash` |
+| Containers | `atlas_dash_caddy`, `atlas_dash_api` |
+| Env file (VPS only) | `deploy/.env` (`ATLAS_DASH_*` + `HERMES_*` keys) |
+| Deploy skill | `.grok/skills/atlas-dash-vps-deploy` / `/atlas-dash-vps-deploy` |
+| Deploy doc | `docs/ATLAS_DASH_DEPLOY.md` |
 
-- Entry point: `docs/MASTER_PLAN.md`
-- Progress tracker: `docs/PROGRESS.md`
-- Canonical implementation plan: `docs/superpowers/plans/2026-07-16-tabs-vps-hermes-client.md`
-- Phase handoffs: `docs/CODEX_HANDOFF/`
+The historical program **TABS Web on VPS as Hermes Client** (phases 0–13) is complete. Its plans remain under `docs/` for evidence; do not re-open them for naming. Ongoing ops use the ATLAS_DASH paths above.
 
-When working on that program:
-
-1. Read `docs/PROGRESS.md`, then `docs/MASTER_PLAN.md`.
-2. Determine the next incomplete phase.
-3. Read only the canonical plan task mapped to that phase, plus directly referenced material needed to execute it.
-4. Implement only that phase. Do not pull later-phase work forward.
-5. Run its acceptance criteria, update `docs/PROGRESS.md`, and follow the phase's explicit commit/push instructions.
-
-Do not mark a phase complete when any required check is failing or unverified. Record deviations and facts needed by the next phase tersely and factually.
+Legacy local folder `C:\02_APPS\TABS` is out of scope unless the user explicitly names it. Never delete it without explicit "Approve".
 
 ## Repository map
 
@@ -63,7 +64,7 @@ Generated or runtime data is not source: `node_modules/`, `dist/`, `src-tauri/ta
 
 ## Runtime and architecture rules
 
-TABS has multiple runtime paths. A browser preview is not proof that Tauri behavior works, and a local desktop build is not proof that the deployed web path works.
+ATLAS_DASH has multiple runtime paths. A browser preview is not proof that Tauri behavior works, and a local desktop build is not proof that the deployed web path works.
 
 - Vite development uses port `1420` with a strict port setting.
 - Keep runtime detection and runtime-specific behavior in service/adaptor layers. Reuse `src/services/runtime.ts`, `src/services/http.ts`, and the `FolderConnector` abstraction instead of importing Tauri APIs into feature UI.
@@ -109,7 +110,7 @@ TABS has multiple runtime paths. A browser preview is not proof that Tauri behav
 - Never print API keys, access tokens, session tokens, password hashes, secure-storage values, or `.env` contents in commands, logs, tests, diffs, or chat.
 - Do not modify reference-only Hermes sources. They are evidence for protocol discovery, not part of this repository.
 - For the current VPS plan, use non-interactive SSH exactly as documented in the canonical plan.
-- Keep `tabs_api` bound to loopback. Never expose ports `4010`, `9119`, or `8642` publicly.
+- Keep `atlas_dash_api` bound to loopback. Never expose ports `4010`, `9119`, or `8642` publicly.
 - Preserve the existing Atlas and Wagner Atelier sites when changing Caddy or deployment assets.
 - Recreating or changing the Hermes container for the session token requires the user's exact in-session approval specified by the phase. Prior approval for a different destructive step does not transfer.
 - Before any destructive operation, verify the target, capture the required evidence, and confirm that the active phase explicitly authorizes it. Stop on unexpected infrastructure state.
