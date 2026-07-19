@@ -23,10 +23,18 @@ atlasdash.brandpreneur.net {
 	}
 }
 
-# Atlas Control (carried over; atlas_control publishes 127.0.0.1:8700)
+# Atlas Control and public AI Browser Sidebar release assets.
 atlas.brandpreneur.net {
 	encode zstd gzip
-	reverse_proxy 127.0.0.1:8700
+	@aibsRegistry path /ai-browser-sidebar/v1/*
+	header @aibsRegistry Cache-Control "public, max-age=31536000, immutable"
+	handle_path /ai-browser-sidebar/* {
+		root * /var/www/ai-browser-sidebar
+		file_server
+	}
+	handle {
+		reverse_proxy 127.0.0.1:8700
+	}
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options "nosniff"

@@ -13,6 +13,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
       - /var/www/wagneratelier:/var/www/wagneratelier:ro
+      - /home/admin/atlas_dash/public/ai-browser-sidebar:/var/www/ai-browser-sidebar:ro
 
   api:
     build:
