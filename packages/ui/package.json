@@ -6,8 +6,11 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
+    "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "node ../../scripts/lint.mjs .",
+    "test": "vitest run",
+    "test:unit": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -16,7 +19,8 @@
   },
   "devDependencies": {
     "@types/react": "^19.1.0",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "vitest": "^3.1.0"
   },
   "peerDependencies": {
     "react": "^19.0.0"

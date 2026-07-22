@@ -2,13 +2,16 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "dev": { "cache": false, "persistent": true },
-    "build": { "dependsOn": ["^build"], "outputs": ["dist", ".next"] },
+    "build": {
+      "dependsOn": ["^build", "typecheck"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
     "lint": { "outputs": [] },
     "typecheck": { "dependsOn": ["^build"], "outputs": [] },
-    "test": { "dependsOn": ["^build"], "outputs": ["coverage"] },
-    "test:unit": { "dependsOn": ["^build"], "outputs": ["coverage"] },
-    "test:integration": { "dependsOn": ["^build"], "outputs": ["coverage"] },
-    "test:e2e": { "dependsOn": ["^build"], "outputs": ["coverage"] },
+    "test": { "dependsOn": ["^build"], "outputs": [] },
+    "test:unit": { "dependsOn": ["^build"], "outputs": [] },
+    "test:integration": { "dependsOn": ["^build"], "outputs": [] },
+    "test:e2e": { "dependsOn": ["^build"], "outputs": [] },
     "db:generate": { "cache": false },
     "db:migrate": { "cache": false },
     "db:seed": { "cache": false, "dependsOn": ["^build"] },

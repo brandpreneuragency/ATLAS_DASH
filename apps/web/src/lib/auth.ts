@@ -1,10 +1,8 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import { isEmailAllowed, parseAllowedEmails } from "./auth-policy";
 
-const allowedEmails = (process.env.ALLOWED_EMAILS ?? "")
-  .split(",")
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
+const allowedEmails = parseAllowedEmails(process.env.ALLOWED_EMAILS);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -21,13 +19,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   callbacks: {
     async signIn({ user }) {
-      const email = user.email?.toLowerCase();
-      if (!email) return false;
-      // In local/dev without ALLOWED_EMAILS, deny by default for safety
-      // unless AUTH_DEV_BYPASS is set.
-      if (process.env.AUTH_DEV_BYPASS === "true") return true;
-      if (allowedEmails.length === 0) return false;
-      return allowedEmails.includes(email);
+      return isEmailAllowed(user.email, {
+        allowedEmails,
+        devBypass: process.env.AUTH_DEV_BYPASS === "true",
+      });
     },
     async session({ session, token }) {
       if (session.user && token.sub) {

@@ -7,6 +7,88 @@ const sql = postgres(url, { max: 1 });
 
 const SEED_DIR = join(import.meta.dirname, "..", "..", "..", "docs", "implementation-package", "data");
 
+interface CanonicalModelSeed {
+  canonicalId: string;
+  name: string;
+  developer: string;
+  family?: string | null;
+  generation?: string | number | null;
+  lifecycle?: string | null;
+  releaseDate?: string | null;
+  knowledgeCutoff?: string | null;
+  modelType?: string | null;
+  codingSpecialization?: string | null;
+  bestUse?: string | null;
+  avoidFor?: string | null;
+  contextTokens?: number | null;
+  maxOutputTokens?: number | null;
+  speedRating?: string | null;
+  verifiedTps?: number | string | null;
+  needsRecheck?: boolean | null;
+  verifiedOn?: string | null;
+  visionSupport?: string | null;
+  reasoningSupport?: string | null;
+  toolSupport?: string | null;
+}
+
+interface SubscriptionSeed {
+  id: string;
+  accessProvider: string;
+  plan: string;
+  accountLabel: string;
+  status?: string | null;
+  nextBillingDate?: string | null;
+  autoRenews?: boolean | null;
+  currentPrice?: number | null;
+  regularPrice?: number | null;
+  introductoryPrice?: number | null;
+  currency?: string | null;
+  billingInterval?: string | null;
+  apiAccessType?: string | null;
+  authenticationType?: string | null;
+  usageTrackingMode?: string | null;
+  usageCheckInstructions?: string | null;
+  notes?: string | null;
+}
+
+interface ModelAccessSeed {
+  modelCanonicalId: string;
+  subscriptionId: string;
+  availability?: string | null;
+  accessMethod?: string | null;
+  includedInPlan?: boolean | null;
+  cliOnly?: boolean | null;
+  webOnly?: boolean | null;
+  apiCompatible?: boolean | null;
+}
+
+interface AliasSeed {
+  canonicalId: string;
+  alias: string;
+  type?: string | null;
+}
+
+interface BenchmarkSeed {
+  Benchmark: string;
+  Category?: string | null;
+  "Version / Setting"?: string | null;
+  "Comparable Group"?: string | null;
+  Unit?: string | null;
+  "Higher Better"?: string | boolean | null;
+  Model: string;
+  Score?: string | number | null;
+  "Verified On"?: string | null;
+  "Source URL"?: string | null;
+  Notes?: string | null;
+}
+
+interface MockUsageSeed {
+  subscriptionId: string;
+  periodLabel?: string | null;
+  usedPercent?: number | null;
+  capturedAt?: string | null;
+}
+
 function loadSeed<T>(filename: string): T {
   const content = readFileSync(join(SEED_DIR, filename), "utf-8");
   return JSON.parse(content) as T;
@@ -20,12 +102,12 @@ async function main() {
   console.log("Seeding database...");
 
   // Load seed data
-  const canonicalModels = loadSeed<any[]>("canonical-models.seed.json");
-  const subscriptionsSeed = loadSeed<any[]>("subscriptions.seed.json");
-  const modelAccessSeed = loadSeed<any[]>("model-access.seed.json");
-  const aliasesSeed = loadSeed<any[]>("model-aliases.seed.json");
-  const benchmarksSeed = loadSeed<any[]>("benchmarks.seed.json");
-  const mockUsageSeed = loadSeed<any[]>("mock-usage.seed.json");
+  const canonicalModels = loadSeed<CanonicalModelSeed[]>("canonical-models.seed.json");
+  const subscriptionsSeed = loadSeed<SubscriptionSeed[]>("subscriptions.seed.json");
+  const modelAccessSeed = loadSeed<ModelAccessSeed[]>("model-access.seed.json");
+  const aliasesSeed = loadSeed<AliasSeed[]>("model-aliases.seed.json");
+  const benchmarksSeed = loadSeed<BenchmarkSeed[]>("benchmarks.seed.json");
+  const mockUsageSeed = loadSeed<MockUsageSeed[]>("mock-usage.seed.json");
 
   // 1. Create owner user
   const [user] = await sql`

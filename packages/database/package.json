@@ -16,10 +16,11 @@
     }
   },
   "scripts": {
+    "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "lint": "echo 'no lint configured'",
-    "test": "tsx src/seed-integrity.test.ts",
-    "test:unit": "tsx src/seed-integrity.test.ts",
+    "lint": "node ../../scripts/lint.mjs .",
+    "test": "vitest run --config vitest.config.ts && tsx src/seed-integrity.test.ts",
+    "test:unit": "vitest run --config vitest.config.ts",
     "test:integration": "tsx src/seed-integrity.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/migrate.ts",

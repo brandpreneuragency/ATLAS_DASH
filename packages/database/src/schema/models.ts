@@ -12,6 +12,7 @@ import {
   char,
   index,
   unique,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { developers, accessProviders } from "./core";
 import { plans } from "./subscriptions";
@@ -53,7 +54,7 @@ export const models = pgTable("models", {
   metadata: jsonb("metadata").notNull().default({}),
   status: recordStatus("status").notNull().default("active"),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
-  mergedIntoModelId: uuid("merged_into_model_id").references((): any => models.id),
+  mergedIntoModelId: uuid("merged_into_model_id").references((): AnyPgColumn => models.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
