@@ -172,4 +172,4 @@ async def test_settings_notifications_test_endpoint(app_client):
     import json
 
     payload = json.loads(route.calls.last.request.read())
-    assert payload["text"] == "ATLAS Control test message"
+    assert payload["text"] == "ATLAS_DASH test message"

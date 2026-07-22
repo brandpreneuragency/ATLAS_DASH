@@ -153,7 +153,7 @@ wheels = [
 ]
 
 [[package]]
-name = "atlas-control-backend"
+name = "atlas-dash-server"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

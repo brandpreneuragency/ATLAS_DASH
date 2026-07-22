@@ -103,9 +103,9 @@ async def test_notifications() -> dict[str, bool]:
     from app.notify import telegram as telegram_notify
 
     return {
-        "telegram": await telegram_notify.send("ATLAS Control test message"),
+        "telegram": await telegram_notify.send("ATLAS_DASH test message"),
         "email": await email_notify.send(
-            "ATLAS Control", "ATLAS Control test message"
+            "ATLAS_DASH", "ATLAS_DASH test message"
         ),
     }
 

@@ -84,7 +84,7 @@ def verify_session_cookie(token: str, secret: str) -> dict[str, Any] | None:
 
 async def bootstrap_password(settings: Settings) -> None:
     if not settings.password:
-        raise RuntimeError("ATLAS_PASSWORD is required")
+        raise RuntimeError("ATLAS_DASH_PASSWORD (or legacy ATLAS_PASSWORD) is required")
     async with get_session() as session:
         existing = (
             await session.execute(

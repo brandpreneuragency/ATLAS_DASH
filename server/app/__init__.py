@@ -1,1 +1,1 @@
-﻿"""ATLAS Control backend package."""
+﻿"""ATLAS_DASH server package."""

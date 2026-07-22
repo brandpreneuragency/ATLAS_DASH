@@ -1,7 +1,7 @@
 [project]
-name = "atlas-control-backend"
+name = "atlas-dash-server"
 version = "0.1.0"
-description = "ATLAS Control backend"
+description = "ATLAS_DASH server"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

@@ -40,7 +40,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await wf_engine.shutdown()
             await engine.dispose()
 
-    app = FastAPI(title="ATLAS Control", lifespan=lifespan)
+    app = FastAPI(title="ATLAS_DASH", lifespan=lifespan)
     app.state.settings = resolved_settings
     app.add_middleware(CsrfMiddleware)
     app.add_middleware(ApiAuthMiddleware)
