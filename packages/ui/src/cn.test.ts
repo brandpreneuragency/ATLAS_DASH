@@ -11,7 +11,9 @@ describe("cn", () => {
   });
 
   it("ignores falsy values", () => {
-    expect(cn("block", false && "hidden", undefined, null, "text-sm")).toBe(
+    const includeHidden = false;
+    const maybeHidden = includeHidden ? "hidden" : undefined;
+    expect(cn("block", maybeHidden, undefined, null, "text-sm")).toBe(
       "block text-sm",
     );
   });

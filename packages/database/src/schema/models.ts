@@ -10,8 +10,6 @@ import {
   jsonb,
   integer,
   char,
-  index,
-  unique,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { developers, accessProviders } from "./core";
@@ -22,7 +20,6 @@ import {
   availabilityStatus,
   accessMethod,
   authenticationType,
-  sourceType,
 } from "./enums";
 
 // ── Models ─────────────────────────────────────────────────────

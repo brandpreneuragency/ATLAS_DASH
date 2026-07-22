@@ -1,22 +1,4 @@
-import {
-  pgSchema,
-  pgTable,
-  uuid,
-  text,
-  boolean,
-  integer,
-  bigint,
-  numeric,
-  date,
-  timestamp,
-  jsonb,
-  smallint,
-  char,
-  pgEnum,
-  index,
-  unique,
-} from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
+import { pgEnum } from "drizzle-orm/pg-core";
 
 // ── Enums ──────────────────────────────────────────────────────
 

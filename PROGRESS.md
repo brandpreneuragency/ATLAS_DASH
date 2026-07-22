@@ -16,14 +16,17 @@ Baseline execution repair only. No Phase 2 product features implemented.
 
 ### Changes
 
-- `pnpm-workspace.yaml` `allowBuilds`: `esbuild: true`, `sharp: true` (required by tsx/vitest/drizzle-kit and Next.js)
+- `pnpm-workspace.yaml` `allowBuilds`: `esbuild: true`, `sharp: true`, `unrs-resolver: true` (esbuild/tsx tooling, Next/sharp, ESLint import resolver)
 - `docker/compose.yaml` Postgres published as `127.0.0.1:5433:5432` (loopback-only); container recreated; volume `docker_pgdata` preserved
-- Shared real linter: `scripts/lint.mjs` (TypeScript parse + forbid explicit `any` + secret-material patterns)
+- Genuine ESLint 9 flat-config quality gate restored across all four turbo lint packages:
+  - root `eslint.config.mjs` with `@eslint/js` + `typescript-eslint` type-aware recommended rules and `@typescript-eslint/no-explicit-any: error`
+  - `apps/web/eslint.config.mjs` extends root plus `eslint-config-next` (`next/core-web-vitals`, `next/typescript`)
+  - package `lint` scripts are `eslint .` (custom `scripts/lint.mjs` removed)
 - Real unit/integration tests added for Phase 1 behavior (schemas, ui `cn`, auth policy, logger, health route, database schema/migrations, seed integrity)
 - Package scripts wired so root turbo tasks run genuine checks (no `echo pass` / `--passWithNoTests`)
 - Web typecheck uses `next typegen && tsc --noEmit`; turbo `build` depends on `typecheck` to avoid `.next/types` races
 - `.gitignore` tightened for `.env.*` while keeping `.env.example`
-- Removed explicit `any` in database schema self-FK and seed loader types
+- Removed unused imports / typed postgres seed rows and test JSON payloads so ESLint type-aware rules pass without weakening checks
 
 ### Commands and results
 
@@ -32,17 +35,17 @@ Baseline execution repair only. No Phase 2 product features implemented.
 | `pnpm install --frozen-lockfile` | ✓ pass (pnpm 11.11.0) |
 | `docker compose -f docker/compose.yaml up -d --force-recreate` | ✓ pass; `127.0.0.1:5433->5432`; volume `docker_pgdata` kept |
 | `ss -ltn \| grep 5433` | ✓ `127.0.0.1:5433` only |
-| `pnpm lint` | ✓ pass (4 packages) |
-| `pnpm typecheck` | ✓ pass (4 packages) |
-| `pnpm test:unit` | ✓ pass (web 8, schemas 6, ui 3, database 3) |
-| `pnpm test:integration` | ✓ pass (database seed integrity + web health) |
-| `pnpm build` | ✓ pass (`next build` 14 routes) |
+| `pnpm lint --force` | ✓ pass (ESLint 9.39.5 flat config; 4 packages) |
+| `pnpm typecheck --force` | ✓ pass (4 packages) |
+| `pnpm test:unit --force` | ✓ pass (web 8, schemas 6, ui 3, database 3) |
+| `pnpm test:integration --force` | ✓ pass (database seed integrity + web health) |
+| `pnpm build --force` | ✓ pass (`next build` 14 routes) |
 | seed integrity after recreate | ✓ 51 models / 4 subs / 19 access / 276 benchmarks / $61 |
 
 ### Seed integrity (post-recreate)
 
 | Assertion | Expected | Actual | Status |
-|---|---:|---:|---|
+|---|---:|---:|---:|
 | Canonical models | 51 | 51 | ✓ |
 | Subscriptions | 4 | 4 | ✓ |
 | Model access records | 19 | 19 | ✓ |
@@ -90,7 +93,7 @@ Baseline execution repair only. No Phase 2 product features implemented.
 | 2026-07-22 | `next build` | ✓ pass | 14 routes |
 | 2026-07-22 | `GET /api/v1/health` | ✓ 200 | includes x-request-id |
 | 2026-07-22 | `GET /dashboard` `/login` `/models` | ✓ 200 | shell pages render |
-| 2026-07-22 | `pnpm lint` | ✓ pass | scripts/lint.mjs via turbo |
+| 2026-07-22 | `pnpm lint` | ✓ pass | ESLint 9.39.5 flat config via turbo (4 packages) |
 | 2026-07-22 | `pnpm typecheck` | ✓ pass | turbo 4 packages |
 | 2026-07-22 | `pnpm test:unit` | ✓ pass | 20 tests across 4 packages |
 | 2026-07-22 | `pnpm test:integration` | ✓ pass | seed integrity + health |

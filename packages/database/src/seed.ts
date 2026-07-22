@@ -89,6 +89,30 @@ interface MockUsageSeed {
   capturedAt?: string | null;
 }
 
+
+interface IdRow {
+  id: string;
+}
+
+interface PlanIdRow {
+  plan_id: string;
+}
+
+interface CountRow {
+  models: string | number;
+  subscriptions: string | number;
+  model_access: string | number;
+  benchmarks: string | number;
+  developers: string | number;
+  providers: string | number;
+  aliases: string | number;
+  capabilities: string | number;
+}
+
+interface TotalRow {
+  total: string | number;
+}
+
 function loadSeed<T>(filename: string): T {
   const content = readFileSync(join(SEED_DIR, filename), "utf-8");
   return JSON.parse(content) as T;
@@ -110,12 +134,13 @@ async function main() {
   const mockUsageSeed = loadSeed<MockUsageSeed[]>("mock-usage.seed.json");
 
   // 1. Create owner user
-  const [user] = await sql`
+  const [user] = await sql<IdRow[]>`
     INSERT INTO users (email, display_name, role)
     VALUES ('owner@model-monitor.local', 'Owner', 'owner')
     ON CONFLICT (email) DO UPDATE SET updated_at = now()
     RETURNING id
   `;
+  if (!user) throw new Error("Failed to upsert owner user");
   const userId = user.id;
   console.log(`  ✓ User: ${userId}`);
 
@@ -124,12 +149,13 @@ async function main() {
   const devMap = new Map<string, string>();
   for (const name of developerNames) {
     const slug = slugify(name);
-    const [dev] = await sql`
+    const [dev] = await sql<IdRow[]>`
       INSERT INTO developers (name, slug)
       VALUES (${name}, ${slug})
       ON CONFLICT (slug) DO UPDATE SET updated_at = now()
       RETURNING id
     `;
+    if (!dev) throw new Error(`Failed to upsert developer: ${name}`);
     devMap.set(name, dev.id);
   }
   console.log(`  ✓ Developers: ${devMap.size}`);
@@ -139,12 +165,13 @@ async function main() {
   for (const sub of subscriptionsSeed) {
     const name = sub.accessProvider;
     const slug = slugify(name);
-    const [prov] = await sql`
+    const [prov] = await sql<IdRow[]>`
       INSERT INTO access_providers (name, slug)
       VALUES (${name}, ${slug})
       ON CONFLICT (slug) DO UPDATE SET updated_at = now()
       RETURNING id
     `;
+    if (!prov) throw new Error(`Failed to upsert access provider: ${name}`);
     providerMap.set(name, prov.id);
   }
   console.log(`  ✓ Access providers: ${providerMap.size}`);
@@ -154,12 +181,13 @@ async function main() {
   for (const sub of subscriptionsSeed) {
     const providerId = providerMap.get(sub.accessProvider)!;
     const slug = slugify(sub.plan);
-    const [plan] = await sql`
+    const [plan] = await sql<IdRow[]>`
       INSERT INTO plans (access_provider_id, name, slug, regular_price, introductory_price, currency, billing_interval, api_access_type, authentication_type)
       VALUES (${providerId}, ${sub.plan}, ${slug}, ${sub.regularPrice ?? null}, ${sub.introductoryPrice ?? null}, ${sub.currency ?? 'USD'}, ${sub.billingInterval ?? 'monthly'}, ${sub.apiAccessType ?? 'unknown'}, ${sub.authenticationType ?? 'other'})
       ON CONFLICT (access_provider_id, slug) DO UPDATE SET updated_at = now()
       RETURNING id
     `;
+    if (!plan) throw new Error(`Failed to upsert plan for subscription seed: ${sub.id}`);
     planMap.set(sub.id, plan.id);
   }
   console.log(`  ✓ Plans: ${planMap.size}`);
@@ -181,12 +209,13 @@ async function main() {
   for (const m of canonicalModels) {
     const devId = devMap.get(m.developer)!;
     const slug = slugify(m.name);
-    const [model] = await sql`
+    const [model] = await sql<IdRow[]>`
       INSERT INTO models (developer_id, canonical_id, name, slug, family, generation, lifecycle, lifecycle_raw, release_date, knowledge_cutoff, model_type, coding_specialization, best_use, avoid_for, context_tokens, max_output_tokens, speed_rating, verified_tps, needs_recheck, verified_at)
       VALUES (${devId}, ${m.canonicalId}, ${m.name}, ${slug}, ${m.family ?? null}, ${m.generation?.toString() ?? null}, 'unknown', ${m.lifecycle ?? null}, ${m.releaseDate ?? null}, ${m.knowledgeCutoff ?? null}, ${m.modelType ?? null}, ${m.codingSpecialization ?? null}, ${m.bestUse ?? null}, ${m.avoidFor ?? null}, ${m.contextTokens ?? null}, ${m.maxOutputTokens ?? null}, ${m.speedRating ?? null}, ${m.verifiedTps ?? null}, ${m.needsRecheck ?? true}, ${m.verifiedOn ?? null})
       ON CONFLICT (canonical_id) DO UPDATE SET updated_at = now()
       RETURNING id
     `;
+    if (!model) throw new Error(`Failed to upsert model: ${m.canonicalId}`);
     modelMap.set(m.canonicalId, model.id);
     modelByName.set(m.name, model.id);
   }
@@ -224,7 +253,7 @@ async function main() {
     const modelId = modelMap.get(acc.modelCanonicalId);
     if (!modelId) continue;
     // Find plan via subscription's external_seed_id
-    const [sub] = await sql`SELECT plan_id FROM subscriptions WHERE external_seed_id = ${acc.subscriptionId}`;
+    const [sub] = await sql<PlanIdRow[]>`SELECT plan_id FROM subscriptions WHERE external_seed_id = ${acc.subscriptionId}`;
     if (!sub) continue;
     await sql`
       INSERT INTO model_access (model_id, plan_id, availability, access_method, included_in_plan, cli_only, web_only, api_compatible)
@@ -241,12 +270,13 @@ async function main() {
   for (const b of benchmarksSeed) {
     const benchKey = `${b.Benchmark}|${b['Version / Setting'] ?? ''}|${b['Comparable Group'] ?? ''}`;
     if (!benchMap.has(benchKey)) {
-      const [bench] = await sql`
+      const [bench] = await sql<IdRow[]>`
         INSERT INTO benchmarks (name, category, version, comparable_group, score_unit, higher_is_better)
         VALUES (${b.Benchmark}, ${b.Category ?? 'general'}, ${b['Version / Setting'] ?? null}, ${b['Comparable Group'] ?? null}, ${b.Unit ?? null}, ${b['Higher Better']?.toString().toLowerCase().startsWith('yes') ?? null})
         ON CONFLICT (name, version, comparable_group) DO UPDATE SET status = 'active'
         RETURNING id
       `;
+      if (!bench) throw new Error(`Failed to upsert benchmark: ${benchKey}`);
       benchMap.set(benchKey, bench.id);
     }
     const benchId = benchMap.get(benchKey)!;
@@ -269,7 +299,7 @@ async function main() {
 
   // 11. Create mock usage snapshots
   for (const u of mockUsageSeed) {
-    const [sub] = await sql`SELECT id FROM subscriptions WHERE external_seed_id = ${u.subscriptionId}`;
+    const [sub] = await sql<IdRow[]>`SELECT id FROM subscriptions WHERE external_seed_id = ${u.subscriptionId}`;
     if (!sub) continue;
     await sql`
       INSERT INTO usage_snapshots (subscription_id, source, is_mock, period_label, used_percent, captured_at)
@@ -279,7 +309,7 @@ async function main() {
   console.log(`  ✓ Mock usage snapshots: ${mockUsageSeed.length}`);
 
   // ── Verification ──
-  const counts = await sql`
+  const counts = await sql<CountRow[]>`
     SELECT
       (SELECT COUNT(*) FROM models) as models,
       (SELECT COUNT(*) FROM subscriptions) as subscriptions,
@@ -291,17 +321,20 @@ async function main() {
       (SELECT COUNT(*) FROM model_capabilities) as capabilities
   `;
   const c = counts[0];
-  const costResult = await sql`
+  if (!c) throw new Error("Failed to read seed verification counts");
+  const costResult = await sql<TotalRow[]>`
     SELECT COALESCE(SUM(p.regular_price), 0) as total
     FROM subscriptions s
     JOIN plans p ON s.plan_id = p.id
     WHERE s.status = 'active'
   `;
+  const costRow = costResult[0];
+  if (!costRow) throw new Error("Failed to read monthly cost total");
   const models = Number(c.models);
   const subscriptions = Number(c.subscriptions);
   const modelAccess = Number(c.model_access);
   const benchmarks = Number(c.benchmarks);
-  const monthlyCost = Number(costResult[0].total);
+  const monthlyCost = Number(costRow.total);
 
   console.log("\n── Seed verification ──");
   console.log(`  Models:         ${models} (expected 51)`);

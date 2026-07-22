@@ -18,7 +18,7 @@
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "lint": "node ../../scripts/lint.mjs .",
+    "lint": "eslint .",
     "test": "vitest run --config vitest.config.ts && tsx src/seed-integrity.test.ts",
     "test:unit": "vitest run --config vitest.config.ts",
     "test:integration": "tsx src/seed-integrity.test.ts",
@@ -34,6 +34,7 @@
   "devDependencies": {
     "@types/node": "^22.15.0",
     "drizzle-kit": "^0.31.0",
+    "eslint": "^9.39.5",
     "tsx": "^4.19.0",
     "typescript": "^5.8.0",
     "vitest": "^3.1.0"
