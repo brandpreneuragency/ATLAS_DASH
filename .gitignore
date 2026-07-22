@@ -46,3 +46,7 @@ deploy/.env
 secrets/
 secrets/*.conf
 
+
+# Python bytecode cache (server/)
+__pycache__/
+*.pyc
