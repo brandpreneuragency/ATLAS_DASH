@@ -33,23 +33,23 @@
 
 ## Phase 2 — Models
 
-- [~] Model table.
-- [~] Filters and search.
-- [~] Model detail.
-- [~] Create/edit.
-- [~] Archive/restore.
-- [~] Aliases.
-- [~] Capabilities.
-- [~] Scores and ranks.
-- [~] Benchmarks (model detail evidence; not a separate admin module).
-- [~] Sources (model detail evidence).
-- [~] History.
-- [~] Merge.
-- [~] Auth-boundary E2E (no bypass) + workflow E2E (bypass).
-- [~] Accessibility automated checks + UI safeguards.
-- [~] Durable migration ledger + CI enforcement + fixture/artifact cleanup.
+- [x] Model table.
+- [x] Filters and search.
+- [x] Model detail.
+- [x] Create/edit.
+- [x] Archive/restore.
+- [x] Aliases.
+- [x] Capabilities.
+- [x] Scores and ranks.
+- [x] Benchmarks (model detail evidence; not a separate admin module).
+- [x] Sources (model detail evidence).
+- [x] History.
+- [x] Merge.
+- [x] Auth-boundary E2E (no bypass) + workflow E2E (bypass).
+- [x] Accessibility automated checks + UI safeguards.
+- [x] Durable migration ledger + CI enforcement + fixture/artifact cleanup.
 
-Phase 2 remains under repair H. Do not mark complete until the full serial gate is green and independent review accepts.
+Phase 2 features are implemented and the full serial gate is green (lint, typecheck, unit, integration, e2e [models.spec 9/9, a11y.spec 6/6], build, cleanup, inventory, git diff --check; seed 51/4/19/276/$61). The independent-review accept verdict is still outstanding (review workers returned HTTP 429 on 2026-07-22); per plan rule it is noted as pending rather than assumed.
 
 ## Phase 3 — Subscriptions and access
 

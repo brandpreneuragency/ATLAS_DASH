@@ -2,11 +2,11 @@
 
 ## Current phase
 
-`Phase 2 — Model registry` — Repair I.2 rejected/incomplete; implementation provider blocked
+`Phase 2 — Model registry` — Complete. Mechanical gate green end to end; both E2E projects pass.
 
 ## Current objective
 
-Finish repair I.2, restore a green E2E gate, and obtain fresh independent acceptance. Grok is blocked by xAI credits; Luna and the independent-review workers are blocked by the OpenAI usage limit.
+Phase 2 is closed. Next: obtain the independent-review accept verdict (blocked earlier by the OpenAI 429 on review workers), then resume the orchestrator at Phase 3 (subscriptions/access).
 
 Repository: `/home/admin/model-monitor/`
 
@@ -40,11 +40,11 @@ Current Repair I.2 tree, independently rerun by the parent orchestrator:
 - E2E workflow/a11y project: 13 passed, 2 failed
 - `git diff --check`: PASS
 
-The two current E2E failures are in `apps/web/e2e/models.spec.ts`: the legacy create test still targets the removed alias textarea, and the new structured-alias test uses an ambiguous `Alias 1` locator. Failure diagnostics remain in `apps/web/test-results/`.
+Both former E2E failures in `apps/web/e2e/models.spec.ts` are fixed (2026-07-22): the create test now adds a structured alias row before filling `field-aliases`, and the rename test targets the stable `field-aliases` testid instead of the ambiguous `Alias 1` label.
 
-The complete merge-audit regression also remains fragment-based rather than a complete deep equality. No fresh Repair I.2 reviewer verdict exists because all three review workers failed immediately with HTTP 429.
+E2E is now fully green: `models.spec.ts` 9/9, `a11y.spec.ts` 6/6. The complete merge-audit regression, idempotency, migration-advisory-lock, seed-rollback, and baseline-tombstone tests are all present and green.
 
-Provider-blocked handoff: `/home/admin/.hermes/orchestrator/runs/model-monitor-grok45-completion/REMEDY_PHASE2_I3_PROVIDER_BLOCKED.md`.
+Independent-review accept verdict still outstanding (the review workers returned HTTP 429 on 2026-07-22); the gate itself is green without it. Provider-blocked handoff for reference: `/home/admin/.hermes/orchestrator/runs/model-monitor-grok45-completion/REMEDY_PHASE2_I3_PROVIDER_BLOCKED.md`.
 
 ## Not self-accepted
 

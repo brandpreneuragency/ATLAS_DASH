@@ -258,6 +258,8 @@ test.describe("Model registry workflows", () => {
     await page.getByTestId("field-family").fill("e2e-family");
     await page.getByTestId("field-vision").selectOption("unknown");
     await page.getByTestId("field-reasoning").selectOption("true");
+    // Create mode starts with zero alias rows; add the structured row first.
+    await page.getByRole("button", { name: /add display alias/i }).click();
     await page.getByTestId("field-aliases").fill(`alias-${suffix}`);
 
     const createResp = page.waitForResponse(
@@ -365,7 +367,8 @@ test.describe("Model registry workflows", () => {
     const after = (await afterResponse.json()) as { aliases: Array<{ alias: string; aliasType: string; accessProviderId: string | null }> };
     expect((after.aliases ?? []).map(({ alias, aliasType, accessProviderId }) => ({ alias, aliasType, accessProviderId })).sort((a, b) => a.alias.localeCompare(b.alias))).toEqual(semantic);
     await page.goto(`/models/${created.id}/edit`);
-    await page.getByLabel("Alias 1").fill(`provider-renamed-${suffix}`);
+    // Row 0 of the structured alias editor carries the stable testid `field-aliases`.
+    await page.getByTestId("field-aliases").fill(`provider-renamed-${suffix}`);
     const renameRequest = page.waitForRequest((r) => r.url().includes(`/api/v1/models/${created.id}`) && r.method() === "PATCH");
     await page.getByTestId("model-form-submit").click();
     const renamedPayload = JSON.parse((await renameRequest).postData() ?? "{}") as unknown as { aliases: Array<{ alias: string; aliasType: string; accessProviderId: string | null }> };
