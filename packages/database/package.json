@@ -22,6 +22,7 @@
     "test": "vitest run --config vitest.config.ts && tsx src/seed-integrity.test.ts && vitest run --config vitest.integration.config.ts",
     "test:unit": "vitest run --config vitest.config.ts",
     "test:integration": "tsx src/seed-integrity.test.ts && vitest run --config vitest.integration.config.ts",
+    "db:verify-migrations": "tsx src/migrate.ts && tsx src/migrate.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/migrate.ts",
     "db:seed": "tsx src/seed.ts",

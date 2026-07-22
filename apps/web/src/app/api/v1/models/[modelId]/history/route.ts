@@ -1,6 +1,12 @@
 import { getModelById } from "@model-monitor/database";
 import { db } from "@/lib/db";
-import { getRequestId, jsonError, jsonOk } from "@/lib/api";
+import {
+  getRequestId,
+  jsonError,
+  jsonOk,
+  parsePathUuid,
+  requireApiSession,
+} from "@/lib/api";
 
 interface RouteContext {
   params: Promise<{ modelId: string }>;
@@ -9,8 +15,9 @@ interface RouteContext {
 export async function GET(request: Request, context: RouteContext) {
   const requestId = getRequestId(request);
   try {
+    await requireApiSession(requestId);
     const { modelId } = await context.params;
-    const model = await getModelById(db, modelId);
+    const model = await getModelById(db, parsePathUuid(modelId, "modelId"));
     return jsonOk(
       {
         data: model.history,

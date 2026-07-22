@@ -1,6 +1,10 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import { isEmailAllowed, parseAllowedEmails } from "./auth-policy";
+import {
+  isDevAuthBypassEnabled,
+  isEmailAllowed,
+  parseAllowedEmails,
+} from "./auth-policy";
 
 const allowedEmails = parseAllowedEmails(process.env.ALLOWED_EMAILS);
 
@@ -21,7 +25,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user }) {
       return isEmailAllowed(user.email, {
         allowedEmails,
-        devBypass: process.env.AUTH_DEV_BYPASS === "true",
+        devBypass: isDevAuthBypassEnabled(),
       });
     },
     async session({ session, token }) {

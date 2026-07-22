@@ -33,18 +33,23 @@
 
 ## Phase 2 — Models
 
-- [x] Model table.
-- [x] Filters and search.
-- [x] Model detail.
-- [x] Create/edit.
-- [x] Archive/restore.
-- [x] Aliases.
-- [x] Capabilities.
-- [x] Scores and ranks.
-- [x] Benchmarks.
-- [x] Sources.
-- [x] History.
-- [x] Merge.
+- [~] Model table.
+- [~] Filters and search.
+- [~] Model detail.
+- [~] Create/edit.
+- [~] Archive/restore.
+- [~] Aliases.
+- [~] Capabilities.
+- [~] Scores and ranks.
+- [~] Benchmarks (model detail evidence; not a separate admin module).
+- [~] Sources (model detail evidence).
+- [~] History.
+- [~] Merge.
+- [~] Auth-boundary E2E (no bypass) + workflow E2E (bypass).
+- [~] Accessibility automated checks + UI safeguards.
+- [~] Durable migration ledger + CI enforcement + fixture/artifact cleanup.
+
+Phase 2 remains under repair H. Do not mark complete until the full serial gate is green and independent review accepts.
 
 ## Phase 3 — Subscriptions and access
 

@@ -30,7 +30,17 @@ paths:
       parameters:
         - { name: search, in: query, schema: { type: string } }
         - { name: developer, in: query, schema: { type: string } }
-        - { name: lifecycle, in: query, schema: { type: string } }
+        - { name: family, in: query, schema: { type: string } }
+        - { name: accessProvider, in: query, schema: { type: string } }
+        - { name: subscription, in: query, schema: { type: string } }
+        - { name: capability, in: query, schema: { type: string } }
+        - { name: capabilityVision, in: query, schema: { type: boolean } }
+        - { name: capabilityReasoning, in: query, schema: { type: boolean } }
+        - { name: capabilityToolUse, in: query, schema: { type: boolean } }
+        - { name: lifecycle, in: query, schema: { type: string, enum: [current, ga, preview, beta, legacy, deprecated, retired, unavailable, unknown] } }
+        - { name: needsRecheck, in: query, schema: { type: boolean } }
+        - { name: sort, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
         - { name: accessible, in: query, schema: { type: boolean } }
         - { name: archived, in: query, schema: { type: boolean, default: false } }
         - { name: cursor, in: query, schema: { type: string } }
@@ -42,6 +52,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ModelCollection'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
     post:
       operationId: createModel
       requestBody:
@@ -55,9 +67,12 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Model' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /models/{modelId}:
     parameters:
-      - { name: modelId, in: path, required: true, schema: { type: string } }
+      - { name: modelId, in: path, required: true, schema: { type: string, format: uuid } }
     get:
       operationId: getModel
       responses:
@@ -66,6 +81,8 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Model' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
     patch:
       operationId: updateModel
@@ -73,28 +90,52 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ModelWrite' }
+            schema: { $ref: '#/components/schemas/ModelPatch' }
       responses:
         '200':
           description: Updated
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Model' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Conflict (unique constraint or merged-source immutability)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
     delete:
       operationId: archiveModel
       responses:
         '204': { description: Archived }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Conflict (merged-source immutability)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /models/{modelId}/restore:
     post:
       operationId: restoreModel
       parameters:
-        - { name: modelId, in: path, required: true, schema: { type: string } }
+        - { name: modelId, in: path, required: true, schema: { type: string, format: uuid } }
       responses:
         '200':
           description: Restored
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Model' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Conflict when restoring a merged source tombstone
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /models/merge:
     post:
       operationId: mergeModels
@@ -108,21 +149,115 @@ paths:
               type: object
               required: [sourceModelId, targetModelId]
               properties:
-                sourceModelId: { type: string }
-                targetModelId: { type: string }
-                resolutions: { type: object, additionalProperties: true }
+                sourceModelId: { type: string, format: uuid }
+                targetModelId: { type: string, format: uuid }
+                resolutions:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    name: { type: string }
+                    canonicalId: { type: string }
+                    family: { type: [string, 'null'] }
+                    generation: { type: [string, 'null'] }
+                    lifecycle:
+                      type: string
+                      enum: [current, ga, preview, beta, legacy, deprecated, retired, unavailable, unknown]
+                    lifecycleRaw: { type: [string, 'null'] }
+                    releaseDate: { type: [string, 'null'], format: date }
+                    knowledgeCutoff: { type: [string, 'null'] }
+                    modelType: { type: [string, 'null'] }
+                    description: { type: [string, 'null'] }
+                    codingSpecialization: { type: [string, 'null'] }
+                    bestUse: { type: [string, 'null'] }
+                    avoidFor: { type: [string, 'null'] }
+                    contextTokens: { type: [integer, 'null'], minimum: 0 }
+                    maxOutputTokens: { type: [integer, 'null'], minimum: 0 }
+                    speedRating: { type: [string, 'null'] }
+                    developerId: { type: string, format: uuid }
       responses:
         '200':
           description: Merge result
+          headers:
+            Idempotency-Replayed:
+              schema: { type: string, enum: ['true'] }
+              description: Present when a prior identical request is replayed
           content:
             application/json:
               schema:
                 type: object
                 required: [targetModelId, transferred, auditEventId]
                 properties:
-                  targetModelId: { type: string }
+                  targetModelId: { type: string, format: uuid }
+                  sourceModelId: { type: string, format: uuid }
                   transferred: { type: object, additionalProperties: { type: integer } }
-                  auditEventId: { type: string }
+                  auditEventId: { type: string, format: uuid }
+                  appliedResolutions: { type: object, additionalProperties: true }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /developers:
+    get:
+      operationId: listDevelopers
+      responses:
+        '200':
+          description: Developers
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, slug]
+                      properties:
+                        id: { type: string, format: uuid }
+                        name: { type: string }
+                        slug: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /models/{modelId}/aliases:
+    parameters:
+      - { name: modelId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: addModelAlias
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ModelAliasWrite' }
+      responses:
+        '201':
+          description: Alias created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ModelAlias' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /models/{modelId}/history:
+    parameters:
+      - { name: modelId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getModelHistory
+      responses:
+        '200':
+          description: Model audit history
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /subscriptions:
     get:
       operationId: listSubscriptions
@@ -293,6 +428,21 @@ components:
       type: http
       scheme: bearer
   responses:
+    Unauthorized:
+      description: Authentication required or email not allow-listed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
     NotFound:
       description: Not found
       content:
@@ -312,30 +462,120 @@ components:
             requestId: { type: string }
             fieldErrors: { type: object, additionalProperties: { type: array, items: { type: string } } }
     Model:
-      allOf:
-        - { $ref: '#/components/schemas/ModelWrite' }
-        - type: object
-          required: [id, status, createdAt, updatedAt]
-          properties:
-            id: { type: string }
-            status: { enum: [active, archived] }
-            createdAt: { type: string, format: date-time }
-            updatedAt: { type: string, format: date-time }
-    ModelWrite:
       type: object
-      required: [canonicalId, name, developerId]
+      required: [id, canonicalId, name, developerId, status, createdAt, updatedAt]
       properties:
-        canonicalId: { type: string }
-        name: { type: string }
-        developerId: { type: string }
+        id: { type: string, format: uuid }
+        canonicalId: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        developerId: { type: string, format: uuid }
         family: { type: [string, 'null'] }
         generation: { type: [string, 'null'] }
-        lifecycle: { type: string }
+        lifecycle: { type: string, enum: [current, ga, preview, beta, legacy, deprecated, retired, unavailable, unknown] }
+        lifecycleRaw: { type: [string, 'null'] }
+        releaseDate: { type: [string, 'null'], format: date }
+        knowledgeCutoff: { type: [string, 'null'] }
+        modelType: { type: [string, 'null'] }
+        description: { type: [string, 'null'] }
+        codingSpecialization: { type: [string, 'null'] }
         contextTokens: { type: [integer, 'null'], minimum: 0 }
         maxOutputTokens: { type: [integer, 'null'], minimum: 0 }
         bestUse: { type: [string, 'null'] }
         avoidFor: { type: [string, 'null'] }
+        speedRating: { type: [string, 'null'] }
+        verifiedTps: { type: [number, 'null'], minimum: 0 }
         needsRecheck: { type: boolean }
+        capabilities: { type: [object, 'null'], additionalProperties: true }
+        aliases: { type: array, items: { $ref: '#/components/schemas/ModelAlias' } }
+        status: { type: string, enum: [active, archived] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ModelWrite:
+      type: object
+      required: [canonicalId, name, developerId]
+      properties:
+        canonicalId: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        developerId: { type: string, format: uuid }
+        family: { type: [string, 'null'] }
+        generation: { type: [string, 'null'] }
+        lifecycle:
+          type: string
+          enum: [current, ga, preview, beta, legacy, deprecated, retired, unavailable, unknown]
+        lifecycleRaw: { type: [string, 'null'] }
+        releaseDate: { type: [string, 'null'], format: date }
+        knowledgeCutoff: { type: [string, 'null'] }
+        modelType: { type: [string, 'null'] }
+        description: { type: [string, 'null'] }
+        codingSpecialization: { type: [string, 'null'] }
+        contextTokens: { type: [integer, 'null'], minimum: 0 }
+        maxOutputTokens: { type: [integer, 'null'], minimum: 0 }
+        bestUse: { type: [string, 'null'] }
+        avoidFor: { type: [string, 'null'] }
+        speedRating: { type: [string, 'null'] }
+        needsRecheck: { type: boolean }
+        capabilities:
+          type: object
+          additionalProperties: true
+        aliases:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelAliasWrite'
+    ModelPatch:
+      type: object
+      description: Partial model update payload (all fields optional; mirrors modelUpdateSchema)
+      additionalProperties: false
+      properties:
+        canonicalId: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        developerId: { type: string, format: uuid }
+        family: { type: [string, 'null'] }
+        generation: { type: [string, 'null'] }
+        lifecycle:
+          type: string
+          enum: [current, ga, preview, beta, legacy, deprecated, retired, unavailable, unknown]
+        lifecycleRaw: { type: [string, 'null'] }
+        releaseDate: { type: [string, 'null'], format: date }
+        knowledgeCutoff: { type: [string, 'null'] }
+        modelType: { type: [string, 'null'] }
+        description: { type: [string, 'null'] }
+        codingSpecialization: { type: [string, 'null'] }
+        contextTokens: { type: [integer, 'null'], minimum: 0 }
+        maxOutputTokens: { type: [integer, 'null'], minimum: 0 }
+        bestUse: { type: [string, 'null'] }
+        avoidFor: { type: [string, 'null'] }
+        speedRating: { type: [string, 'null'] }
+        needsRecheck: { type: boolean }
+        capabilities:
+          type: object
+          additionalProperties: true
+        aliases:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelAliasWrite'
+    ModelAliasWrite:
+      type: object
+      required: [alias]
+      additionalProperties: false
+      properties:
+        alias: { type: string, minLength: 1 }
+        aliasType:
+          type: string
+          enum: [display, short, provider, legacy, other]
+          default: display
+        accessProviderId: { type: [string, 'null'], format: uuid }
+    ModelAlias:
+      type: object
+      required: [id, alias, aliasType]
+      properties:
+        id: { type: string, format: uuid }
+        alias: { type: string, minLength: 1 }
+        aliasType:
+          type: string
+          enum: [display, short, provider, legacy, other]
+        accessProviderId: { type: [string, 'null'], format: uuid }
+        normalizedAlias: { type: string }
+        createdAt: { type: [string, 'null'], format: date-time }
     ModelCollection:
       type: object
       required: [data, page]

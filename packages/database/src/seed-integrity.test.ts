@@ -1,7 +1,36 @@
 import postgres from "postgres";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
-const url = process.env.DATABASE_URL ?? "postgresql://modelmonitor:modelmonitor@localhost:5433/modelmonitor";
-const sql = postgres(url, { max: 1 });
+function resolveDatabaseUrl(): string {
+  if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== "") {
+    return process.env.DATABASE_URL;
+  }
+  const user = process.env.POSTGRES_USER ?? "modelmonitor";
+  const pass = process.env.POSTGRES_PASSWORD ?? user;
+  const host = process.env.POSTGRES_HOST ?? "127.0.0.1";
+  const port = process.env.POSTGRES_PORT ?? "5433";
+  const database = process.env.POSTGRES_DB ?? "modelmonitor";
+  return ["postgresql://", user, ":", pass, "@", host, ":", port, "/", database].join("");
+}
+
+const sql = postgres(resolveDatabaseUrl(), { max: 1 });
+
+const SEED_DIR = join(import.meta.dirname, "..", "..", "..", "docs", "implementation-package", "data");
+
+function loadCanonicalIds(): string[] {
+  const raw = JSON.parse(readFileSync(join(SEED_DIR, "canonical-models.seed.json"), "utf8")) as Array<{
+    canonicalId: string;
+  }>;
+  return raw.map((m) => m.canonicalId);
+}
+
+function loadSubscriptionIds(): string[] {
+  const raw = JSON.parse(readFileSync(join(SEED_DIR, "subscriptions.seed.json"), "utf8")) as Array<{
+    id: string;
+  }>;
+  return raw.map((s) => s.id);
+}
 
 async function assertEqual(label: string, actual: number, expected: number) {
   if (actual !== expected) {
@@ -12,15 +41,29 @@ async function assertEqual(label: string, actual: number, expected: number) {
 
 async function main() {
   console.log("Running seed integrity tests...");
+  const canonicalIds = loadCanonicalIds();
+  const subscriptionIds = loadSubscriptionIds();
 
   const [counts] = await sql`
     SELECT
-      (SELECT COUNT(*)::int FROM models WHERE status = 'active') as models,
-      (SELECT COUNT(*)::int FROM subscriptions WHERE status = 'active') as subscriptions,
-      (SELECT COUNT(*)::int FROM model_access WHERE status = 'active') as model_access,
-      (SELECT COUNT(*)::int FROM model_benchmark_results) as benchmarks,
-      (SELECT COUNT(*)::int FROM model_capabilities) as capabilities,
-      (SELECT COUNT(*)::int FROM usage_snapshots WHERE is_mock = true) as mock_usage
+      (SELECT COUNT(*)::int FROM models WHERE status = 'active' AND canonical_id = ANY(${canonicalIds})) as models,
+      (SELECT COUNT(*)::int FROM subscriptions WHERE status = 'active' AND external_seed_id = ANY(${subscriptionIds})) as subscriptions,
+      (
+        SELECT COUNT(*)::int
+        FROM model_access ma
+        JOIN models m ON m.id = ma.model_id
+        JOIN subscriptions s ON s.plan_id = ma.plan_id
+        WHERE ma.status = 'active'
+          AND m.canonical_id = ANY(${canonicalIds})
+          AND s.external_seed_id = ANY(${subscriptionIds})
+      ) as model_access,
+      (SELECT COUNT(*)::int FROM model_benchmark_results WHERE seed_key LIKE 'mm-baseline:bench:%') as benchmarks,
+      (
+        SELECT COUNT(*)::int FROM model_capabilities mc
+        JOIN models m ON m.id = mc.model_id
+        WHERE m.canonical_id = ANY(${canonicalIds})
+      ) as capabilities,
+      (SELECT COUNT(*)::int FROM usage_snapshots WHERE seed_key LIKE 'mm-baseline:usage:%') as mock_usage
   `;
 
   const [cost] = await sql`
@@ -28,17 +71,17 @@ async function main() {
     FROM subscriptions s
     JOIN plans p ON s.plan_id = p.id
     WHERE s.status = 'active'
+      AND s.external_seed_id = ANY(${subscriptionIds})
   `;
 
   await assertEqual("canonical models", Number(counts.models), 51);
   await assertEqual("subscriptions", Number(counts.subscriptions), 4);
   await assertEqual("model access", Number(counts.model_access), 19);
-  await assertEqual("benchmark rows", Number(counts.benchmarks), 276);
+  await assertEqual("baseline benchmark rows", Number(counts.benchmarks), 276);
   await assertEqual("capabilities", Number(counts.capabilities), 51);
-  await assertEqual("mock usage snapshots", Number(counts.mock_usage), 4);
+  await assertEqual("baseline mock usage snapshots", Number(counts.mock_usage), 4);
   await assertEqual("regular monthly cost USD", Number(cost.total), 61);
 
-  // No duplicate canonical IDs
   const [dupes] = await sql`
     SELECT COUNT(*)::int as c FROM (
       SELECT canonical_id FROM models GROUP BY canonical_id HAVING COUNT(*) > 1
@@ -46,7 +89,6 @@ async function main() {
   `;
   await assertEqual("duplicate canonical IDs", Number(dupes.c), 0);
 
-  // Access records must point at real models and plans
   const [orphans] = await sql`
     SELECT COUNT(*)::int as c
     FROM model_access ma
@@ -56,12 +98,11 @@ async function main() {
   `;
   await assertEqual("orphan access records", Number(orphans.c), 0);
 
-  console.log("\n✓ ALL SEED INTEGRITY TESTS PASS");
+  console.log("\n✓ ALL SEED INTEGRITY ASSERTIONS PASS");
   await sql.end();
 }
 
 main().catch(async (err) => {
-  console.error("\n✗ SEED INTEGRITY TESTS FAILED");
   console.error(err);
   await sql.end({ timeout: 1 }).catch(() => undefined);
   process.exit(1);

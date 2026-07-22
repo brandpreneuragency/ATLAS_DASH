@@ -1,5 +1,13 @@
 import { NextResponse } from "next/server";
 import { ModelServiceError } from "@model-monitor/database";
+import { idempotencyKeySchema, pathUuidSchema } from "@model-monitor/schemas";
+import { auth } from "@/lib/auth";
+import {
+  isDevAuthBypassEnabled,
+  isEmailAllowed,
+  parseAllowedEmails,
+} from "@/lib/auth-policy";
+import { logger } from "@/lib/logger";
 
 export function getRequestId(request: Request): string {
   return request.headers.get("x-request-id") ?? crypto.randomUUID();
@@ -9,6 +17,18 @@ export function jsonOk<T>(data: T, init?: { status?: number; requestId?: string 
   const response = NextResponse.json(data, { status: init?.status ?? 200 });
   if (init?.requestId) response.headers.set("x-request-id", init.requestId);
   return response;
+}
+
+/** Safe categorical error fields only — never raw Error.message (may contain DSN/token). */
+function safeErrorFields(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    const maybeCode = (error as Error & { code?: unknown }).code;
+    return {
+      name: error.name,
+      ...(typeof maybeCode === "string" ? { code: maybeCode } : {}),
+    };
+  }
+  return { name: "non_error_throw" };
 }
 
 export function jsonError(
@@ -30,7 +50,11 @@ export function jsonError(
     );
   }
 
-  console.error("[api]", requestId, error);
+  // Never log raw Error.message or database messages — only safe categorical fields.
+  logger.error("api_error", {
+    requestId,
+    err: safeErrorFields(error),
+  });
   return NextResponse.json(
     {
       error: {
@@ -43,6 +67,81 @@ export function jsonError(
   );
 }
 
-export function auditContext(request: Request) {
-  return { requestId: getRequestId(request) };
+export function auditContext(request: Request, actorUserId?: string | null) {
+  return { requestId: getRequestId(request), actorUserId: actorUserId ?? null };
+}
+
+export function parsePathUuid(value: string, field = "id"): string {
+  const parsed = pathUuidSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new ModelServiceError("VALIDATION_ERROR", `Invalid ${field}`, 400, {
+      [field]: ["Must be a valid UUID"],
+    });
+  }
+  return parsed.data;
+}
+
+export async function parseJsonBody(request: Request): Promise<unknown> {
+  try {
+    return await request.json();
+  } catch {
+    throw new ModelServiceError("VALIDATION_ERROR", "Malformed JSON body", 400);
+  }
+}
+
+export function parseIdempotencyKey(request: Request): string {
+  const raw = request.headers.get("idempotency-key") ?? request.headers.get("Idempotency-Key");
+  const parsed = idempotencyKeySchema.safeParse(raw ?? "");
+  if (!parsed.success) {
+    throw new ModelServiceError(
+      "VALIDATION_ERROR",
+      "Idempotency-Key header is required and must be 1–128 non-blank characters",
+      400,
+      { "Idempotency-Key": ["Required non-blank string (max 128)"] },
+    );
+  }
+  return parsed.data;
+}
+
+/**
+ * Require an authenticated session for JSON API handlers.
+ * Dev/test bypass returns a non-persisted actor (null user id) so audit FK stays valid.
+ */
+export async function requireApiSession(_requestId: string): Promise<{
+  userId: string | null;
+  email: string | null;
+}> {
+  if (isDevAuthBypassEnabled()) {
+    return { userId: null, email: "dev-bypass@local" };
+  }
+  const session = await auth();
+  if (!session?.user) {
+    throw new ModelServiceError("UNAUTHORIZED", "Authentication required", 401);
+  }
+  const allowedEmails = parseAllowedEmails(process.env.ALLOWED_EMAILS);
+  if (
+    !isEmailAllowed(session.user.email, {
+      allowedEmails,
+      devBypass: false,
+    })
+  ) {
+    throw new ModelServiceError("UNAUTHORIZED", "Email is not allow-listed", 401);
+  }
+  return {
+    userId: session.user.id ?? null,
+    email: session.user.email ?? null,
+  };
+}
+
+export function unauthorizedJson(requestId: string) {
+  return NextResponse.json(
+    {
+      error: {
+        code: "UNAUTHORIZED",
+        message: "Authentication required",
+        requestId,
+      },
+    },
+    { status: 401, headers: { "x-request-id": requestId } },
+  );
 }

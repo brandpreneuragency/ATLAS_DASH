@@ -1,3 +1,4 @@
+import { isNotNull } from "drizzle-orm";
 import {
   pgTable,
   uuid,
@@ -9,6 +10,7 @@ import {
   timestamp,
   jsonb,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { models } from "./models";
 import { sourceType } from "./enums";
@@ -77,10 +79,12 @@ export const modelBenchmarkResults = pgTable("model_benchmark_results", {
   notes: text("notes"),
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
   importJobId: uuid("import_job_id"),
+  seedKey: text("seed_key"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   modelIdx: index("benchmark_results_model_idx").on(t.modelId),
   benchmarkIdx: index("benchmark_results_benchmark_idx").on(t.benchmarkId),
+  seedKeyIdx: uniqueIndex("model_benchmark_results_seed_key_uidx").on(t.seedKey).where(isNotNull(t.seedKey)),
 }));
 
 // ── Sources ────────────────────────────────────────────────────

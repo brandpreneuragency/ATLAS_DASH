@@ -9,3 +9,25 @@ coverage
 .env
 .env.*
 !.env.example
+
+# Playwright / test generated output
+test-results/
+**/test-results/
+playwright-report/
+**/playwright-report/
+blob-report/
+**/blob-report/
+playwright/.cache/
+**/playwright/.cache/
+test-results.xml
+**/test-results/**
+**/.last-run.json
+
+# Coverage / artifacts
+coverage/
+**/coverage/
+*.lcov
+.nyc_output/
+**/htmlcov/
+artifacts/
+**/artifacts/

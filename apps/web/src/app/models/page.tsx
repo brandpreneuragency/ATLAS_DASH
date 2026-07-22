@@ -77,19 +77,45 @@ export default async function ModelsPage({ searchParams }: ModelsPageProps) {
         <table className="min-w-full text-sm" data-testid="models-table">
           <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
-              <th className="sticky left-0 z-10 bg-muted/40 px-3 py-2">Model</th>
-              <th className="px-3 py-2">Developer</th>
-              <th className="px-3 py-2">Family</th>
-              <th className="px-3 py-2">Lifecycle</th>
-              <th className="px-3 py-2">Capability</th>
-              <th className="px-3 py-2">Balanced</th>
-              <th className="px-3 py-2">Value</th>
-              <th className="px-3 py-2">Context</th>
-              <th className="px-3 py-2">Vision</th>
-              <th className="px-3 py-2">Reasoning</th>
-              <th className="px-3 py-2">Available through</th>
-              <th className="px-3 py-2">Recheck</th>
-              <th className="px-3 py-2">Actions</th>
+              <th scope="col" className="sticky left-0 z-10 bg-muted/40 px-3 py-2">
+                Model
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Developer
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Family
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Lifecycle
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Capability
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Balanced
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Value
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Context
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Vision
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Reasoning
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Available through
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Recheck
+              </th>
+              <th scope="col" className="px-3 py-2">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -144,7 +170,7 @@ export default async function ModelsPage({ searchParams }: ModelsPageProps) {
                     </td>
                     <td className="px-3 py-2">{model.needsRecheck ? "Yes" : "No"}</td>
                     <td className="px-3 py-2">
-                      <ModelRowActions id={model.id} status={model.status} name={model.name} />
+                      <ModelRowActions id={model.id} status={model.status} name={model.name} mergedIntoModelId={model.mergedIntoModelId} />
                     </td>
                   </tr>
                 );

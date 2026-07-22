@@ -4,6 +4,7 @@ import { getModelById } from "@model-monitor/database";
 import { formatCapabilityDisplay, formatScoreDisplay } from "@model-monitor/schemas";
 import { db } from "@/lib/db";
 import { ModelDetailActions } from "@/components/models/model-detail-actions";
+import { displayUrlText, safeHref } from "@/lib/safe-link";
 
 interface Props {
   params: Promise<{ modelId: string }>;
@@ -63,22 +64,27 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
             ) : null}
           </div>
         </div>
-        <ModelDetailActions id={model.id} status={model.status} />
+        <ModelDetailActions id={model.id} status={model.status} name={model.name} mergedIntoModelId={model.mergedIntoModelId} />
       </div>
 
       <nav className="flex flex-wrap gap-2 border-b border-border pb-2" aria-label="Model sections">
-        {tabs.map((t) => (
-          <Link
-            key={t}
-            href={`/models/${model.id}?tab=${t}`}
-            className={`rounded-md px-3 py-1.5 text-sm capitalize ${
-              tab === t ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted"
-            }`}
-            data-testid={`tab-${t}`}
-          >
-            {t}
-          </Link>
-        ))}
+        {tabs.map((t) => {
+          const selected = tab === t;
+          return (
+            <Link
+              key={t}
+              href={`/models/${model.id}?tab=${t}`}
+              className={`rounded-md px-3 py-1.5 text-sm capitalize ${
+                selected ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-muted"
+              }`}
+              data-testid={`tab-${t}`}
+              aria-current={selected ? "page" : undefined}
+            >
+              {t}
+              {selected ? <span className="sr-only"> (current)</span> : null}
+            </Link>
+          );
+        })}
       </nav>
 
       {tab === "overview" ? <OverviewTab model={model} /> : null}
@@ -250,14 +256,26 @@ function BenchmarksTab({ model }: { model: Awaited<ReturnType<typeof getModelByI
                     <td className="px-3 py-2">{b.setting ?? "—"}</td>
                     <td className="px-3 py-2">
                       {b.sourceUrl ? (
-                        <a href={b.sourceUrl} className="underline" target="_blank" rel="noreferrer">
-                          source
-                        </a>
+                        safeHref(b.sourceUrl) ? (
+                          <a
+                            href={safeHref(b.sourceUrl)!}
+                            className="underline break-all"
+                            target="_blank"
+                            rel="noreferrer"
+                            data-testid="benchmark-source-url"
+                          >
+                            {displayUrlText(b.sourceUrl)}
+                          </a>
+                        ) : (
+                          <span data-testid="benchmark-source-url-unsafe">{displayUrlText(b.sourceUrl)}</span>
+                        )
                       ) : (
                         "—"
                       )}
                     </td>
-                    <td className="px-3 py-2">{b.verifiedAt ? b.verifiedAt.slice(0, 10) : "—"}</td>
+                    <td className="px-3 py-2" data-testid="benchmark-verified-at">
+                      {b.verifiedAt ? b.verifiedAt.slice(0, 10) : "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -327,9 +345,21 @@ function SourcesTab({ model }: { model: Awaited<ReturnType<typeof getModelById>>
               {s.verifiedAt ? ` · verified ${s.verifiedAt.slice(0, 10)}` : ""}
             </div>
             {s.url ? (
-              <a href={s.url} className="mt-2 inline-block text-xs underline" target="_blank" rel="noreferrer">
-                {s.url}
-              </a>
+              safeHref(s.url) ? (
+                <a
+                  href={safeHref(s.url)!}
+                  className="mt-2 inline-block text-xs underline"
+                  target="_blank"
+                  rel="noreferrer"
+                  data-testid="model-source-url"
+                >
+                  {displayUrlText(s.url)}
+                </a>
+              ) : (
+                <span className="mt-2 inline-block text-xs" data-testid="model-source-url-unsafe">
+                  {displayUrlText(s.url)}
+                </span>
+              )
             ) : null}
             {s.notes ? <p className="mt-2 text-muted-foreground">{s.notes}</p> : null}
           </div>

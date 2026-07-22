@@ -85,6 +85,13 @@ export const auditActionSchema = z.enum([
   "settings_change",
   "delete",
 ]);
+export const aliasTypeSchema = z.enum([
+  "display",
+  "short",
+  "provider",
+  "legacy",
+  "other",
+]);
 
 /** Tri-state capability: true | false | null (unknown). Never coerce null → false. */
 export const triStateBooleanSchema = z.boolean().nullable();
@@ -104,6 +111,57 @@ export const modelCapabilityKeys = [
 
 export type ModelCapabilityKey = (typeof modelCapabilityKeys)[number];
 
+// ── Shared primitives ──────────────────────────────────────────
+
+const emptyToNull = (value: unknown) => {
+  if (typeof value === "string" && value.trim() === "") return null;
+  return value;
+};
+
+/** Trim string; reject whitespace-only for required fields. */
+export const requiredTrimmedString = z
+  .string()
+  .transform((s) => s.trim())
+  .refine((s) => s.length > 0, { message: "Required" });
+
+export const uuidSchema = z.string().uuid();
+
+export const pathUuidSchema = z.string().uuid({ message: "Must be a valid UUID" });
+
+/**
+ * HTTP(S) URLs only. Rejects javascript:, data:, and other schemes.
+ * z.string().url() alone accepts those — do not use it for user-facing links.
+ */
+export const httpUrlSchema = z
+  .string()
+  .min(1)
+  .superRefine((value, ctx) => {
+    let parsed: URL;
+    try {
+      parsed = new URL(value);
+    } catch {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid URL" });
+      return;
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "URL must use http or https",
+      });
+    }
+  });
+
+export const optionalHttpUrlSchema = z.preprocess(
+  emptyToNull,
+  httpUrlSchema.nullable().optional(),
+);
+
+export const idempotencyKeySchema = z
+  .string()
+  .trim()
+  .min(1, "Idempotency-Key is required")
+  .max(128, "Idempotency-Key must be at most 128 characters");
+
 export const modelCapabilitiesWriteSchema = z.object({
   vision: triStateBooleanSchema.optional(),
   reasoning: triStateBooleanSchema.optional(),
@@ -119,22 +177,20 @@ export const modelCapabilitiesWriteSchema = z.object({
 });
 
 export const modelAliasWriteSchema = z.object({
-  alias: z.string().min(1),
-  aliasType: z.string().min(1).default("display"),
-  accessProviderId: z.string().uuid().nullable().optional(),
+  alias: requiredTrimmedString,
+  aliasType: aliasTypeSchema.default("display"),
+  accessProviderId: z.preprocess(
+    emptyToNull,
+    uuidSchema.nullable().optional(),
+  ),
 });
 
 // ── Model write schema ─────────────────────────────────────────
 
-const emptyToNull = (value: unknown) => {
-  if (typeof value === "string" && value.trim() === "") return null;
-  return value;
-};
-
 export const modelWriteSchema = z.object({
-  canonicalId: z.string().min(1),
-  name: z.string().min(1),
-  developerId: z.string().uuid(),
+  canonicalId: requiredTrimmedString,
+  name: requiredTrimmedString,
+  developerId: uuidSchema,
   family: z.preprocess(emptyToNull, z.string().nullable().optional()),
   generation: z.preprocess(emptyToNull, z.string().nullable().optional()),
   lifecycle: lifecycleStatusSchema.default("unknown"),
@@ -155,13 +211,13 @@ export const modelWriteSchema = z.object({
 });
 
 export const modelUpdateSchema = modelWriteSchema.partial().extend({
-  canonicalId: z.string().min(1).optional(),
-  name: z.string().min(1).optional(),
-  developerId: z.string().uuid().optional(),
+  canonicalId: requiredTrimmedString.optional(),
+  name: requiredTrimmedString.optional(),
+  developerId: uuidSchema.optional(),
 });
 
 export const modelResponseSchema = modelWriteSchema.extend({
-  id: z.string().uuid(),
+  id: uuidSchema,
   slug: z.string(),
   status: recordStatusSchema,
   createdAt: z.string().datetime(),
@@ -183,7 +239,10 @@ export const modelListQuerySchema = z.object({
   search: z.string().optional(),
   developer: z.string().optional(),
   family: z.string().optional(),
-  lifecycle: z.string().optional(),
+  lifecycle: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? undefined : value),
+    lifecycleStatusSchema.optional(),
+  ),
   accessProvider: z.string().optional(),
   subscription: z.string().optional(),
   archived: booleanQuery,
@@ -200,36 +259,85 @@ export const modelListQuerySchema = z.object({
 
 export type ModelListQuery = z.infer<typeof modelListQuerySchema>;
 
+/** Scalar model fields that merge resolutions may set on the target. */
+export const modelMergeResolutionKeys = [
+  "name",
+  "canonicalId",
+  "family",
+  "generation",
+  "lifecycle",
+  "lifecycleRaw",
+  "releaseDate",
+  "knowledgeCutoff",
+  "modelType",
+  "description",
+  "codingSpecialization",
+  "bestUse",
+  "avoidFor",
+  "contextTokens",
+  "maxOutputTokens",
+  "speedRating",
+  "developerId",
+] as const;
+
+export type ModelMergeResolutionKey = (typeof modelMergeResolutionKeys)[number];
+
+/** Strict allow-list + value validation; unsupported keys are rejected. */
+export const modelMergeResolutionsSchema = z
+  .object({
+    name: requiredTrimmedString.optional(),
+    canonicalId: requiredTrimmedString.optional(),
+    family: z.preprocess(emptyToNull, z.string().nullable().optional()),
+    generation: z.preprocess(emptyToNull, z.string().nullable().optional()),
+    lifecycle: lifecycleStatusSchema.optional(),
+    lifecycleRaw: z.preprocess(emptyToNull, z.string().nullable().optional()),
+    releaseDate: z.preprocess(emptyToNull, z.string().date().nullable().optional()),
+    knowledgeCutoff: z.preprocess(emptyToNull, z.string().nullable().optional()),
+    modelType: z.preprocess(emptyToNull, z.string().nullable().optional()),
+    description: z.preprocess(emptyToNull, z.string().nullable().optional()),
+    codingSpecialization: z.preprocess(emptyToNull, z.string().nullable().optional()),
+    bestUse: z.preprocess(emptyToNull, z.string().nullable().optional()),
+    avoidFor: z.preprocess(emptyToNull, z.string().nullable().optional()),
+    contextTokens: z.number().int().nonnegative().nullable().optional(),
+    maxOutputTokens: z.number().int().nonnegative().nullable().optional(),
+    speedRating: z.preprocess(emptyToNull, z.string().nullable().optional()),
+    developerId: uuidSchema.optional(),
+  })
+  .strict()
+  .optional();
+
 export const modelMergeSchema = z.object({
-  sourceModelId: z.string().uuid(),
-  targetModelId: z.string().uuid(),
-  resolutions: z.record(z.unknown()).optional(),
+  sourceModelId: uuidSchema,
+  targetModelId: uuidSchema,
+  resolutions: modelMergeResolutionsSchema,
 });
 
-export const modelScoreWriteSchema = z.object({
-  methodologyId: z.string().uuid(),
-  scoreType: z.string().min(1),
-  /** null means unknown/blank — never coerce to 0 */
-  scoreValue: z.number().nullable(),
-  rankValue: z.number().int().positive().nullable().optional(),
-  eligibleCount: z.number().int().positive().nullable().optional(),
-  confidence: z.number().min(0).max(100).nullable().optional(),
-  isManualOverride: z.boolean().default(false),
-  overrideReason: z.string().nullable().optional(),
-  calculatedAt: z.string().datetime().optional(),
-}).superRefine((val, ctx) => {
-  if (val.isManualOverride && (!val.overrideReason || val.overrideReason.trim() === "")) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Manual override requires a reason",
-      path: ["overrideReason"],
-    });
-  }
-});
+export const modelScoreWriteSchema = z
+  .object({
+    methodologyId: uuidSchema,
+    scoreType: requiredTrimmedString,
+    /** null means unknown/blank — never coerce to 0 */
+    scoreValue: z.number().nullable(),
+    rankValue: z.number().int().positive().nullable().optional(),
+    eligibleCount: z.number().int().positive().nullable().optional(),
+    confidence: z.number().min(0).max(100).nullable().optional(),
+    isManualOverride: z.boolean().default(false),
+    overrideReason: z.string().nullable().optional(),
+    calculatedAt: z.string().datetime().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.isManualOverride && (!val.overrideReason || val.overrideReason.trim() === "")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Manual override requires a reason",
+        path: ["overrideReason"],
+      });
+    }
+  });
 
 export const sourceWriteSchema = z.object({
   sourceType: sourceTypeSchema,
-  url: z.preprocess(emptyToNull, z.string().url().nullable().optional()),
+  url: optionalHttpUrlSchema,
   title: z.preprocess(emptyToNull, z.string().nullable().optional()),
   publisher: z.preprocess(emptyToNull, z.string().nullable().optional()),
   notes: z.preprocess(emptyToNull, z.string().nullable().optional()),
@@ -239,8 +347,8 @@ export const sourceWriteSchema = z.object({
 // ── Subscription write schema ──────────────────────────────────
 
 export const subscriptionWriteSchema = z.object({
-  planId: z.string().uuid(),
-  accountLabel: z.string().min(1),
+  planId: uuidSchema,
+  accountLabel: requiredTrimmedString,
   status: subscriptionStatusSchema.default("active"),
   startedAt: z.string().date().nullable().optional(),
   nextBillingDate: z.string().date().nullable().optional(),
@@ -249,14 +357,14 @@ export const subscriptionWriteSchema = z.object({
   currency: z.string().length(3).nullable().optional(),
   billingInterval: z.string().nullable().optional(),
   usageTrackingMode: usageTrackingModeSchema.default("manual"),
-  usageCheckUrl: z.string().url().nullable().optional(),
+  usageCheckUrl: optionalHttpUrlSchema,
   usageCheckInstructions: z.string().nullable().optional(),
   importance: z.number().int().min(1).max(5).nullable().optional(),
   notes: z.string().nullable().optional(),
 });
 
 export const subscriptionResponseSchema = subscriptionWriteSchema.extend({
-  id: z.string().uuid(),
+  id: uuidSchema,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -264,8 +372,8 @@ export const subscriptionResponseSchema = subscriptionWriteSchema.extend({
 // ── Model access write schema ──────────────────────────────────
 
 export const modelAccessWriteSchema = z.object({
-  modelId: z.string().uuid(),
-  planId: z.string().uuid(),
+  modelId: uuidSchema,
+  planId: uuidSchema,
   providerModelId: z.string().nullable().optional(),
   availability: availabilityStatusSchema.default("unconfirmed"),
   accessMethod: accessMethodSchema,
@@ -280,34 +388,34 @@ export const modelAccessWriteSchema = z.object({
 });
 
 export const modelAccessResponseSchema = modelAccessWriteSchema.extend({
-  id: z.string().uuid(),
+  id: uuidSchema,
 });
 
 // ── Developer write schema ─────────────────────────────────────
 
 export const developerWriteSchema = z.object({
-  name: z.string().min(1),
-  slug: z.string().min(1),
-  websiteUrl: z.string().url().nullable().optional(),
+  name: requiredTrimmedString,
+  slug: requiredTrimmedString,
+  websiteUrl: optionalHttpUrlSchema,
   notes: z.string().nullable().optional(),
 });
 
 // ── Access provider write schema ───────────────────────────────
 
 export const accessProviderWriteSchema = z.object({
-  name: z.string().min(1),
-  slug: z.string().min(1),
+  name: requiredTrimmedString,
+  slug: requiredTrimmedString,
   providerType: z.string().nullable().optional(),
-  websiteUrl: z.string().url().nullable().optional(),
+  websiteUrl: optionalHttpUrlSchema,
   notes: z.string().nullable().optional(),
 });
 
 // ── Plan write schema ──────────────────────────────────────────
 
 export const planWriteSchema = z.object({
-  accessProviderId: z.string().uuid(),
-  name: z.string().min(1),
-  slug: z.string().min(1),
+  accessProviderId: uuidSchema,
+  name: requiredTrimmedString,
+  slug: requiredTrimmedString,
   planType: z.string().nullable().optional(),
   regularPrice: z.number().nullable().optional(),
   introductoryPrice: z.number().nullable().optional(),
@@ -488,10 +596,12 @@ export function planAccessMerge(
   targetKeys: string[],
   sourceRows: Array<{ id: string; planId: string; providerModelId: string | null }>,
 ): { transferIds: string[]; skippedDuplicateIds: string[] } {
-  const existing = new Set(targetKeys);
+  const existing = new Set([...targetKeys].sort());
   const transferIds: string[] = [];
   const skippedDuplicateIds: string[] = [];
-  for (const row of sourceRows) {
+  // Stable ID tie-break: the first source row wins, including source-only
+  // duplicate keys. The service promotes that winner into its target map.
+  for (const row of [...sourceRows].sort((a, b) => a.id.localeCompare(b.id))) {
     const key = accessMergeKey(row);
     if (existing.has(key)) {
       skippedDuplicateIds.push(row.id);
@@ -501,4 +611,97 @@ export function planAccessMerge(
     transferIds.push(row.id);
   }
   return { transferIds, skippedDuplicateIds };
+}
+
+/**
+ * Capability merge policy:
+ * - target non-null values win explicit conflicts
+ * - source-known (non-null) values fill target unknowns
+ * - details objects are shallow-merged with target keys winning on conflict
+ */
+export function mergeCapabilities(
+  target: Record<string, unknown> | null | undefined,
+  source: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const t = target ?? {};
+  const s = source ?? {};
+  const out: Record<string, unknown> = { ...t };
+  for (const key of modelCapabilityKeys) {
+    const tv = t[key];
+    const sv = s[key];
+    if ((tv === null || tv === undefined) && sv !== null && sv !== undefined) {
+      out[key] = sv;
+    } else if (tv !== undefined) {
+      out[key] = tv;
+    } else if (sv !== undefined) {
+      out[key] = sv;
+    }
+  }
+  const tDetails =
+    t.details && typeof t.details === "object" && !Array.isArray(t.details)
+      ? (t.details as Record<string, unknown>)
+      : {};
+  const sDetails =
+    s.details && typeof s.details === "object" && !Array.isArray(s.details)
+      ? (s.details as Record<string, unknown>)
+      : {};
+  out.details = { ...sDetails, ...tDetails };
+  return out;
+}
+
+/**
+ * Sensitive key matcher for log redaction (case-insensitive).
+ * Covers required names and common separators/variants:
+ * password, secret, token, authorization, cookie, apiKey, clientSecret, privateKey.
+ */
+const SENSITIVE_KEY_RE =
+  /^(passwords?|passwd|secrets?|tokens?|authorizations?|cookies?|api[_-]?keys?|client[_-]?secrets?|private[_-]?keys?|access[_-]?tokens?|refresh[_-]?tokens?|id[_-]?tokens?|bearer)$/i;
+
+export function isSensitiveKey(key: string): boolean {
+  return SENSITIVE_KEY_RE.test(key.trim());
+}
+
+/**
+ * Recursively redact sensitive keys from arbitrary metadata.
+ * Cycle-safe. Never includes raw Error.message (may embed DSN/token values).
+ */
+export function redactSensitive<T>(value: T, depth = 0, seen?: WeakSet<object>): T {
+  if (depth > 20) return "[MaxDepth]" as T;
+  if (value == null) return value;
+
+  const tracker = seen ?? new WeakSet<object>();
+
+  if (Array.isArray(value)) {
+    if (tracker.has(value)) return "[Circular]" as T;
+    tracker.add(value);
+    const items: unknown[] = value;
+    const next: unknown[] = items.map((item) => redactSensitive(item, depth + 1, tracker));
+    return next as T;
+  }
+
+  if (value instanceof Error) {
+    if (tracker.has(value)) return "[Circular]" as T;
+    tracker.add(value);
+    const maybeCode: unknown = Reflect.get(value, "code");
+    // Categorical fields only — never raw message text.
+    const safe: Record<string, unknown> = { name: value.name };
+    if (typeof maybeCode === "string") safe.code = maybeCode;
+    return safe as T;
+  }
+
+  if (typeof value === "object") {
+    const obj: object = value;
+    if (tracker.has(obj)) return "[Circular]" as T;
+    tracker.add(obj);
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (isSensitiveKey(k)) {
+        out[k] = "[REDACTED]";
+      } else {
+        out[k] = redactSensitive(v, depth + 1, tracker);
+      }
+    }
+    return out as T;
+  }
+  return value;
 }

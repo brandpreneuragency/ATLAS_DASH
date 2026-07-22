@@ -3,11 +3,19 @@ import {
   listModels,
 } from "@model-monitor/database";
 import { db } from "@/lib/db";
-import { auditContext, getRequestId, jsonError, jsonOk } from "@/lib/api";
+import {
+  auditContext,
+  getRequestId,
+  jsonError,
+  jsonOk,
+  parseJsonBody,
+  requireApiSession,
+} from "@/lib/api";
 
 export async function GET(request: Request) {
   const requestId = getRequestId(request);
   try {
+    await requireApiSession(requestId);
     const url = new URL(request.url);
     const params = Object.fromEntries(url.searchParams.entries());
     const result = await listModels(db, params);
@@ -26,8 +34,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const requestId = getRequestId(request);
   try {
-    const body: unknown = await request.json();
-    const model = await createModel(db, body, auditContext(request));
+    const session = await requireApiSession(requestId);
+    const body = await parseJsonBody(request);
+    const model = await createModel(db, body, auditContext(request, session.userId));
     return jsonOk(model, { status: 201, requestId });
   } catch (error) {
     return jsonError(error, requestId);

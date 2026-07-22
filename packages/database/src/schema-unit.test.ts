@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   recordStatus,
@@ -7,6 +7,7 @@ import {
   lifecycleStatus,
 } from "./schema/enums";
 import * as schema from "./schema/index";
+import { planAccessMerge } from "@model-monitor/schemas";
 
 describe("schema barrel", () => {
   it("exports core enum constructors", () => {
@@ -36,6 +37,53 @@ describe("SQL migrations", () => {
       "0002_access_scores.sql",
       "0003_benchmarks_imports.sql",
       "0004_provenance_usage_tokens_audit.sql",
+      "0005_idempotency_keys.sql",
+      "0006_seed_ownership.sql",
     ]);
+  });
+
+  it("exports idempotency_keys table", () => {
+    expect(schema.idempotencyKeys).toBeDefined();
+  });
+});
+
+describe("seed_key partial unique indexes", () => {
+  it("declares WHERE seed_key IS NOT NULL predicates matching migration 0006", () => {
+    const evidence = readFileSync(join(import.meta.dirname, "schema/evidence.ts"), "utf8");
+    const operations = readFileSync(join(import.meta.dirname, "schema/operations.ts"), "utf8");
+    const migration = readFileSync(
+      join(import.meta.dirname, "..", "migrations", "0006_seed_ownership.sql"),
+      "utf8",
+    );
+    expect(migration).toMatch(
+      /model_benchmark_results_seed_key_uidx[\s\S]*WHERE seed_key IS NOT NULL/,
+    );
+    expect(migration).toMatch(/usage_snapshots_seed_key_uidx[\s\S]*WHERE seed_key IS NOT NULL/);
+    expect(evidence).toContain(
+      'uniqueIndex("model_benchmark_results_seed_key_uidx").on(t.seedKey).where(isNotNull(t.seedKey))',
+    );
+    expect(operations).toContain(
+      'uniqueIndex("usage_snapshots_seed_key_uidx").on(t.seedKey).where(isNotNull(t.seedKey))',
+    );
+  });
+});
+
+describe("deterministic access reconciliation planning", () => {
+  it("chooses the lowest source ID for source-only duplicate keys", () => {
+    const result = planAccessMerge([], [
+      { id: "z", planId: "p", providerModelId: "same" },
+      { id: "a", planId: "p", providerModelId: "same" },
+    ]);
+    expect(result.transferIds).toEqual(["a"]);
+    expect(result.skippedDuplicateIds).toEqual(["z"]);
+  });
+
+  it("retains deterministic target-first reconciliation for target duplicates", () => {
+    const result = planAccessMerge(["p::same"], [
+      { id: "b", planId: "p", providerModelId: "same" },
+      { id: "a", planId: "p", providerModelId: "same" },
+    ]);
+    expect(result.transferIds).toEqual([]);
+    expect(result.skippedDuplicateIds).toEqual(["a", "b"]);
   });
 });

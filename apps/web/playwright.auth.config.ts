@@ -2,27 +2,26 @@ import { defineConfig, devices } from "@playwright/test";
 import { playwrightLdPath, playwrightPort } from "./e2e/helpers";
 
 /**
- * Bypassed model workflow suite (AUTH_DEV_BYPASS=true).
- * Runs after the auth-boundary suite via package.json test:e2e.
+ * Anonymous auth-boundary suite with AUTH_DEV_BYPASS=false.
+ * Separate server lifetime from the bypassed workflow suite.
  */
-const port = playwrightPort(3110);
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`;
+const port = playwrightPort(3111);
+const baseURL = process.env.PLAYWRIGHT_AUTH_BASE_URL ?? `http://127.0.0.1:${port}`;
 const ldPath = playwrightLdPath();
 
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: /models\.spec\.ts|a11y\.spec\.ts/,
+  testMatch: /auth-boundary\.spec\.ts/,
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  timeout: 90_000,
-  expect: { timeout: 20_000 },
+  timeout: 60_000,
+  expect: { timeout: 15_000 },
   reporter: [["list"]],
   globalSetup: "./e2e/global-setup.ts",
   globalTeardown: "./e2e/global-teardown.ts",
   use: {
     baseURL,
-    // retries=0 → capture on first failure without requiring a retry
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "off",
@@ -35,18 +34,18 @@ export default defineConfig({
   },
   projects: [
     {
-      name: "chromium",
+      name: "chromium-auth",
       use: { ...devices["Desktop Chrome"] },
     },
   ],
   webServer: {
     command: `pnpm exec next dev --hostname 127.0.0.1 --port ${port}`,
     url: `${baseURL}/api/v1/health`,
-    reuseExistingServer: !process.env.CI && process.env.PLAYWRIGHT_REUSE === "1",
+    reuseExistingServer: false,
     timeout: 120_000,
     env: {
       ...process.env,
-      AUTH_DEV_BYPASS: "true",
+      AUTH_DEV_BYPASS: "false",
       NODE_ENV: "development",
       LD_LIBRARY_PATH: ldPath,
     },

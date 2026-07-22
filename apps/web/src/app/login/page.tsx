@@ -1,10 +1,21 @@
 import { signIn } from "@/lib/auth";
+import { safeCallbackUrl } from "@/lib/auth-policy";
 
-export default function LoginPage({
+async function googleSignInAction(formData: FormData) {
+  "use server";
+  const raw = formData.get("callbackUrl");
+  const callbackUrl = safeCallbackUrl(typeof raw === "string" ? raw : undefined);
+  await signIn("google", { redirectTo: callbackUrl });
+}
+
+export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; callbackUrl?: string }>;
 }) {
+  const params = await searchParams;
+  const callbackUrl = safeCallbackUrl(params.callbackUrl);
+
   return (
     <div className="flex min-h-[70vh] items-center justify-center">
       <div className="w-full max-w-md space-y-6 rounded-lg border border-border bg-card p-8">
@@ -17,12 +28,8 @@ export default function LoginPage({
             Private LLM registry. Sign in with an allow-listed Google account.
           </p>
         </div>
-        <form
-          action={async () => {
-            "use server";
-            await signIn("google", { redirectTo: "/dashboard" });
-          }}
-        >
+        <form action={googleSignInAction}>
+          <input type="hidden" name="callbackUrl" value={callbackUrl} />
           <button
             type="submit"
             className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90"
@@ -30,22 +37,17 @@ export default function LoginPage({
             Sign in with Google
           </button>
         </form>
-        <LoginError searchParams={searchParams} />
+        {params.error ? (
+          <p
+            className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive-foreground"
+            role="alert"
+            aria-live="assertive"
+            data-testid="login-error"
+          >
+            Access denied. Your account is not on the allow-list.
+          </p>
+        ) : null}
       </div>
     </div>
-  );
-}
-
-async function LoginError({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
-  const params = await searchParams;
-  if (!params.error) return null;
-  return (
-    <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive-foreground">
-      Access denied. Your account is not on the allow-list.
-    </p>
   );
 }

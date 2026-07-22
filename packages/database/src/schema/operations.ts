@@ -1,3 +1,4 @@
+import { isNotNull } from "drizzle-orm";
 import {
   pgTable,
   uuid,
@@ -8,6 +9,7 @@ import {
   boolean,
   numeric,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { models } from "./models";
 import { subscriptions } from "./subscriptions";
@@ -87,10 +89,12 @@ export const usageSnapshots = pgTable("usage_snapshots", {
   usedPercent: numeric("used_percent", { precision: 6, scale: 3 }),
   confidence: numeric("confidence", { precision: 5, scale: 2 }),
   rawPayload: jsonb("raw_payload"),
+  seedKey: text("seed_key"),
   capturedAt: timestamp("captured_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   subIdx: index("usage_snapshots_subscription_idx").on(t.subscriptionId, t.capturedAt),
+  seedKeyIdx: uniqueIndex("usage_snapshots_seed_key_uidx").on(t.seedKey).where(isNotNull(t.seedKey)),
 }));
 
 // ── API Tokens ─────────────────────────────────────────────────
@@ -136,3 +140,25 @@ export const appSettings = pgTable("app_settings", {
   updatedBy: uuid("updated_by").references(() => users.id),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ── Idempotency Keys ───────────────────────────────────────────
+
+export const idempotencyKeys = pgTable(
+  "idempotency_keys",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    key: text("key").notNull(),
+    operation: text("operation").notNull(),
+    requestHash: text("request_hash").notNull(),
+    status: text("status").notNull().default("pending"),
+    responseStatus: integer("response_status"),
+    responseBody: jsonb("response_body"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => ({
+    uniq: uniqueIndex("idempotency_keys_key_operation_uidx").on(t.key, t.operation),
+    createdIdx: index("idempotency_keys_created_idx").on(t.createdAt),
+    statusIdx: index("idempotency_keys_status_idx").on(t.status),
+  }),
+);

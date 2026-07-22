@@ -1,11 +1,14 @@
+import { redactSensitive } from "@model-monitor/schemas";
+
 type LogLevel = "debug" | "info" | "warn" | "error";
 
 function log(level: LogLevel, message: string, meta?: Record<string, unknown>) {
+  const safeMeta = meta ? redactSensitive(meta) : undefined;
   const entry = {
     ts: new Date().toISOString(),
     level,
     message,
-    ...meta,
+    ...(safeMeta ?? {}),
   };
   const line = JSON.stringify(entry);
   if (level === "error") console.error(line);
