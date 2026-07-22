@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: modelmonitor
+          POSTGRES_PASSWORD: modelmonitor
+          POSTGRES_DB: modelmonitor
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U modelmonitor"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://modelmonitor:modelmonitor@localhost:5433/modelmonitor
+      AUTH_SECRET: ci-test-secret
+      AUTH_DEV_BYPASS: "true"
+      ALLOWED_EMAILS: owner@example.com
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck packages
+        run: pnpm --filter @model-monitor/database typecheck && pnpm --filter @model-monitor/schemas typecheck
+      - name: Migrate
+        run: pnpm --filter @model-monitor/database exec tsx src/migrate.ts
+      - name: Seed
+        run: pnpm --filter @model-monitor/database exec tsx src/seed.ts
+      - name: Seed integrity test
+        run: pnpm --filter @model-monitor/database exec tsx src/seed-integrity.test.ts

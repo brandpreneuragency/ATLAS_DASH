@@ -1,0 +1,402 @@
+openapi: 3.1.0
+info:
+  title: Model Monitor API
+  version: 1.0.0
+  description: Private model registry, subscription management, and Hermes catalog API.
+servers:
+  - url: /api/v1
+security:
+  - sessionAuth: []
+paths:
+  /health:
+    get:
+      security: []
+      operationId: getHealth
+      responses:
+        '200':
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, database, time]
+                properties:
+                  status: { type: string, const: ok }
+                  database: { type: string, const: ok }
+                  time: { type: string, format: date-time }
+  /models:
+    get:
+      operationId: listModels
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: developer, in: query, schema: { type: string } }
+        - { name: lifecycle, in: query, schema: { type: string } }
+        - { name: accessible, in: query, schema: { type: boolean } }
+        - { name: archived, in: query, schema: { type: boolean, default: false } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+      responses:
+        '200':
+          description: Model collection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelCollection'
+    post:
+      operationId: createModel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ModelWrite' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Model' }
+  /models/{modelId}:
+    parameters:
+      - { name: modelId, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getModel
+      responses:
+        '200':
+          description: Model
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Model' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      operationId: updateModel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ModelWrite' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Model' }
+    delete:
+      operationId: archiveModel
+      responses:
+        '204': { description: Archived }
+  /models/{modelId}/restore:
+    post:
+      operationId: restoreModel
+      parameters:
+        - { name: modelId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Restored
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Model' }
+  /models/merge:
+    post:
+      operationId: mergeModels
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sourceModelId, targetModelId]
+              properties:
+                sourceModelId: { type: string }
+                targetModelId: { type: string }
+                resolutions: { type: object, additionalProperties: true }
+      responses:
+        '200':
+          description: Merge result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [targetModelId, transferred, auditEventId]
+                properties:
+                  targetModelId: { type: string }
+                  transferred: { type: object, additionalProperties: { type: integer } }
+                  auditEventId: { type: string }
+  /subscriptions:
+    get:
+      operationId: listSubscriptions
+      responses:
+        '200':
+          description: Subscriptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Subscription' }
+    post:
+      operationId: createSubscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubscriptionWrite' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Subscription' }
+  /subscriptions/{subscriptionId}:
+    parameters:
+      - { name: subscriptionId, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getSubscription
+      responses:
+        '200':
+          description: Subscription
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Subscription' }
+    patch:
+      operationId: updateSubscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubscriptionWrite' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Subscription' }
+    delete:
+      operationId: archiveSubscription
+      responses:
+        '204': { description: Archived }
+  /model-access:
+    get:
+      operationId: listModelAccess
+      responses:
+        '200':
+          description: Access records
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ModelAccess' }
+    post:
+      operationId: createModelAccess
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ModelAccessWrite' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ModelAccess' }
+  /access-matrix:
+    get:
+      operationId: getAccessMatrix
+      responses:
+        '200':
+          description: Matrix
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [models, subscriptions, cells]
+                properties:
+                  models: { type: array, items: { type: object, additionalProperties: true } }
+                  subscriptions: { type: array, items: { type: object, additionalProperties: true } }
+                  cells: { type: array, items: { type: object, additionalProperties: true } }
+  /imports/preview:
+    post:
+      operationId: previewImport
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '202':
+          description: Preview accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+  /imports/{importId}:
+    get:
+      operationId: getImport
+      parameters:
+        - { name: importId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Import
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+  /imports/{importId}/commit:
+    post:
+      operationId: commitImport
+      parameters:
+        - { name: importId, in: path, required: true, schema: { type: string } }
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Committed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+  /audit-events:
+    get:
+      operationId: listAuditEvents
+      responses:
+        '200':
+          description: Audit events
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object, additionalProperties: true }
+  /hermes/catalog:
+    get:
+      operationId: getHermesCatalog
+      security:
+        - bearerAuth: [catalog:read]
+      responses:
+        '200':
+          description: Hermes catalog
+          headers:
+            ETag: { schema: { type: string } }
+            Last-Modified: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Must validate against contracts/hermes-catalog.schema.json.
+        '304': { description: Not modified }
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: authjs.session-token
+    bearerAuth:
+      type: http
+      scheme: bearer
+  responses:
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            requestId: { type: string }
+            fieldErrors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+    Model:
+      allOf:
+        - { $ref: '#/components/schemas/ModelWrite' }
+        - type: object
+          required: [id, status, createdAt, updatedAt]
+          properties:
+            id: { type: string }
+            status: { enum: [active, archived] }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+    ModelWrite:
+      type: object
+      required: [canonicalId, name, developerId]
+      properties:
+        canonicalId: { type: string }
+        name: { type: string }
+        developerId: { type: string }
+        family: { type: [string, 'null'] }
+        generation: { type: [string, 'null'] }
+        lifecycle: { type: string }
+        contextTokens: { type: [integer, 'null'], minimum: 0 }
+        maxOutputTokens: { type: [integer, 'null'], minimum: 0 }
+        bestUse: { type: [string, 'null'] }
+        avoidFor: { type: [string, 'null'] }
+        needsRecheck: { type: boolean }
+    ModelCollection:
+      type: object
+      required: [data, page]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Model' } }
+        page:
+          type: object
+          required: [hasMore]
+          properties:
+            nextCursor: { type: [string, 'null'] }
+            hasMore: { type: boolean }
+    Subscription:
+      allOf:
+        - { $ref: '#/components/schemas/SubscriptionWrite' }
+        - type: object
+          required: [id, createdAt, updatedAt]
+          properties:
+            id: { type: string }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+    SubscriptionWrite:
+      type: object
+      required: [planId, accountLabel, status]
+      properties:
+        planId: { type: string }
+        accountLabel: { type: string }
+        status: { type: string }
+        actualPrice: { type: [number, 'null'] }
+        currency: { type: [string, 'null'] }
+        nextBillingDate: { type: [string, 'null'], format: date }
+        autoRenews: { type: [boolean, 'null'] }
+        usageTrackingMode: { type: string }
+        usageCheckInstructions: { type: [string, 'null'] }
+        notes: { type: [string, 'null'] }
+    ModelAccess:
+      allOf:
+        - { $ref: '#/components/schemas/ModelAccessWrite' }
+        - type: object
+          required: [id]
+          properties:
+            id: { type: string }
+    ModelAccessWrite:
+      type: object
+      required: [modelId, planId, availability, accessMethod]
+      properties:
+        modelId: { type: string }
+        planId: { type: string }
+        providerModelId: { type: [string, 'null'] }
+        availability: { enum: [confirmed, unconfirmed, unavailable, removed] }
+        accessMethod: { type: string }
+        apiCompatible: { type: [boolean, 'null'] }
+        cliOnly: { type: boolean, default: false }
+        webOnly: { type: boolean, default: false }
+        limitations: { type: [string, 'null'] }
+    ImportJob:
+      type: object
+      required: [id, filename, status, createdAt]
+      properties:
+        id: { type: string }
+        filename: { type: string }
+        status: { type: string }
+        previewSummary: { type: [object, 'null'], additionalProperties: true }
+        commitSummary: { type: [object, 'null'], additionalProperties: true }
+        createdAt: { type: string, format: date-time }
