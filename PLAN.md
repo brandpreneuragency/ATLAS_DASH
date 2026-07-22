@@ -33,18 +33,18 @@
 
 ## Phase 2 — Models
 
-- [ ] Model table.
-- [ ] Filters and search.
-- [ ] Model detail.
-- [ ] Create/edit.
-- [ ] Archive/restore.
-- [ ] Aliases.
-- [ ] Capabilities.
-- [ ] Scores and ranks.
-- [ ] Benchmarks.
-- [ ] Sources.
-- [ ] History.
-- [ ] Merge.
+- [x] Model table.
+- [x] Filters and search.
+- [x] Model detail.
+- [x] Create/edit.
+- [x] Archive/restore.
+- [x] Aliases.
+- [x] Capabilities.
+- [x] Scores and ranks.
+- [x] Benchmarks.
+- [x] Sources.
+- [x] History.
+- [x] Merge.
 
 ## Phase 3 — Subscriptions and access
 

@@ -19,15 +19,16 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run --config vitest.config.ts && tsx src/seed-integrity.test.ts",
+    "test": "vitest run --config vitest.config.ts && tsx src/seed-integrity.test.ts && vitest run --config vitest.integration.config.ts",
     "test:unit": "vitest run --config vitest.config.ts",
-    "test:integration": "tsx src/seed-integrity.test.ts",
+    "test:integration": "tsx src/seed-integrity.test.ts && vitest run --config vitest.integration.config.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/migrate.ts",
     "db:seed": "tsx src/seed.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@model-monitor/schemas": "workspace:*",
     "drizzle-orm": "^0.44.0",
     "postgres": "^3.4.0"
   },
