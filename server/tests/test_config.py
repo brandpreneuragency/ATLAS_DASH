@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import pytest
 
@@ -90,3 +91,62 @@ async def test_bootstrap_password_missing_secret_fails_clearly(tmp_path):
     message = str(exc_info.value)
     assert "ATLAS_DASH_PASSWORD" in message
     assert "ATLAS_PASSWORD" in message
+
+
+# --- F1 (phase-3 review): non-string field types through the legacy path ---
+
+
+def test_legacy_fallback_bool_field_correct_type(monkeypatch, tmp_path):
+    monkeypatch.delenv("ATLAS_DASH_MOCK_HERMES", raising=False)
+    monkeypatch.setenv("ATLAS_MOCK_HERMES", "1")
+    monkeypatch.setenv("ATLAS_DASH_DATA_DIR", str(tmp_path))
+    settings = get_settings()
+    assert settings.mock_hermes is True
+
+
+def test_legacy_fallback_int_field_correct_type(monkeypatch, tmp_path):
+    monkeypatch.delenv("ATLAS_DASH_PORT", raising=False)
+    monkeypatch.setenv("ATLAS_PORT", "9999")
+    monkeypatch.setenv("ATLAS_DASH_DATA_DIR", str(tmp_path))
+    settings = get_settings()
+    assert settings.port == 9999
+    assert isinstance(settings.port, int)
+
+
+def test_legacy_fallback_path_field_correct_type(monkeypatch, tmp_path):
+    monkeypatch.delenv("ATLAS_DASH_DATA_DIR", raising=False)
+    monkeypatch.setenv("ATLAS_DATA_DIR", str(tmp_path))
+    settings = get_settings()
+    assert settings.data_dir == tmp_path
+    assert isinstance(settings.data_dir, Path)
+
+
+# --- F2 (phase-3 review): ATLAS_DASH_* precedence must not depend on case ---
+
+
+def test_lowercase_new_prefix_alone_is_recognized(monkeypatch, tmp_path):
+    monkeypatch.delenv("ATLAS_PASSWORD", raising=False)
+    monkeypatch.setenv("atlas_dash_password", "lower-new")
+    monkeypatch.setenv("ATLAS_DASH_DATA_DIR", str(tmp_path))
+    settings = get_settings()
+    assert settings.password == "lower-new"
+
+
+def test_lowercase_new_prefix_same_value_as_legacy_is_not_a_conflict(monkeypatch, tmp_path):
+    monkeypatch.setenv("atlas_dash_password", "same-value")
+    monkeypatch.setenv("ATLAS_PASSWORD", "same-value")
+    monkeypatch.setenv("ATLAS_DASH_DATA_DIR", str(tmp_path))
+    settings = get_settings()
+    assert settings.password == "same-value"
+
+
+def test_lowercase_new_prefix_conflicting_legacy_value_fails_clearly(monkeypatch, tmp_path):
+    # Regression test for the phase-3 finding: a non-uppercase ATLAS_DASH_*
+    # variable must still be recognized as present (pydantic-settings' own
+    # EnvSettingsSource is case-insensitive), so a differing legacy value
+    # here must raise, never silently resolve to the legacy value.
+    monkeypatch.setenv("atlas_dash_password", "lower-new")
+    monkeypatch.setenv("ATLAS_PASSWORD", "upper-legacy")
+    monkeypatch.setenv("ATLAS_DASH_DATA_DIR", str(tmp_path))
+    with pytest.raises(ConfigConflictError):
+        get_settings()

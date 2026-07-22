@@ -48,14 +48,19 @@ def _legacy_env_overrides(env: dict[str, str] | None = None) -> dict[str, Any]:
     fallback and a deprecation warning names the variable (never its value).
     """
     source = env if env is not None else os.environ
+    # pydantic-settings' own EnvSettingsSource matches variable names
+    # case-insensitively; this lookup must match that contract, or a
+    # correctly-set-but-non-uppercase ATLAS_DASH_* variable would look
+    # "absent" here and be silently overridden by a legacy value below.
+    upper_source = {k.upper(): v for k, v in source.items()}
     overrides: dict[str, Any] = {}
     for field_name in Settings.model_fields:
         new_key = f"{ENV_PREFIX}{field_name.upper()}"
         old_key = f"{LEGACY_ENV_PREFIX}{field_name.upper()}"
-        old_val = source.get(old_key)
+        old_val = upper_source.get(old_key)
         if old_val is None:
             continue
-        new_val = source.get(new_key)
+        new_val = upper_source.get(new_key)
         if new_val is not None:
             if new_val != old_val:
                 raise ConfigConflictError(
