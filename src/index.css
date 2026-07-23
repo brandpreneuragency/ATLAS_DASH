@@ -3598,6 +3598,49 @@ button.calendar-task-row {
 .ai-toggle-btn:disabled:hover {
   color: var(--c-text-2);
 }
+
+/* Six-area switcher (header) — M2 map "Header shell": Agent, Work, Clients,
+   Today, Files, Settings. Reuses the header-bar's existing sizing/vars. */
+.area-switcher {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 100%;
+  padding: 0 6px;
+  flex-shrink: 0;
+}
+.area-switch-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--c-text-2);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s;
+}
+.area-switch-btn:hover {
+  background: var(--c-background-4);
+  color: var(--c-text-1);
+}
+.area-switch-btn--active {
+  background: var(--c-background-4);
+  color: var(--c-accent-1);
+}
+
+/* Persistent kill switch */
+.killswitch-btn--engaged {
+  color: #dc2626;
+}
+.killswitch-btn--engaged:hover {
+  color: #dc2626;
+}
 :root .tabs-dropdown-toggle {
   background: transparent;
   border: none;
