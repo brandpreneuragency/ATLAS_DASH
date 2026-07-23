@@ -17,17 +17,13 @@ import { TrashModal } from '../modals/TrashModal';
 import { ModelSwitcher } from '../ui/ModelSwitcher';
 import { ToastContainer } from '../ui/Toast';
 import { CRMWorkspace } from './CRMWorkspace';
-import { ChatWorkspace } from '../chatMode/ChatWorkspace';
 import { SessionListColumn } from '../chatMode/SessionListColumn';
 import { CRMListPanel } from '../crm/CRMListPanel';
 import { FormsListPanel } from '../forms/FormsListPanel';
 import { CRMAISidebar } from '../sidebar/CRMAISidebar';
 import { FilesAreaPlaceholder } from './areas/FilesAreaPlaceholder';
-import { AgentOverview } from '../agent/AgentOverview';
 import { AgentSubTabs } from '../agent/AgentSubTabs';
-import { AgentRuns } from '../agent/AgentRuns';
-import { AgentWorkflows } from '../agent/AgentWorkflows';
-import { Schedules } from '../agent/Schedules';
+import { AGENT_SUBVIEW_REGISTRY } from '../agent/agentSubviewRegistry';
 import { TodayApprovals } from '../today/TodayApprovals';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -199,12 +195,12 @@ export function AuthenticatedShell() {
   // Panel 2 (editor) — content is chosen from the URL-derived area first so
   // there is no one-frame flash while `useAreaRouteSync`'s effect catches up
   // the legacy chatMode/crmMode/activeView flags other components still read.
-  const agentContent =
-    agentSubTab === 'overview' ? <AgentOverview /> :
-    agentSubTab === 'runs' ? <AgentRuns /> :
-    agentSubTab === 'workflows' ? <AgentWorkflows /> :
-    agentSubTab === 'schedules' ? <Schedules /> :
-    <ChatWorkspace />;
+  // D-CHAT: `AGENT_SUBVIEW_REGISTRY` is the single source of truth mapping
+  // each Agent sub-tab to its presentation component — `chat` is the only
+  // key allowed to map to `ChatWorkspace` (see the registry's own doc
+  // comment and `agentSubviewRegistry.test.ts`).
+  const AgentSubviewComponent = AGENT_SUBVIEW_REGISTRY[agentSubTab];
+  const agentContent = <AgentSubviewComponent />;
 
   const activeWorkspace =
     area === 'agent' ? (

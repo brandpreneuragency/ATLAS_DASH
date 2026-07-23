@@ -6,15 +6,21 @@ const TABS: { key: AgentSubTab; label: string }[] = [
   { key: 'runs', label: 'Runs' },
   { key: 'workflows', label: 'Workflows' },
   { key: 'schedules', label: 'Schedules' },
+  { key: 'browserAi', label: 'Browser AI' },
+  { key: 'brainReview', label: 'Brain Review' },
 ];
 
 /**
  * Agent area sub-navigation: Overview (Control's `MissionControl.tsx`),
- * Chat (the pre-existing Hermes `ChatWorkspace`, wired at M5b), Runs
- * (Control's `Automation.tsx` runs list + `RunDetail.tsx`), Workflows
- * (Control's `Automation.tsx` WorkflowsSection + `WorkflowEditor.tsx`), and
- * Schedules (Control's `Automation.tsx` Hermes cron table). Brain Review
- * remains later-phase content.
+ * Chat (the single Hermes chat presentation, D-CHAT — `ChatWorkspace`,
+ * wired at M5b), Runs (Control's `Automation.tsx` runs list +
+ * `RunDetail.tsx`), Workflows (Control's `Automation.tsx` WorkflowsSection +
+ * `WorkflowEditor.tsx`), Schedules (Control's `Automation.tsx` Hermes cron
+ * table), Browser AI (DASH `src/components/aiChat/` — the retained
+ * direct-provider surface, explicitly not a second Hermes chat path), and
+ * Brain Review (Control's `Review.tsx` — approve/reject stays delegated to
+ * the guarded Hermes brain workflow). `AGENT_SUBVIEW_REGISTRY` is the single
+ * source of truth this list mirrors for rendering.
  */
 export function AgentSubTabs() {
   const subTab = useAgentAreaStore((s) => s.subTab);
@@ -30,6 +36,7 @@ export function AgentSubTabs() {
         padding: '8px 16px',
         borderBottom: '1px solid var(--c-border-1)',
         flexShrink: 0,
+        flexWrap: 'wrap',
       }}
     >
       {TABS.map((tab) => {

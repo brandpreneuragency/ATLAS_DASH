@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 
-export type AgentSubTab = 'overview' | 'chat' | 'runs' | 'workflows' | 'schedules';
+export type AgentSubTab =
+  | 'overview'
+  | 'chat'
+  | 'runs'
+  | 'workflows'
+  | 'schedules'
+  | 'browserAi'
+  | 'brainReview';
 
 interface AgentAreaStore {
   /** Which sub-view the Agent area is showing. Defaults to 'chat' — the
@@ -12,10 +19,12 @@ interface AgentAreaStore {
 
 /**
  * Agent area sub-navigation (Overview / Chat / Runs / Workflows /
- * Schedules). Local to the Agent area — unrelated to `uiStore`'s legacy
- * chatMode/crmMode flags, which continue to track area-level state via
- * `useAreaRouteSync`. Brain Review remains later-phase content per
- * `SCREEN_PARITY.md`.
+ * Schedules / Browser AI / Brain Review). Local to the Agent area —
+ * unrelated to `uiStore`'s legacy chatMode/crmMode flags, which continue to
+ * track area-level state via `useAreaRouteSync`. `chat` is the single
+ * Hermes chat presentation (D-CHAT); `browserAi` and `brainReview` are
+ * deliberately separate presentations — see
+ * `src/components/agent/agentSubviewRegistry.ts`.
  */
 export const useAgentAreaStore = create<AgentAreaStore>((set) => ({
   subTab: 'chat',
