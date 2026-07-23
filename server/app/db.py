@@ -43,9 +43,20 @@ async def init_db(path: str | Path) -> AsyncEngine:
             version = int(migration.name.split("_", 1)[0])
             if version in applied:
                 continue
-            for statement in migration.read_text(encoding="utf-8").split(";"):
-                if statement.strip():
-                    await conn.exec_driver_sql(statement)
+            # NOTE: migration files may contain compound statements whose
+            # bodies themselves contain semicolons (e.g. CREATE TRIGGER ...
+            # BEGIN ... ; ... ; END;). A naive `.split(";")` would shred
+            # those bodies into invalid fragments. Instead, hand the whole
+            # file to the underlying DBAPI connection's executescript(),
+            # which uses SQLite's real SQL parser/tokenizer and correctly
+            # treats a trigger's BEGIN...END block as a single statement
+            # regardless of internal semicolons.
+            raw_connection = await conn.get_raw_connection()
+            driver_connection = raw_connection.driver_connection
+            assert driver_connection is not None
+            await driver_connection.executescript(
+                migration.read_text(encoding="utf-8")
+            )
             await conn.execute(
                 text("INSERT INTO schema_migrations(version) VALUES (:version)"),
                 {"version": version},

@@ -1,54 +1,67 @@
--- 005_run_status_check.sql — formalized runs.status state machine
+-- 005_run_status_check.sql — enforce the ratified runs.status vocabulary via triggers
 --
--- M4-03 CORRECTION (see findings-m4.json): the list below was previously
--- copied verbatim from SPEC R2's prose ('waiting_for_approval', 'starting',
--- 'paused', 'completed') without cross-checking it against what
--- server/app/engine/engine.py actually writes to runs.status. That list
--- does NOT match the runtime vocabulary and, had it ever been applied as a
--- real CHECK constraint, would have broken the engine on every normal run
--- (every run writes 'waiting_approval' and 'succeeded', neither of which
--- appeared in the old proposed list).
+-- RATIFIED AT CP-M4 (owner, 2026-07-23) — D-M4-STATUS-VOCAB / D-M4-STATUS-ENFORCE.
+-- Supersedes phase 2's documentation-only placeholder ("SELECT 1 WHERE 1=0"),
+-- which was reported as finding M4-04. See SPEC.md "Amended at CP-M4" for the
+-- full rationale text and CP_M4_RUNBOOK.md's "Decisions taken at CP-M4" section.
 --
--- ACTUAL runtime vocabulary (verified by grep of every literal
--- `runs.status = ...` write in app/engine/engine.py at commit 0a3b3b8):
---   'queued'            -- default (003_workflows.sql:15)
---   'running'           -- engine.py:230
---   'waiting_approval'  -- engine.py:341 (NOTE: not 'waiting_for_approval')
---   'succeeded'         -- engine.py:399 (NOTE: not 'completed')
---   'failed'            -- engine.py:128, :538
---   'cancelled'         -- engine.py:652
---   'budget_exceeded'   -- engine.py:378 (not in SPEC R2's list at all)
--- 'starting' and 'paused' (both named in SPEC R2's prose) are never written
--- anywhere in the codebase — there is no code path that sets either.
+-- D-M4-STATUS-VOCAB ratified the code's actual runtime vocabulary (grep of
+-- every literal `runs.status = ...` write in app/engine/engine.py) as the
+-- formalized state machine, instead of renaming live data to match SPEC R2's
+-- original prose list (which named two states, 'starting' and 'paused', that
+-- the engine has never written, and misspelled two more). The seven ratified
+-- values are exactly:
 --
--- OPEN QUESTION FOR CP-M4 (M4-03 / M4-04, human decision, not made here):
---   SPEC R2 says: "formalize waiting_for_approval in the run state machine
---   (queued -> starting -> running -> waiting_for_approval -> paused ->
---   completed | failed | cancelled)". The running code has never used that
---   exact vocabulary or transition list. Two ways to close the gap:
---     (a) RENAME the code's runtime status strings to match SPEC R2
---         verbatim ('waiting_approval' -> 'waiting_for_approval',
---         'succeeded' -> 'completed', introduce real 'starting'/'paused'
---         states, decide where 'budget_exceeded' fits in the SPEC list).
---         This changes live data semantics and touches every reader of
---         runs.status (routers, frontend, tests) — a live-data-affecting
---         design decision reserved for the human, not an unattended phase.
---     (b) RATIFY the code's actual vocabulary (as documented above) as the
---         formalized state machine, and update SPEC R2's prose to match
---         reality instead of the reverse.
---   Neither option is applied by this migration. This file remains a
---   documentation-only placeholder (see M4-04: SQLite's ALTER TABLE does
---   not support ADD CONSTRAINT on existing tables, so no real CHECK
---   constraint is added regardless of which vocabulary is chosen) until
---   CP-M4 resolves the vocabulary question.
+--   queued            -- default (003_workflows.sql)
+--   running           -- engine.py
+--   waiting_approval  -- engine.py (NOT 'waiting_for_approval')
+--   succeeded         -- engine.py (NOT 'completed')
+--   failed            -- engine.py
+--   cancelled         -- engine.py
+--   budget_exceeded   -- engine.py
 --
--- If/when a real CHECK constraint is added (via the SQLite 12-step
--- create-copy-drop-rename table-rebuild — see M4-04), it MUST use whichever
--- vocabulary is ratified at CP-M4, not the list this comment previously
--- proposed.
+-- D-M4-STATUS-ENFORCE ratified enforcing this vocabulary in the database with
+-- TRIGGERs rather than a CHECK constraint. Why triggers and not CHECK:
+-- SQLite has no `ALTER TABLE ... ADD CONSTRAINT` in any version, so a real
+-- CHECK constraint on an existing table can only be added via the SQLite
+-- 12-step create-copy-drop-rename table-rebuild. That rebuild is not cleanly
+-- reversible (there is no `ALTER TABLE ... DROP CONSTRAINT` to undo it short
+-- of rebuilding the table again) and it disturbs the FK-referencing children
+-- `run_steps` and `approvals`, which point at `runs.id` and would need their
+-- foreign keys re-pointed at the rebuilt table. Triggers deliver real
+-- database-level enforcement while remaining purely additive: they touch no
+-- existing row, no existing column, and no other table.
 --
--- SQLite's ALTER TABLE does NOT support ADD CONSTRAINT on existing tables.
--- The formalization is therefore enforced at the application layer
--- (server/app/engine/engine.py) which already validates every status
--- transition. This migration is a placeholder — it adds no schema change.
-SELECT 1 WHERE 1=0;
+-- Verified 2026-07-23 against a copy of $RUN_DIR/live-snapshot.db: a valid
+-- status UPDATE was accepted, an invalid one was rejected with RAISE(ABORT),
+-- and after DROP TRIGGER the invalid write was accepted again, confirming
+-- clean reversibility. PRAGMA integrity_check stayed "ok" throughout. See
+-- migration-test.log for the transcript.
+--
+-- Up: two BEFORE triggers that abort any INSERT or status UPDATE carrying a
+-- value outside the seven ratified strings above.
+
+CREATE TRIGGER IF NOT EXISTS trg_runs_status_insert_check
+BEFORE INSERT ON runs
+WHEN NEW.status NOT IN ('queued', 'running', 'waiting_approval', 'succeeded', 'failed', 'cancelled', 'budget_exceeded')
+BEGIN
+  SELECT RAISE(ABORT, 'invalid runs.status - must be one of queued, running, waiting_approval, succeeded, failed, cancelled, budget_exceeded');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_runs_status_update_check
+BEFORE UPDATE OF status ON runs
+WHEN NEW.status NOT IN ('queued', 'running', 'waiting_approval', 'succeeded', 'failed', 'cancelled', 'budget_exceeded')
+BEGIN
+  SELECT RAISE(ABORT, 'invalid runs.status - must be one of queued, running, waiting_approval, succeeded, failed, cancelled, budget_exceeded');
+END;
+
+-- DOWN (cleanly reversible, purely additive Up means Down is a plain drop):
+--
+-- DROP TRIGGER trg_runs_status_insert_check;
+-- DROP TRIGGER trg_runs_status_update_check;
+--
+-- Rollback ordering: these triggers depend only on the `runs` table itself
+-- (created in 003_workflows.sql), not on any column added by 004 or any
+-- index added by 006, so dropping them has no ordering interaction with
+-- 004's or 006's DOWN paths. They may be dropped independently, at any
+-- point in the rollback sequence, before or after 004/006 DOWN.
