@@ -19,6 +19,11 @@ from app.db import get_session
 from app.main import create_app
 from sqlalchemy import text
 
+
+# Set to True ONLY by the concurrent gate-atomicity test, after all of its
+# assertions pass. The gate flag below refuses to write unless it is set.
+_ATOMICITY_PROVEN = False
+
 CSRF = {"X-Atlas-CSRF": "1"}
 
 
@@ -154,6 +159,10 @@ async def test_atomic_claim_boundary_only_one_wins(atomic_client):
         ).scalar_one()
     assert status == "approved", f"approval should be 'approved' but is '{status}'"
 
+    # Proof stands only if every assertion above held.
+    global _ATOMICITY_PROVEN
+    _ATOMICITY_PROVEN = True
+
 
 @pytest.mark.asyncio
 async def test_atomic_claim_concurrent_hermes_path(atomic_client):
@@ -257,10 +266,15 @@ async def test_atomic_claim_concurrent_hermes_path(atomic_client):
 def test_approval_atomicity_pass_flag():
     """Write APPROVAL-ATOMICITY: PASS to migration-test.log.
 
-    This test runs last (after the genuinely concurrent gate atomicity test
-    has passed).  The flag is only written when the concurrent test proves
-    exactly-once resolution.
+    Guarded: writes ONLY if the concurrent gate-atomicity test in this module
+    actually ran AND passed every assertion (it sets _ATOMICITY_PROVEN at its
+    very end). If that test failed, was skipped, or was deselected, this fails
+    instead of writing an unearned flag.
     """
+    assert _ATOMICITY_PROVEN, (
+        "refusing to write APPROVAL-ATOMICITY: PASS - the concurrent "
+        "exactly-once test did not run to completion in this session"
+    )
     run_dir = os.environ.get(
         "RUN_DIR",
         "/home/admin/.hermes/orchestrator/runs/atlas-dash-v1-runc-m4-m5",
