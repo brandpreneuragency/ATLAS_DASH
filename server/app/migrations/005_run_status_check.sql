@@ -1,13 +1,54 @@
 -- 005_run_status_check.sql — formalized runs.status state machine
 --
--- INTENT: The formalized state machine requires a CHECK constraint:
---   ALTER TABLE runs ADD CONSTRAINT ck_runs_status CHECK (
---     status IN ('queued','starting','running','waiting_for_approval',
---                'paused','succeeded','failed','cancelled','budget_exceeded')
---   );
+-- M4-03 CORRECTION (see findings-m4.json): the list below was previously
+-- copied verbatim from SPEC R2's prose ('waiting_for_approval', 'starting',
+-- 'paused', 'completed') without cross-checking it against what
+-- server/app/engine/engine.py actually writes to runs.status. That list
+-- does NOT match the runtime vocabulary and, had it ever been applied as a
+-- real CHECK constraint, would have broken the engine on every normal run
+-- (every run writes 'waiting_approval' and 'succeeded', neither of which
+-- appeared in the old proposed list).
+--
+-- ACTUAL runtime vocabulary (verified by grep of every literal
+-- `runs.status = ...` write in app/engine/engine.py at commit 0a3b3b8):
+--   'queued'            -- default (003_workflows.sql:15)
+--   'running'           -- engine.py:230
+--   'waiting_approval'  -- engine.py:341 (NOTE: not 'waiting_for_approval')
+--   'succeeded'         -- engine.py:399 (NOTE: not 'completed')
+--   'failed'            -- engine.py:128, :538
+--   'cancelled'         -- engine.py:652
+--   'budget_exceeded'   -- engine.py:378 (not in SPEC R2's list at all)
+-- 'starting' and 'paused' (both named in SPEC R2's prose) are never written
+-- anywhere in the codebase — there is no code path that sets either.
+--
+-- OPEN QUESTION FOR CP-M4 (M4-03 / M4-04, human decision, not made here):
+--   SPEC R2 says: "formalize waiting_for_approval in the run state machine
+--   (queued -> starting -> running -> waiting_for_approval -> paused ->
+--   completed | failed | cancelled)". The running code has never used that
+--   exact vocabulary or transition list. Two ways to close the gap:
+--     (a) RENAME the code's runtime status strings to match SPEC R2
+--         verbatim ('waiting_approval' -> 'waiting_for_approval',
+--         'succeeded' -> 'completed', introduce real 'starting'/'paused'
+--         states, decide where 'budget_exceeded' fits in the SPEC list).
+--         This changes live data semantics and touches every reader of
+--         runs.status (routers, frontend, tests) — a live-data-affecting
+--         design decision reserved for the human, not an unattended phase.
+--     (b) RATIFY the code's actual vocabulary (as documented above) as the
+--         formalized state machine, and update SPEC R2's prose to match
+--         reality instead of the reverse.
+--   Neither option is applied by this migration. This file remains a
+--   documentation-only placeholder (see M4-04: SQLite's ALTER TABLE does
+--   not support ADD CONSTRAINT on existing tables, so no real CHECK
+--   constraint is added regardless of which vocabulary is chosen) until
+--   CP-M4 resolves the vocabulary question.
+--
+-- If/when a real CHECK constraint is added (via the SQLite 12-step
+-- create-copy-drop-rename table-rebuild — see M4-04), it MUST use whichever
+-- vocabulary is ratified at CP-M4, not the list this comment previously
+-- proposed.
 --
 -- SQLite's ALTER TABLE does NOT support ADD CONSTRAINT on existing tables.
 -- The formalization is therefore enforced at the application layer
--- (server/app/engine/engine.py) which already validates every status transition.
--- This migration is a placeholder establishing the documented state machine.
+-- (server/app/engine/engine.py) which already validates every status
+-- transition. This migration is a placeholder — it adds no schema change.
 SELECT 1 WHERE 1=0;

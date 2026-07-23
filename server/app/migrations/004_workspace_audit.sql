@@ -66,7 +66,17 @@ UPDATE runs SET updated_at = datetime('now') WHERE updated_at IS NULL;
 UPDATE run_steps SET updated_at = datetime('now') WHERE updated_at IS NULL;
 UPDATE approvals SET updated_at = datetime('now') WHERE updated_at IS NULL;
 
--- DOWN (reversible via DROP COLUMN, SQLite >= 3.38.0):
+-- DOWN (reversible via DROP COLUMN, SQLite >= 3.35.0):
+--
+-- ROLLBACK ORDER WARNING (M4-05): 006_correlation_indexes.sql creates
+-- idx_events_correlation_id on events(correlation_id), a column this
+-- migration (004) adds. If 004's DOWN below is applied before 006's DOWN
+-- (DROP INDEX idx_events_correlation_id), dropping events.correlation_id
+-- fails: "error in index idx_events_correlation_id after drop column: no
+-- such column: correlation_id" (confirmed against both a synthetic db and
+-- a copy of the live-DB snapshot — see migration-test.log). Roll back in
+-- REVERSE migration order: 006 DOWN, THEN 005 DOWN (no-op), THEN 004 DOWN.
+--
 -- ALTER TABLE settings DROP COLUMN workspace_id;
 -- ALTER TABLE settings DROP COLUMN revision;
 -- ALTER TABLE settings DROP COLUMN updated_at;

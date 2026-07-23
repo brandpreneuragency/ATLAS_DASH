@@ -2,7 +2,10 @@
 
 A genuinely concurrent test proves exactly-once resolution: multiple
 ``POST /api/approvals/{id}/resolve`` requests fire simultaneously, and
-exactly one succeeds (status 200) while the rest receive HTTP 409.
+exactly one succeeds (status 200) while the rest receive HTTP 409. This is
+proven for BOTH approval kinds: ``gate`` and ``hermes_run`` (M4-01) — the
+router claims the approvals row atomically before doing anything
+kind-specific in either branch.
 """
 
 from __future__ import annotations
@@ -166,14 +169,13 @@ async def test_atomic_claim_boundary_only_one_wins(atomic_client):
 
 @pytest.mark.asyncio
 async def test_atomic_claim_concurrent_hermes_path(atomic_client):
-    """Concurrent Hermes-approval resolve attempts cannot race either.
+    """Concurrent Hermes-approval resolve attempts cannot race either (M4-01).
 
-    Hermes-run approvals go through a different code path that reads the row
-    first, calls Hermes, then updates.  Two concurrent callers both see
-    status='pending' because the router does a SELECT before the UPDATE.
-    This test verifies at least that double-resolution is eventually caught
-    (second caller gets 409 when the first finishes, or both proceed and one's
-    UPDATE silently becomes a no-op — the Hermes call is idempotent).
+    Hermes-run approvals now go through the SAME atomic-claim pattern as gate
+    approvals: ``UPDATE approvals SET status=... WHERE id=:id AND
+    status='pending' RETURNING ...`` executes BEFORE the Hermes call, so only
+    the winning caller ever invokes ``approve_run``. This asserts the same
+    exactly-once contract as the gate test: exactly one 200, N-1 409s.
     """
     client, app = atomic_client
     from app.engine.mock import MockHermes
@@ -248,8 +250,10 @@ async def test_atomic_claim_concurrent_hermes_path(atomic_client):
     pending = await asyncio.wait_for(_poll_pending(), timeout=5)
     approval_id = pending[0]["id"]
 
-    # Fire concurrent resolves — Hermes path is best-effort (not atomic),
-    # but at minimum the second caller should get 409 after the first finishes.
+    # Fire concurrent resolves — the atomic claim in the router (M4-01 fix)
+    # means only the first caller ever reaches the Hermes call.
+    N = 5
+
     async def resolve_hermes() -> int:
         resp = await client.post(
             f"/api/approvals/{approval_id}/resolve",
@@ -258,9 +262,17 @@ async def test_atomic_claim_concurrent_hermes_path(atomic_client):
         )
         return resp.status_code
 
-    codes = await asyncio.gather(*[resolve_hermes() for _ in range(5)])
-    ok = [c for c in codes if c == 200]
-    assert len(ok) >= 1, f"at least one hermes resolve should succeed: {codes}"
+    codes = await asyncio.gather(*[resolve_hermes() for _ in range(N)])
+    ok_count = codes.count(200)
+    conflict_count = codes.count(409)
+
+    assert ok_count == 1, f"expected exactly 1 success, got {ok_count}: {codes}"
+    assert conflict_count == N - 1, (
+        f"expected {N-1} conflicts, got {conflict_count}: {codes}"
+    )
+    # Hermes' approve_run must have been invoked exactly once too — proof
+    # that the claim, not luck, gated the external call.
+    assert len(mock.approve_calls) == 1, mock.approve_calls
 
 
 def test_approval_atomicity_pass_flag():

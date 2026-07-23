@@ -293,3 +293,82 @@ async def test_hermes_approval_request_creates_row_and_resolve_calls_approve_run
         ).one()
     assert "done after approval" in step.output
     assert json.loads(step.output)["output_text"] == "done after approval"
+
+
+async def test_resolve_recovers_when_run_not_waiting_approval(wf_client):
+    """Regression for M4-02: claim + resume must be recoverable, not lose
+    the approval and strand the run.
+
+    Reproduces the exact race the finding described: the approvals-row
+    claim (status='pending' -> 'approved') commits, but by the time
+    ``engine.resume()`` tries its own atomic ``runs`` claim
+    (waiting_approval -> running), the run is no longer sitting in
+    waiting_approval (simulated here directly, since the real window is a
+    timing race that is otherwise very hard to hit deterministically).
+
+    Before the fix: resolve_approval raised an unhandled ValueError, the
+    approval was left permanently 'approved' (irreversibly consumed), and
+    the run was left 'running' forever with nothing to drive it forward — a
+    second resolve attempt returned 409 forever.
+
+    After the fix: resolve_approval must catch the failure, release the
+    approval claim back to 'pending', and return a clean HTTP error so a
+    legitimate retry (once the run is actually parked again) can succeed.
+    """
+    client, app = wf_client
+    wf_id = await _create_workflow(client, gate_graph(), name="race-gate")
+    run_id = await _run(client, wf_id)
+    await _wait_run_status(run_id, {"waiting_approval"})
+    pending = await _pending_approvals(client)
+    approval_id = pending[0]["id"]
+
+    # Simulate the race window: something else already moved the run out of
+    # waiting_approval before our resolve request's engine.resume() call
+    # attempts its own atomic claim.
+    async with get_session() as session:
+        await session.execute(
+            text("UPDATE runs SET status='running' WHERE id=:id"), {"id": run_id}
+        )
+        await session.commit()
+
+    response = await client.post(
+        f"/api/approvals/{approval_id}/resolve",
+        json={"decision": "approved"},
+        headers=CSRF,
+    )
+    # Must be a clean, well-defined HTTP error -- not an unhandled 500.
+    assert response.status_code == 409, response.text
+
+    # The approval must be reopened, not permanently consumed.
+    async with get_session() as session:
+        approval_row = (
+            await session.execute(
+                text("SELECT status, resolved_at, resolved_via FROM approvals WHERE id=:id"),
+                {"id": approval_id},
+            )
+        ).one()
+    assert approval_row.status == "pending", (
+        "approval must be released back to pending, not left permanently "
+        f"'{approval_row.status}'"
+    )
+    assert approval_row.resolved_at is None
+    assert approval_row.resolved_via is None
+
+    # A legitimate retry, once the run is actually parked again, must
+    # succeed and actually resume the run -- proving the approval was not
+    # lost.
+    async with get_session() as session:
+        await session.execute(
+            text("UPDATE runs SET status='waiting_approval' WHERE id=:id"),
+            {"id": run_id},
+        )
+        await session.commit()
+
+    retry = await client.post(
+        f"/api/approvals/{approval_id}/resolve",
+        json={"decision": "approved"},
+        headers=CSRF,
+    )
+    assert retry.status_code == 200, retry.text
+    row = await _wait_run_status(run_id, {"succeeded", "failed"})
+    assert row.status == "succeeded", row.error
