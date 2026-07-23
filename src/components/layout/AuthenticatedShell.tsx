@@ -22,8 +22,10 @@ import { SessionListColumn } from '../chatMode/SessionListColumn';
 import { CRMListPanel } from '../crm/CRMListPanel';
 import { FormsListPanel } from '../forms/FormsListPanel';
 import { CRMAISidebar } from '../sidebar/CRMAISidebar';
-import { TodayAreaPlaceholder } from './areas/TodayAreaPlaceholder';
 import { FilesAreaPlaceholder } from './areas/FilesAreaPlaceholder';
+import { AgentOverview } from '../agent/AgentOverview';
+import { AgentSubTabs } from '../agent/AgentSubTabs';
+import { TodayApprovals } from '../today/TodayApprovals';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { useUIStore } from '../../stores/uiStore';
 import type { CRMPage, FormsPage } from '../../stores/uiStore';
@@ -33,6 +35,7 @@ import { useProjectStore } from '../../stores/projectStore';
 import { useCrmStore } from '../../stores/crmStore';
 import { useFormsStore } from '../../stores/formsStore';
 import { useThemeStore } from '../../stores/themeStore';
+import { useAgentAreaStore } from '../../stores/agentAreaStore';
 import { runStartupUpdateCheck } from '../../services/updater';
 import { loadReasoningOverlay } from '../../services/ai/reasoning';
 import { areaFromPathname, isArea } from '../../types/areas';
@@ -58,6 +61,8 @@ export function AuthenticatedShell() {
   }, [location.pathname, navigate]);
 
   useAreaRouteSync(area);
+
+  const agentSubTab = useAgentAreaStore((s) => s.subTab);
 
   const [editor, setEditor] = useState<Editor | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
@@ -193,11 +198,16 @@ export function AuthenticatedShell() {
   // the legacy chatMode/crmMode/activeView flags other components still read.
   const activeWorkspace =
     area === 'agent' ? (
-      <ChatWorkspace />
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+        <AgentSubTabs />
+        <div style={{ flex: 1, minHeight: 0 }}>
+          {agentSubTab === 'overview' ? <AgentOverview /> : <ChatWorkspace />}
+        </div>
+      </div>
     ) : area === 'clients' ? (
       <CRMWorkspace />
     ) : area === 'today' ? (
-      <TodayAreaPlaceholder />
+      <TodayApprovals />
     ) : area === 'files' ? (
       <FilesAreaPlaceholder />
     ) : area === 'settings' ? (
@@ -214,7 +224,7 @@ export function AuthenticatedShell() {
   const formsPageActive = area === 'clients' && activeCRMPage === 'forms';
   const leftPanel =
     area === 'agent' ? (
-      <SessionListColumn />
+      agentSubTab === 'overview' ? null : <SessionListColumn />
     ) : area === 'clients' ? (
       formsPageActive ? <FormsListPanel /> : <CRMListPanel />
     ) : area === 'today' || area === 'files' || area === 'settings' ? (
