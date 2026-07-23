@@ -51,16 +51,50 @@ async def init_db(path: str | Path) -> AsyncEngine:
             # which uses SQLite's real SQL parser/tokenizer and correctly
             # treats a trigger's BEGIN...END block as a single statement
             # regardless of internal semicolons.
+            #
+            # ATOMICITY: executescript() implicitly COMMITs any pending
+            # transaction before it runs, *unless* the script itself
+            # already contains transaction-control statements (BEGIN /
+            # COMMIT / ROLLBACK / SAVEPOINT / RELEASE). Without those, the
+            # migration's DDL and its `INSERT INTO schema_migrations` row
+            # land in two separately-committed transactions: if the process
+            # dies between them, the migration is applied but unrecorded,
+            # and every subsequent startup re-applies it and dies on
+            # (e.g.) a duplicate column -- permanently. To make the
+            # migration and its version row one atomic unit, we wrap the
+            # whole thing in an explicit BEGIN/COMMIT *inside* the script
+            # text handed to executescript(); that in-script BEGIN is what
+            # suppresses the implicit pre-commit.
+            #
+            # On failure we roll back via the DBAPI connection's own
+            # rollback() -- NOT via a second `executescript("ROLLBACK;")`
+            # call. A ROLLBACK-only script contains no BEGIN, so it
+            # re-triggers that same "commit any pending transaction first"
+            # behaviour in the sqlite3 module and silently COMMITs the very
+            # transaction we're trying to roll back, leaking the failed
+            # migration's partial DDL onto disk (verified empirically
+            # against this exact aiosqlite/SQLAlchemy driver stack: a
+            # ROLLBACK sent through executescript() left a partially
+            # created table on disk with no matching schema_migrations
+            # row; a plain rollback() correctly discarded it).
+            migration_sql = migration.read_text(encoding="utf-8")
+            script = (
+                "BEGIN;\n"
+                + migration_sql
+                + f"\nINSERT INTO schema_migrations(version) VALUES ({version});\n"
+                + "COMMIT;\n"
+            )
             raw_connection = await conn.get_raw_connection()
             driver_connection = raw_connection.driver_connection
             assert driver_connection is not None
-            await driver_connection.executescript(
-                migration.read_text(encoding="utf-8")
-            )
-            await conn.execute(
-                text("INSERT INTO schema_migrations(version) VALUES (:version)"),
-                {"version": version},
-            )
+            try:
+                await driver_connection.executescript(script)
+            except Exception:
+                try:
+                    await driver_connection.rollback()
+                except Exception:
+                    pass  # nothing to roll back (failure occurred before BEGIN took effect)
+                raise
 
     _engine = engine
     _sessionmaker = async_sessionmaker(engine, expire_on_commit=False)

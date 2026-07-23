@@ -3,7 +3,12 @@
 Invariants (PHASE_5 header):
 - queue-of-1 per workflow (``asyncio.Lock`` per workflow id), global semaphore 2
 - kill switch: ``global_pause=1`` → submit raises :class:`EnginePaused`
-- every state change updates the DB row first, then appends an event
+- every run.status transition that has a matching event appends that event
+  BEFORE committing the status update (see _fail_run). append_event() and
+  _update_run() each commit in their own separate transaction, so whichever
+  one happens second is externally observable as "not there yet" between
+  the two commits; putting the event first means a status poller can never
+  observe a status whose event doesn't exist yet.
 - restart recovery: ``running`` → ``failed`` ("interrupted by restart"),
   ``waiting_approval`` stays parked (approval still pending)
 """
@@ -338,13 +343,14 @@ class Engine:
                         {"id": step_id},
                     )
                     await session.commit()
-                await self._update_run(run_id, status="waiting_approval")
+                # Event before status -- see _fail_run and module docstring.
                 await emit(
                     "run.waiting_approval",
                     f"run waiting for approval: {output.get('message', '')}",
                     approval_id=output.get("approval_id"),
                     node_id=node.id,
                 )
+                await self._update_run(run_id, status="waiting_approval")
                 await self._notify_gate(
                     node.config, str(output.get("message", "")), run_id
                 )
@@ -373,15 +379,16 @@ class Engine:
                     tokens_out=run.tokens_out + tokens_out,
                 )
                 if wf.budget_usd_per_run is not None and new_cost > wf.budget_usd_per_run:
+                    # Event before status -- see _fail_run and module docstring.
+                    await emit(
+                        "run.failed",
+                        f"budget exceeded: ${new_cost:.6f} > ${wf.budget_usd_per_run}",
+                    )
                     await self._update_run(
                         run_id,
                         status="budget_exceeded",
                         error=f"budget exceeded (${new_cost:.6f} > ${wf.budget_usd_per_run})",
                         finished_at=_now_iso(),
-                    )
-                    await emit(
-                        "run.failed",
-                        f"budget exceeded: ${new_cost:.6f} > ${wf.budget_usd_per_run}",
                     )
                     return
 
@@ -396,8 +403,9 @@ class Engine:
 
         # normal completion: mark unreached (non-trigger) nodes skipped
         await self._mark_unreached_skipped(run_id, graph, executed)
-        await self._update_run(run_id, status="succeeded", finished_at=_now_iso())
+        # Event before status -- see _fail_run and module docstring.
         await emit("run.finished", f"run finished: {wf.name}")
+        await self._update_run(run_id, status="succeeded", finished_at=_now_iso())
 
     async def _notify_gate(
         self, config: dict[str, Any], message: str, run_id: int
@@ -534,12 +542,18 @@ class Engine:
             await session.commit()
 
     async def _fail_run(self, run_id: int, workflow_id: int, error: str) -> None:
-        await self._update_run(
-            run_id, status="failed", error=error, finished_at=_now_iso()
-        )
+        # Event before status -- see module docstring. append_event() and
+        # _update_run() commit separately; recording the event first means
+        # status can only ever be observed as 'failed' once run.failed
+        # already exists, closing the race that caused
+        # test_failure_marks_run_failed_later_steps_untouched to flake
+        # (status visible as 'failed' before its event was recorded).
         await append_event(
             "run.failed", "engine", f"run failed: {error}",
             workflow_id=workflow_id, run_id=run_id,
+        )
+        await self._update_run(
+            run_id, status="failed", error=error, finished_at=_now_iso()
         )
 
     # ------------------------------------------------------------------ resume / cancel

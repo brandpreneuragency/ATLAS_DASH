@@ -352,3 +352,72 @@ async def test_dry_run_uses_mock_and_shadow_dir(env):
     assert not (jail / "out" / "result.md").exists()
     shadow = settings.data_dir / "dryrun" / "out" / "result.md"
     assert shadow.exists()
+
+
+@pytest.mark.asyncio
+async def test_run_failed_status_never_visible_before_its_event_is_recorded(env, monkeypatch):
+    """Root cause of the F2 flake in
+    test_failure_marks_run_failed_later_steps_untouched (intermittently
+    observing kinds[-1] == 'run.step_finished' instead of 'run.failed'):
+
+    Engine._fail_run() updates runs.status to 'failed' in one commit and
+    THEN appends the 'run.failed' event in a separate, later commit. Between
+    those two commits there is a real window -- reachable under ordinary
+    asyncio scheduling, not a test artifact -- during which an external
+    reader can observe status == 'failed' while the run.failed event does
+    not exist yet. That is exactly what get_run_events() sometimes caught:
+    wait_status() returns the instant status flips to 'failed', and if the
+    scheduler happens to run the poller in the gap before append_event's
+    own commit lands, the event query comes back one event short.
+
+    This test proves the window deterministically instead of relying on
+    suite-timing luck: it freezes execution at the exact instant engine.py
+    is about to persist the run.failed event (via a monkeypatched
+    app.engine.engine.append_event) and inspects DB state at that instant.
+    """
+    import app.engine.engine as engine_mod
+
+    settings, jail = env
+    engine = make_engine(settings, factory=lambda: FailingHermes())
+    wf_id = await make_workflow(linear_graph())
+
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    real_append_event = engine_mod.append_event
+
+    async def spy_append_event(kind, *args, **kwargs):
+        if kind == "run.failed":
+            entered.set()
+            await release.wait()
+        return await real_append_event(kind, *args, **kwargs)
+
+    monkeypatch.setattr(engine_mod, "append_event", spy_append_event)
+
+    run_id = await engine.submit(wf_id, "manual", {})
+    await asyncio.wait_for(entered.wait(), timeout=5.0)
+
+    # Frozen exactly before the run.failed event write executes.
+    async with get_session() as session:
+        status = (
+            await session.execute(
+                text("SELECT status FROM runs WHERE id=:id"), {"id": run_id}
+            )
+        ).scalar_one()
+        event_exists = (
+            await session.execute(
+                text("SELECT 1 FROM events WHERE run_id=:id AND kind='run.failed'"),
+                {"id": run_id},
+            )
+        ).one_or_none() is not None
+
+    release.set()
+    await wait_status(run_id, {"failed"})
+
+    # The invariant a status-poller relies on: status can only ever be
+    # observed as 'failed' once the event backing it has already been
+    # durably recorded.
+    assert not (status == "failed" and not event_exists), (
+        f"status={status!r} was already 'failed' while the run.failed event "
+        f"did not exist yet (event_exists={event_exists}) -- status became "
+        "externally visible before its event was recorded"
+    )
