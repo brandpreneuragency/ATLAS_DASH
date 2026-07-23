@@ -1,4 +1,10 @@
-"""Approvals routes (MASTER_PLAN §5) — resolving a gate resumes its run."""
+"""Approvals routes (MASTER_PLAN §5) — resolving a gate resumes its run.
+
+Atomic claim boundary (SPEC R3 / D-APPROVALS): every gate-approval resolution
+starts with an atomic ``UPDATE ... WHERE id=:id AND status='pending' RETURNING``
+so that the first caller wins.  A concurrent call finds zero rows claimed and
+receives HTTP 409.
+"""
 
 from __future__ import annotations
 
@@ -55,20 +61,26 @@ async def list_approvals(status: str | None = None) -> list[dict[str, Any]]:
 async def resolve_approval(
     approval_id: int, body: ResolveIn, request: Request
 ) -> dict[str, Any]:
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Read just the metadata needed to decide the path (kind + run_id).
     async with get_session() as session:
-        row = (
+        meta = (
             await session.execute(
-                text(f"SELECT {_COLS} FROM approvals WHERE id=:id"), {"id": approval_id}
+                text("SELECT id, kind, run_id, external_ref, status FROM approvals WHERE id=:id"),
+                {"id": approval_id},
             )
         ).one_or_none()
-    if row is None:
+    if meta is None:
         raise HTTPException(404, detail="approval not found")
-    if row.status != "pending":
-        raise HTTPException(409, detail=f"approval already {row.status}")
 
-    if row.kind == "hermes_run":
-        # external_ref encodes "<hermes_run_id>|<hermes_approval_id>"
-        hermes_run_id, _, hermes_approval_id = (row.external_ref or "").partition("|")
+    if meta.kind == "hermes_run":
+        # Hermes-run approvals: the external Hermes API is the ground truth.
+        # Read the full row, call Hermes, then update locally (best-effort).
+        if meta.status != "pending":
+            raise HTTPException(409, detail=f"approval already {meta.status}")
+
+        hermes_run_id, _, hermes_approval_id = (meta.external_ref or "").partition("|")
         await request.app.state.engine.hermes().approve_run(
             hermes_run_id, hermes_approval_id, body.decision
         )
@@ -78,26 +90,38 @@ async def resolve_approval(
                     "UPDATE approvals SET status=:d, resolved_at=:now, "
                     "resolved_via='api' WHERE id=:id"
                 ),
-                {
-                    "d": body.decision,
-                    "now": datetime.now(timezone.utc).isoformat(),
-                    "id": approval_id,
-                },
+                {"d": body.decision, "now": now, "id": approval_id},
             )
             await session.commit()
         await append_event(
             "approval.resolved",
             "api",
             f"hermes approval {body.decision}",
-            run_id=row.run_id,
+            run_id=meta.run_id,
         )
-    else:
-        # engine.resume resolves the approval row and continues the run
-        await request.app.state.engine.resume(row.run_id, body.decision)
+        async with get_session() as session:
+            updated = (
+                await session.execute(
+                    text(f"SELECT {_COLS} FROM approvals WHERE id=:id"),
+                    {"id": approval_id},
+                )
+            ).one()
+        return _row(updated)
+
+    # Gate approval: atomic claim so only the first caller wins.
     async with get_session() as session:
-        updated = (
+        claimed = (
             await session.execute(
-                text(f"SELECT {_COLS} FROM approvals WHERE id=:id"), {"id": approval_id}
+                text(
+                    f"UPDATE approvals SET status=:d, resolved_at=:now, "
+                    f"resolved_via='api' WHERE id=:id AND status='pending' "
+                    f"RETURNING {_COLS}"
+                ),
+                {"d": body.decision, "now": now, "id": approval_id},
             )
-        ).one()
-    return _row(updated)
+        ).one_or_none()
+        await session.commit()
+    if claimed is None:
+        raise HTTPException(409, detail="approval already resolved")
+    await request.app.state.engine.resume(claimed.run_id, body.decision)
+    return _row(claimed)

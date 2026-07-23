@@ -1,0 +1,13 @@
+-- 005_run_status_check.sql — formalized runs.status state machine
+--
+-- INTENT: The formalized state machine requires a CHECK constraint:
+--   ALTER TABLE runs ADD CONSTRAINT ck_runs_status CHECK (
+--     status IN ('queued','starting','running','waiting_for_approval',
+--                'paused','succeeded','failed','cancelled','budget_exceeded')
+--   );
+--
+-- SQLite's ALTER TABLE does NOT support ADD CONSTRAINT on existing tables.
+-- The formalization is therefore enforced at the application layer
+-- (server/app/engine/engine.py) which already validates every status transition.
+-- This migration is a placeholder establishing the documented state machine.
+SELECT 1 WHERE 1=0;

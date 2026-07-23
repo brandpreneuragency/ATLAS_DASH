@@ -545,10 +545,22 @@ class Engine:
     # ------------------------------------------------------------------ resume / cancel
 
     async def resume(self, run_id: int, decision: str) -> None:
-        run = await self._fetch_run(run_id)
-        if run.status != "waiting_approval":
+        # Atomic claim: only one caller transitions waiting_approval -> running.
+        async with get_session() as session:
+            claimed = (
+                await session.execute(
+                    text(
+                        "UPDATE runs SET status='running' WHERE id=:id "
+                        "AND status='waiting_approval' "
+                        "RETURNING id, workflow_id, trigger_payload, dry_run"
+                    ),
+                    {"id": run_id},
+                )
+            ).one_or_none()
+            await session.commit()
+        if claimed is None:
             raise ValueError(f"run {run_id} is not waiting for approval")
-        workflow_id = int(run.workflow_id)
+        workflow_id = int(claimed.workflow_id)
         wf = await self._fetch_workflow(workflow_id)
         graph = Graph.model_validate(json.loads(wf.graph))
 
@@ -591,7 +603,7 @@ class Engine:
         )
 
         # rebuild run context from recorded step outputs
-        ctx: dict[str, Any] = {"trigger": json.loads(run.trigger_payload or "{}")}
+        ctx: dict[str, Any] = {"trigger": json.loads(claimed.trigger_payload or "{}")}
         executed: set[str] = set()
         for step in steps:
             executed.add(step.node_id)
@@ -607,14 +619,13 @@ class Engine:
             for e in graph.edges
             if e.source == gate.node_id and e.condition == decision
         ]
-        await self._update_run(run_id, status="running")
 
         async def _continue() -> None:
             async with self._global_sem, self._wf_lock(workflow_id):
                 try:
                     await self._run_graph(
                         run_id, wf, graph, ctx, start,
-                        executed=executed, dry_run=bool(run.dry_run),
+                        executed=executed, dry_run=bool(claimed.dry_run),
                     )
                 except asyncio.CancelledError:
                     raise
