@@ -11,7 +11,7 @@ const ldPath = playwrightLdPath();
 
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: /models\.spec\.ts|a11y\.spec\.ts/,
+  testMatch: /models\.spec\.ts|a11y\.spec\.ts|subscriptions\.spec\.ts/,
   fullyParallel: false,
   workers: 1,
   retries: 0,

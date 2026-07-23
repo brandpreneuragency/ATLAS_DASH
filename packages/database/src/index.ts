@@ -22,4 +22,8 @@ export type Database = typeof db;
 
 export * from "./services/models";
 export * from "./services/idempotency";
+export * from "./services/access";
+export * from "./services/usage";
+export * from "./services/plans";
+export * from "./services/subscriptions";
 export { cleanupTestModels } from "./cleanup-test-models";

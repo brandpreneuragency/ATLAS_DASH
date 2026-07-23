@@ -31,7 +31,8 @@
   "dependencies": {
     "@model-monitor/schemas": "workspace:*",
     "drizzle-orm": "^0.44.0",
-    "postgres": "^3.4.0"
+    "postgres": "^3.4.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

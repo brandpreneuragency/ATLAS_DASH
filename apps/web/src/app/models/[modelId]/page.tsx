@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getModelById } from "@model-monitor/database";
+import { getModelById, listPlans } from "@model-monitor/database";
 import { formatCapabilityDisplay, formatScoreDisplay } from "@model-monitor/schemas";
 import { db } from "@/lib/db";
 import { ModelDetailActions } from "@/components/models/model-detail-actions";
+import { ModelAccessLinkForm } from "@/components/models/model-access-link-form";
+import { ModelAccessArchiveButton } from "@/components/models/model-access-archive-button";
 import { displayUrlText, safeHref } from "@/lib/safe-link";
 
 interface Props {
@@ -29,8 +31,10 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
   const tab = (tabs.includes(sp.tab as Tab) ? sp.tab : "overview") as Tab;
 
   let model;
+  let plans: Awaited<ReturnType<typeof listPlans>> = [];
   try {
     model = await getModelById(db, modelId);
+    plans = await listPlans(db, {});
   } catch {
     notFound();
   }
@@ -91,7 +95,9 @@ export default async function ModelDetailPage({ params, searchParams }: Props) {
       {tab === "capabilities" ? <CapabilitiesTab model={model} /> : null}
       {tab === "scores" ? <ScoresTab model={model} /> : null}
       {tab === "benchmarks" ? <BenchmarksTab model={model} /> : null}
-      {tab === "access" ? <AccessTab model={model} /> : null}
+      {tab === "access" ? (
+        <AccessTab model={model} plans={plans} />
+      ) : null}
       {tab === "sources" ? <SourcesTab model={model} /> : null}
       {tab === "history" ? <HistoryTab model={model} /> : null}
     </div>
@@ -290,42 +296,60 @@ function BenchmarksTab({ model }: { model: Awaited<ReturnType<typeof getModelByI
   );
 }
 
-function AccessTab({ model }: { model: Awaited<ReturnType<typeof getModelById>> }) {
+function AccessTab({
+  model,
+  plans,
+}: {
+  model: Awaited<ReturnType<typeof getModelById>>;
+  plans: Awaited<ReturnType<typeof listPlans>>;
+}) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-border" data-testid="access-tab">
-      <table className="min-w-full text-sm">
-        <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-          <tr>
-            <th className="px-3 py-2">Provider</th>
-            <th className="px-3 py-2">Plan</th>
-            <th className="px-3 py-2">Method</th>
-            <th className="px-3 py-2">Availability</th>
-            <th className="px-3 py-2">Flags</th>
-          </tr>
-        </thead>
-        <tbody>
-          {model.access.map((a) => (
-            <tr key={a.id} className="border-t border-border">
-              <td className="px-3 py-2">{a.providerName}</td>
-              <td className="px-3 py-2">{a.planName}</td>
-              <td className="px-3 py-2">{a.accessMethod}</td>
-              <td className="px-3 py-2">{a.availability}</td>
-              <td className="px-3 py-2 text-xs text-muted-foreground">
-                {[
-                  a.cliOnly ? "CLI-only" : null,
-                  a.webOnly ? "Web-only" : null,
-                  a.apiCompatible === true ? "API" : a.apiCompatible === false ? "No API" : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ") || "—"}
-              </td>
+    <div className="space-y-6" data-testid="access-tab">
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="min-w-full text-sm">
+          <thead className="bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2">Provider</th>
+              <th className="px-3 py-2">Plan</th>
+              <th className="px-3 py-2">Method</th>
+              <th className="px-3 py-2">Availability</th>
+              <th className="px-3 py-2">Flags</th>
+              <th className="px-3 py-2">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      {model.access.length === 0 ? (
-        <p className="p-4 text-sm text-muted-foreground">No access paths.</p>
-      ) : null}
+          </thead>
+          <tbody>
+            {model.access.map((a) => (
+              <tr key={a.id} className="border-t border-border">
+                <td className="px-3 py-2">{a.providerName}</td>
+                <td className="px-3 py-2">{a.planName}</td>
+                <td className="px-3 py-2">{a.accessMethod}</td>
+                <td className="px-3 py-2">
+                  <span className="rounded border border-border px-1.5 py-0.5 text-xs uppercase">
+                    {a.availability}
+                  </span>
+                </td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">
+                  {[
+                    a.cliOnly ? "CLI-only" : null,
+                    a.webOnly ? "Web-only" : null,
+                    a.apiCompatible === true ? "API" : a.apiCompatible === false ? "No API" : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
+                </td>
+                <td className="px-3 py-2">
+                  <ModelAccessArchiveButton accessId={a.id} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {model.access.length === 0 ? (
+          <p className="p-4 text-sm text-muted-foreground">No access paths.</p>
+        ) : null}
+      </div>
+
+      <ModelAccessLinkForm modelId={model.id} plans={plans} />
     </div>
   );
 }

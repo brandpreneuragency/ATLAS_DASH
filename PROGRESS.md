@@ -49,3 +49,41 @@ Independent-review accept verdict still outstanding (the review workers returned
 ## Not self-accepted
 
 No commit/push performed.
+
+---
+
+## Phase 3 — Subscriptions & Access — Complete (2026-07-23)
+
+Implemented service layer, API routes, management UI, dashboard KPIs, and tests for subscriptions, access, usage, and plans. Orchestrated via `commandcode_worker` (model `xiaomi/mimo-v2.5-pro`, `--yolo`); the orchestrator itself runs on Hermes (no deepseek-v4-flash in either role).
+
+### Delivered
+
+- **Schemas** (`packages/schemas/src/phase3.ts` + `primitives.ts` leaf to break a `index <-> phase3` circular-import that caused `TypeError: Cannot read properties of undefined (reading 'nullable')`): subscription/access/usage/plan Zod schemas; `usageTrackingMode` enum aligned with Phase-2 `subscriptionWriteSchema`; `notes`/`usageCheckInstructions` normalized `""` → `null` (AGENTS data rule: blank = unknown).
+- **Services** (`packages/database/src/services/`): `subscriptions.ts`, `access.ts`, `usage.ts`, `plans.ts`, `audit.ts`. Every mutation writes an audit event. `createModelAccess` throws `ModelServiceError("CONFLICT", …, 409)` on duplicate (`UNIQUE NULLS NOT DISTINCT (model_id, plan_id, provider_model_id)`).
+- **API routes** (`apps/web/src/app/api/v1/`): `subscriptions`, `model-access`, `access-matrix`, `plans`, `access-providers`, `dashboard`.
+- **UI**: Dashboard (KPIs, renewal panel with "Unknown" handling, mock-usage badge), Subscriptions CRUD, Access Matrix, Model-Access link/archive, Subscription form. All use Tailwind CSS variables for light/dark; status is never color-only.
+
+### Bug fixes applied during closeout (orchestrator)
+
+1. Circular-import leaf-refactor (`primitives.ts` + pure-barrel `index.ts`).
+2. `usage.ts` / `subscriptions.ts` `no-unsafe-*` — typed `UsageSnapshotRow`/`PlanRow` + `as` cast at the drizzle join-select boundary (isolated `any` per AGENTS external-boundary rule).
+3. Removed unused imports; `subscriptionResponseSchema` → type import; removed dead `toIso`.
+4. Integration test `freeModelId` resolution now excludes `seedModelId` so the duplicate-access test is stable regardless of execution order.
+
+### Gate results (2026-07-23, final)
+
+- database lint (`eslint .`): **PASS** (exit 0)
+- web lint: **PASS** (0 errors; 2 harmless warnings in `e2e/subscriptions.spec.ts`)
+- database typecheck: pre-existing dependency noise only (`postgres` CJS default-import needs `esModuleInterop`; `models.ts` Set iteration under `target < es2015`) — not Phase 3 regressions; `tsx` runs tests/runtime fine.
+- web typecheck (`next typegen && tsc --noEmit`): **PASS**
+- web build: **PASS** (all routes compile)
+- unit: **23 passed**
+- integration: **45 passed, 2 skipped** (incl. duplicate-access 409 conflict)
+- seed-integrity: **ALL PASS** — 51 models, 4 subs, 19 access, 276 benchmarks, **$61/mo** USD, 0 duplicate canonical IDs, 0 orphan access
+- **Acceptance KPI verified**: dashboard `monthlyRegularTotal = 61` USD, 4 subscriptions; "Unknown" renewals render `data-testid="renewal-unknown"`; mock usage shows `data-testid="mock-usage-badge"`.
+
+### Outstanding (non-blocking)
+
+- Database `tsc` typecheck has pre-existing external-dependency errors (`drizzle-orm` CJS + `postgres` default import + `models.ts` Set iteration under the database tsconfig target). Recommend adding `esModuleInterop`/`downlevelIteration` or a targeted `// @ts-expect-error` on the `postgres` import — separate from Phase 3 logic.
+- Independent-review accept verdict still outstanding (Phase 2 review workers hit HTTP 429 on 2026-07-22).
+- No commit/push performed (awaiting user direction).
