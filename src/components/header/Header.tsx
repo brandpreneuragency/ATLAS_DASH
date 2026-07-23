@@ -1,5 +1,7 @@
 import { ArrowLeftRight, PanelLeft, PanelRight } from 'lucide-react';
 import { TabBar } from './TabBar';
+import { AreaSwitcher } from './AreaSwitcher';
+import { KillSwitch } from './KillSwitch';
 import { selectCanSwapWrappers, useUIStore } from '../../stores/uiStore';
 
 export function Header() {
@@ -45,8 +47,10 @@ export function Header() {
 
   return (
     <div id="header-bar" className="header-bar">
+      <AreaSwitcher />
       <TabBar />
       <div className="ai-toggle-col">
+        <KillSwitch />
         <button
           id="header-btn-workspace"
           type="button"
