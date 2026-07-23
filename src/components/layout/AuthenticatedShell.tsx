@@ -21,7 +21,7 @@ import { SessionListColumn } from '../chatMode/SessionListColumn';
 import { CRMListPanel } from '../crm/CRMListPanel';
 import { FormsListPanel } from '../forms/FormsListPanel';
 import { CRMAISidebar } from '../sidebar/CRMAISidebar';
-import { FilesAreaPlaceholder } from './areas/FilesAreaPlaceholder';
+import { FilesArea } from '../files/FilesArea';
 import { AgentSubTabs } from '../agent/AgentSubTabs';
 import { AGENT_SUBVIEW_REGISTRY } from '../agent/agentSubviewRegistry';
 import { TodayApprovals } from '../today/TodayApprovals';
@@ -215,7 +215,7 @@ export function AuthenticatedShell() {
     ) : area === 'today' ? (
       <TodayApprovals />
     ) : area === 'files' ? (
-      <FilesAreaPlaceholder />
+      <FilesArea />
     ) : area === 'settings' ? (
       // Settings' primary content is owned by AppLayout (SettingsDocument →
       // section slots), driven by activeView via selectActiveWorkspaceMode.

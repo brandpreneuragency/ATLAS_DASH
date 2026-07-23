@@ -3,6 +3,7 @@ import { ActionsSection } from './ActionsSection';
 import { AppearanceSection } from './AppearanceSection';
 import { AgentsSection } from './AgentsSection';
 import { ToolsSection } from './ToolsSection';
+import { SystemSection } from './SystemSection';
 import './settings.css';
 
 export function SettingsDocument() {
@@ -22,6 +23,9 @@ export function SettingsDocument() {
         )}
         {activeSettingsSubTab === 'agents' && (
           <AgentsSection />
+        )}
+        {activeSettingsSubTab === 'system' && (
+          <SystemSection />
         )}
       </div>
     </div>

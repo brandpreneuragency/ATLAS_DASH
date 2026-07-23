@@ -5,6 +5,7 @@ const SECTION_LABELS: Record<SettingsSubTab, string> = {
   actions: 'Actions',
   appearance: 'Appearance',
   agents: 'Agents',
+  system: 'System (Hermes model, provider keys, notifications, run limits, backup, health)',
 };
 
 /**

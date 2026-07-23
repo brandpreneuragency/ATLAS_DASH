@@ -48,8 +48,12 @@ export type FormsPage = 'dashboard' | 'list' | 'builder' | 'submissions' | 'temp
 /** Active view within the Task module list panel (owned by uiStore so the shell header can switch views). */
 export type TaskPage = 'list' | 'calendar' | 'projects';
 
-/** Sub-tabs rendered inside the Settings document. Fixed and non-closable. */
-export type SettingsSubTab = 'tools' | 'actions' | 'appearance' | 'agents';
+/** Sub-tabs rendered inside the Settings document. Fixed and non-closable.
+ *  `system` (D-MODELS) folds Control's `Models.tsx` (Hermes model switch,
+ *  provider keys, model favorites/hidden) and `Settings.tsx` (notifications,
+ *  run limits, backup status, system health) into one Settings subsection —
+ *  no standalone Control-style models page. */
+export type SettingsSubTab = 'tools' | 'actions' | 'appearance' | 'agents' | 'system';
 /** Legacy Settings sub-tab id kept for deep-link compatibility (maps to `tools`). */
 export type LegacySettingsSubTab = SettingsSubTab | 'models';
 /** Which doc-mode tab is active: a normal document or the special Settings doc. */
