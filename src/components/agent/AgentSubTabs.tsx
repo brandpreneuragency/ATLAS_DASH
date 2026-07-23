@@ -3,13 +3,18 @@ import { useAgentAreaStore, type AgentSubTab } from '../../stores/agentAreaStore
 const TABS: { key: AgentSubTab; label: string }[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'chat', label: 'Chat' },
+  { key: 'runs', label: 'Runs' },
+  { key: 'workflows', label: 'Workflows' },
+  { key: 'schedules', label: 'Schedules' },
 ];
 
 /**
- * Agent area sub-navigation: Overview (Control's `MissionControl.tsx`) vs.
- * Chat (the pre-existing Hermes `ChatWorkspace`, wired at M5b). Runs,
- * Workflows/Editor, Schedules, and Brain Review remain later-phase content
- * per the M5b `SCREEN_PARITY.md` note.
+ * Agent area sub-navigation: Overview (Control's `MissionControl.tsx`),
+ * Chat (the pre-existing Hermes `ChatWorkspace`, wired at M5b), Runs
+ * (Control's `Automation.tsx` runs list + `RunDetail.tsx`), Workflows
+ * (Control's `Automation.tsx` WorkflowsSection + `WorkflowEditor.tsx`), and
+ * Schedules (Control's `Automation.tsx` Hermes cron table). Brain Review
+ * remains later-phase content.
  */
 export function AgentSubTabs() {
   const subTab = useAgentAreaStore((s) => s.subTab);

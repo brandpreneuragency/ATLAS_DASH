@@ -25,6 +25,9 @@ import { CRMAISidebar } from '../sidebar/CRMAISidebar';
 import { FilesAreaPlaceholder } from './areas/FilesAreaPlaceholder';
 import { AgentOverview } from '../agent/AgentOverview';
 import { AgentSubTabs } from '../agent/AgentSubTabs';
+import { AgentRuns } from '../agent/AgentRuns';
+import { AgentWorkflows } from '../agent/AgentWorkflows';
+import { Schedules } from '../agent/Schedules';
 import { TodayApprovals } from '../today/TodayApprovals';
 import { useWorkspaceStore } from '../../stores/workspaceStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -196,12 +199,19 @@ export function AuthenticatedShell() {
   // Panel 2 (editor) — content is chosen from the URL-derived area first so
   // there is no one-frame flash while `useAreaRouteSync`'s effect catches up
   // the legacy chatMode/crmMode/activeView flags other components still read.
+  const agentContent =
+    agentSubTab === 'overview' ? <AgentOverview /> :
+    agentSubTab === 'runs' ? <AgentRuns /> :
+    agentSubTab === 'workflows' ? <AgentWorkflows /> :
+    agentSubTab === 'schedules' ? <Schedules /> :
+    <ChatWorkspace />;
+
   const activeWorkspace =
     area === 'agent' ? (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
         <AgentSubTabs />
         <div style={{ flex: 1, minHeight: 0 }}>
-          {agentSubTab === 'overview' ? <AgentOverview /> : <ChatWorkspace />}
+          {agentContent}
         </div>
       </div>
     ) : area === 'clients' ? (
@@ -220,11 +230,13 @@ export function AuthenticatedShell() {
       <EditorWorkspace onEditorReady={handleEditorReady} />
     );
 
-  // Panel 1 (leftPanel) — session list / CRM / Forms / file explorer.
+  // Panel 1 (leftPanel) — session list / CRM / Forms / file explorer. Only
+  // the Chat sub-tab wants the Hermes session list; Runs/Workflows/
+  // Schedules/Overview manage their own list+detail layout internally.
   const formsPageActive = area === 'clients' && activeCRMPage === 'forms';
   const leftPanel =
     area === 'agent' ? (
-      agentSubTab === 'overview' ? null : <SessionListColumn />
+      agentSubTab === 'chat' ? <SessionListColumn /> : null
     ) : area === 'clients' ? (
       formsPageActive ? <FormsListPanel /> : <CRMListPanel />
     ) : area === 'today' || area === 'files' || area === 'settings' ? (
