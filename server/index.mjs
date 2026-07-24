@@ -1,10 +1,11 @@
-// server/index.mjs — 127.0.0.1-only API: /fs/* (VPS files), /hermes/* (proxy), /healthz.
+// server/index.mjs — 127.0.0.1-only API: /fs/*, /hermes/*, /terminal, /healthz.
 // Auth happens at the Caddy edge; this process must never bind a public interface.
 import http from 'node:http';
 import { URL } from 'node:url';
 import { createFsHandlers, HttpError } from './lib/fs-handlers.mjs';
 import { createHermesProxy } from './lib/hermes-proxy.mjs';
 import { createHermesSession } from './lib/hermes-session.mjs';
+import { createTerminalWs } from './lib/terminal-ws.mjs';
 
 const PORT = Number(process.env.ATLAS_DASH_API_PORT || 4010);
 const roots = JSON.parse(process.env.ATLAS_DASH_FS_ROOTS || '[]');
@@ -25,6 +26,7 @@ const hermes = createHermesProxy({
   token: process.env.HERMES_DASHBOARD_SESSION_TOKEN || '',
   session: hermesSession,
 });
+const terminal = createTerminalWs();
 
 async function readJsonBody(req) {
   let body = '';
@@ -74,6 +76,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.on('upgrade', (req, socket, head) => {
+  if (terminal.handleUpgrade(req, socket, head)) return;
   Promise.resolve(hermes.handleUpgrade(req, socket, head))
     .then((handled) => {
       if (!handled) socket.destroy();

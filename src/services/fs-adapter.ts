@@ -1,19 +1,18 @@
-// Bridge between the TABS frontend and the platform's file system.
+// Bridge between the ATLAS_DASH frontend and the platform's file system.
 //
 // All file I/O in the app flows through these functions so that:
 //   1. fs/dialog call sites in stores and components are typed and uniform
 //   2. Unit tests can mock this module to test behaviour without touching disk
-//   3. The backend (Tauri native vs browser fallback) is chosen via the
-//      FolderConnector service boundary
+//   3. The backend (remote VPS API vs browser File System Access API) is
+//      chosen via the FolderConnector service boundary
 //
-// Paths are stored with forward slashes everywhere; Tauri accepts both
-// forward and backward slashes on Windows, so this is a lossless normalisation.
+// Paths are stored with forward slashes everywhere.
 //
 // IMPORTANT: In browser mode, folder operations gracefully return empty
 // results or null instead of throwing. The UI layer checks the connector
 // state to show appropriate messaging.
 
-import { getFolderConnector, isTauriRuntime } from './runtime';
+import { getFolderConnector } from './runtime';
 
 export interface FsDirEntry {
   name: string;
@@ -85,10 +84,9 @@ export function getExt(p: string): string {
 
 // Runtime check for callers that need a boolean before async init ---------
 
-/** Returns true if native folder access is available (Tauri or File System Access API). */
+/** Returns true if local File System Access API folder picking is available. */
 export function isNativeFsAvailable(): boolean {
-  if (isTauriRuntime()) return true;
-  return 'showDirectoryPicker' in window;
+  return typeof window !== 'undefined' && 'showDirectoryPicker' in window;
 }
 
 // Dialog picks ---------------------------------------------------------

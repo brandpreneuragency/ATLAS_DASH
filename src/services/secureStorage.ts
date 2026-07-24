@@ -1,21 +1,9 @@
 // Secure-ish storage for API keys and small secrets.
 //
-// Tauri desktop builds route through the OS keychain via the
-// `plugin://secure-storage` IPC bridge, which gives us real at-rest
-// protection.
-//
-// Web builds do not have access to the keychain. To keep the same call
-// sites working in the browser, we fall back to a Web Crypto + localStorage
-// scheme: the per-session encryption key lives in `sessionStorage` (dies on
-// tab close), and the ciphertext for each entry is stored in `localStorage`
-// (so it survives reloads). When the tab closes, the key is discarded and
-// any previously written ciphertext becomes undecryptable — a deliberately
-// conservative compromise for a non-Tauri environment.
-//
-// A one-time console warning is emitted the first time the web fallback is
-// used so the developer can see why the persistence layer is weaker.
-
-import { invoke, isTauri } from '@tauri-apps/api/core';
+// Encrypts with Web Crypto (AES-GCM). The per-session encryption key lives
+// in `sessionStorage` (dies on tab close), and ciphertext for each entry is
+// stored in `localStorage` (survives reloads). When the tab closes, the key
+// is discarded and previously written ciphertext becomes undecryptable.
 
 export interface Storage {
   secureGet: (key: string) => Promise<string | null>;
@@ -30,11 +18,9 @@ let webWarningEmitted = false;
 function emitWebWarningOnce(): void {
   if (webWarningEmitted) return;
   webWarningEmitted = true;
-  // Surfaced for developers only — the UI does not show this. We deliberately
-  // do not block the flow because the Tauri keychain is unavailable here.
   console.warn(
-    '[secureStorage] Running outside Tauri. Falling back to browser Web Crypto + localStorage. ' +
-      'API keys are encrypted with a per-session key that is discarded on tab close.'
+    '[secureStorage] API keys are encrypted with a per-session Web Crypto key ' +
+      'that is discarded on tab close. Ciphertext remains in localStorage.'
   );
 }
 
@@ -91,7 +77,6 @@ async function webGet(key: string): Promise<string | null> {
   try {
     payload = JSON.parse(raw);
   } catch {
-    // Corrupt entry — drop it and treat as missing.
     localStorage.removeItem(WEB_PREFIX + key);
     return null;
   }
@@ -100,8 +85,6 @@ async function webGet(key: string): Promise<string | null> {
   try {
     aesKey = await getOrCreateSessionKey();
   } catch {
-    // Session key is gone (or crypto unavailable). The ciphertext is now
-    // undecryptable; remove the entry so we don't keep stale data around.
     localStorage.removeItem(WEB_PREFIX + key);
     return null;
   }
@@ -111,7 +94,6 @@ async function webGet(key: string): Promise<string | null> {
     const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, ct);
     return new TextDecoder().decode(plaintext);
   } catch {
-    // Wrong key or tampered ciphertext — drop it.
     localStorage.removeItem(WEB_PREFIX + key);
     return null;
   }
@@ -123,26 +105,14 @@ function webDelete(key: string): void {
 
 export const secureStorage: Storage = {
   async secureGet(key) {
-    if (isTauri()) {
-      const value = await invoke<string | null>('secret_get', { account: key });
-      return value ?? null;
-    }
     return await webGet(key);
   },
 
   async secureSet(key, value) {
-    if (isTauri()) {
-      await invoke('secret_set', { account: key, value });
-      return;
-    }
     await webSet(key, value);
   },
 
   async secureDelete(key) {
-    if (isTauri()) {
-      await invoke('secret_delete', { account: key });
-      return;
-    }
     webDelete(key);
   },
 };

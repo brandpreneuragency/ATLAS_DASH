@@ -75,6 +75,7 @@ docker compose -p atlas_dash -f deploy/docker-compose.yml --env-file deploy/.env
 | `http://127.0.0.1:4010/healthz` | `{"ok":true}` |
 | `http://127.0.0.1:4010/hermes/api/sessions` | `200` |
 | `http://127.0.0.1:4010/fs/roots` | `200` |
+| Browser terminal panel (Ctrl+J) after deploy | interactive VPS shell via `/terminal` WS |
 | `ss` for `4010` / `9119` / `8642` | `127.0.0.1` only |
 | Containers | `atlas_dash_caddy`, `atlas_dash_api` Up (api healthy) |
 

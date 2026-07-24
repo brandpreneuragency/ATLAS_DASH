@@ -1,13 +1,11 @@
-// Task store. Local-first using Dexie (Tauri desktop).
-// Includes Tauri file system sync for markdown-on-disk.
+// Task store. Local-first using Dexie.
+// Markdown-on-disk sync was desktop-only and is retired; Dexie is the source of truth.
 
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import type { Task, TaskStatus } from '../types';
 import { TASK_TITLE_MAX_LENGTH } from '../types';
 import { db } from '../services/db';
-import * as fsAdapter from '../services/fs-adapter';
-import { isTauriRuntime } from '../services/runtime';
 import { useUIStore } from './uiStore';
 
 function showError(err: unknown, fallback: string): void {
@@ -54,71 +52,12 @@ interface TaskStore {
   fetchDeletedTasks: () => Promise<Task[]>;
   getLastSubtaskDate: (parentId: string) => number | null;
   createSubtask: (parentId: string, title: string, sourceChatMessageId?: string, date?: string) => Promise<Task | null>;
-  /**
-   * Regenerate INDEX.md on disk for the Tauri desktop bundle.
-   * Kept for compatibility; actual implementation in fs-adapter.
-   */
+  /** No-op retained for API compatibility (disk INDEX.md sync retired). */
   regenerateIndex: () => Promise<void>;
 }
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
-}
-
-// Helper to sync task to markdown file
-async function syncTaskToFile(task: Task): Promise<void> {
-  if (!isTauriRuntime() || !task.projectId) return;
-  
-  const project = await db.projects.get(task.projectId);
-  if (!project) return;
-  
-  const projectName = project.name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_'); // eslint-disable-line no-control-regex -- Sanitize for filesystem
-  const taskDir = `TASKS/${projectName}/${task.id}`;
-  
-  try {
-    await fsAdapter.mkdir(taskDir, true);
-    const taskContent = `# ${task.title}\n\n${task.content}`;
-    await fsAdapter.writeTextFile(`${taskDir}/task.md`, taskContent);
-  } catch (err) {
-    console.warn('[taskStore] Failed to sync task to file:', err);
-  }
-}
-
-// Helper to delete task markdown file
-async function deleteTaskFile(task: Task): Promise<void> {
-  if (!isTauriRuntime() || !task.projectId) return;
-  
-  const project = await db.projects.get(task.projectId);
-  if (!project) return;
-  
-  const projectName = project.name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_'); // eslint-disable-line no-control-regex -- Sanitize for filesystem
-  const taskDir = `TASKS/${projectName}/${task.id}`;
-  
-  try {
-    await fsAdapter.remove(taskDir, true);
-  } catch (err) {
-    console.warn('[taskStore] Failed to delete task file:', err);
-  }
-}
-
-// Helper to regenerate INDEX.md for a project
-async function regenerateProjectIndex(projectId: string): Promise<void> {
-  if (!isTauriRuntime()) return;
-  const project = await db.projects.get(projectId);
-  if (!project) return;
-  
-  const projectName = project.name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_'); // eslint-disable-line no-control-regex -- Sanitize for filesystem
-  const projectDir = `TASKS/${projectName}`;
-  
-  try {
-    await fsAdapter.mkdir(projectDir, true);
-    const tasks = await db.tasks.where('projectId').equals(projectId).filter(t => !t.deletedAt).toArray();
-    const taskList = tasks.map(t => `- [${t.id}] ${t.title}`).join('\n');
-    const indexContent = `# ${project.name} Tasks\n\n${taskList}`;
-    await fsAdapter.writeTextFile(`${projectDir}/INDEX.md`, indexContent);
-  } catch (err) {
-    console.warn('[taskStore] Failed to regenerate project index:', err);
-  }
 }
 
 export const useTaskStore = create<TaskStore>((set, get) => ({
@@ -185,9 +124,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     };
     try {
       await db.tasks.add(task);
-      // Sync to markdown file
-      await syncTaskToFile(task);
-      
+
       set((s) => {
         // Open new task in active tab if possible, else append new tab
         let tabs = [...s.openTabs];
@@ -233,16 +170,6 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     }));
     try {
       await db.tasks.update(id, enforcedUpdates);
-      // Sync to markdown file if projectId or content changed
-      const updatedTask = await db.tasks.get(id);
-      if (updatedTask) {
-        await syncTaskToFile(updatedTask);
-        // Regenerate project index if projectId changed
-        if (enforcedUpdates.projectId !== undefined && enforcedUpdates.projectId !== previous?.projectId) {
-          if (previous?.projectId) await regenerateProjectIndex(previous.projectId);
-          if (enforcedUpdates.projectId) await regenerateProjectIndex(enforcedUpdates.projectId);
-        }
-      }
     } catch (err) {
       if (previous) {
         set((s) => ({
@@ -276,10 +203,6 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       const taskToDelete = await db.tasks.get(id);
       if (taskToDelete) {
         await db.tasks.update(id, { deletedAt: Date.now() });
-        // Delete markdown file
-        await deleteTaskFile(taskToDelete);
-        // Regenerate project index
-        if (taskToDelete.projectId) await regenerateProjectIndex(taskToDelete.projectId);
       }
     } catch (err) {
       set({ tasks: previous });
@@ -292,8 +215,6 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       const task = await db.tasks.get(id);
       if (task) {
         await db.tasks.update(id, { deletedAt: undefined });
-        // Regenerate project index
-        if (task.projectId) await regenerateProjectIndex(task.projectId);
       }
       // Re-fetch the active list so the restored task reappears with
       // the canonical server `order` and `updatedAt`.
@@ -342,10 +263,6 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       const taskToDelete = await db.tasks.get(id);
       if (taskToDelete) {
         await db.tasks.delete(id);
-        // Delete markdown file
-        await deleteTaskFile(taskToDelete);
-        // Regenerate project index
-        if (taskToDelete.projectId) await regenerateProjectIndex(taskToDelete.projectId);
       }
     } catch (err) {
       set({ tasks: previous });
@@ -548,9 +465,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     };
     try {
       await db.tasks.add(task);
-      // Sync to markdown file
-      await syncTaskToFile(task);
-      
+
       set((s) => ({ tasks: [...s.tasks, task] }));
       return task;
     } catch (err) {
@@ -560,14 +475,6 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   },
 
   regenerateIndex: async () => {
-    // Regenerate INDEX.md files for all projects
-    try {
-      const projects = await db.projects.toArray();
-      for (const project of projects) {
-        await regenerateProjectIndex(project.id);
-      }
-    } catch (err) {
-      console.warn('[taskStore] Failed to regenerate indexes:', err);
-    }
+    // Disk INDEX.md sync retired with the desktop app.
   },
 }));

@@ -1,15 +1,13 @@
 // Folder connector service — bridge pattern.
 //
-// The web app is the primary experience. Folder connection is an optional
-// desktop capability. When running in Tauri, the Tauri adapter provides real
-// native folder access. In the browser, the connector reports "unsupported"
-// and shows a message to open the desktop app.
+// Production (VPS) uses RemoteFolderConnector via tabs_api `/fs`. Local Vite
+// without the API falls back to the browser File System Access API.
 //
-// UI components must call only this interface. Never call Tauri APIs directly.
+// UI components must call only this interface — never platform FS APIs directly.
 
 export type FolderConnectionState =
-  | 'unsupported'   // browser — no native folder access
-  | 'available'      // Tauri runtime detected, ready to connect
+  | 'unsupported'   // no folder backend available in this environment
+  | 'available'      // ready to connect (remote roots or browser picker)
   | 'connecting'     // picker dialog open / folder is loading
   | 'connected'      // folder connected and tree loaded
   | 'error';         // permission lost or I/O error
@@ -18,12 +16,11 @@ export interface FolderConnector {
   /** Current connection capability & state. */
   readonly state: FolderConnectionState;
 
-  /** Whether native folder access is available at all (Tauri detected). */
+  /** Whether folder access is available (remote API or browser FSA). */
   isAvailable(): boolean;
 
-  /** Show the native folder picker and connect to the chosen folder.
-   *  Returns the absolute path of the connected folder, or null if
-   *  the user cancelled or the runtime doesn't support it. */
+  /** Show a folder picker / connect flow and return the chosen path, or null
+   *  if the user cancelled or the runtime doesn't support it. */
   connectFolder(): Promise<string | null>;
 
   /** Read the root-level children of a connected folder. */

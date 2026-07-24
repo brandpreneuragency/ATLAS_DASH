@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTerminalStore } from '../../stores/terminalStore';
-import { invoke } from '@tauri-apps/api/core';
 
 interface TerminalTabsProps {
   onSelect: (id: string) => void;
@@ -18,10 +17,9 @@ export function TerminalTabs({ onSelect, activeId }: TerminalTabsProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
 
-  const handleClose = async (e: React.MouseEvent, id: string) => {
+  const handleClose = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     closeTerminal(id);
-    await invoke('terminal_kill', { id }).catch(() => undefined);
   };
 
   const handleNew = () => {
@@ -69,7 +67,7 @@ export function TerminalTabs({ onSelect, activeId }: TerminalTabsProps) {
             className="terminal-tab-close"
             title={t('terminal.closeTerminal')}
             aria-label={t('terminal.closeTerminal')}
-            onClick={(e) => void handleClose(e, tItem.id)}
+            onClick={(e) => handleClose(e, tItem.id)}
           >
             <X size={12} />
           </button>

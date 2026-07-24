@@ -13,8 +13,7 @@ export default defineConfig({
   plugins: [react()],
   clearScreen: false,
   server: {
-    // Dedicated port so another Vite app on :5173 (e.g. component-website-builder)
-    // cannot steal Tauri's http://localhost:* webview.
+    // Dedicated port so another Vite app on :5173 cannot collide.
     port: 1420,
     strictPort: true,
     host: true,
@@ -26,15 +25,13 @@ export default defineConfig({
       },
     },
   },
-   css: {
-    devSourcemap: true // <-- THIS IS THE MAGIC LINE
+  css: {
+    devSourcemap: true,
   },
-  envPrefix: ['VITE_', 'TAURI_'],
+  envPrefix: ['VITE_'],
   build: {
     target: 'es2021',
-    minify: !process.env.TAURI_DEBUG,
-    sourcemap: !!process.env.TAURI_DEBUG,
+    minify: true,
+    sourcemap: false,
   },
 })
-
-

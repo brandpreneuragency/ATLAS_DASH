@@ -1,10 +1,8 @@
 #!/usr/bin/env node
 // scripts/version-bump.mjs
 //
-// Bump the version of TABS in lockstep across:
-//   - package.json
-//   - src-tauri/tauri.conf.json
-// then commit the change and create an annotated git tag `v<version>`.
+// Bump the version in package.json, then commit and create an annotated
+// git tag `v<version>`.
 //
 // Usage:
 //   node scripts/version-bump.mjs <new-version>
@@ -54,20 +52,8 @@ if (!semverLike.test(normalized)) {
 }
 
 const pkgPath = resolve(ROOT, 'package.json');
-const tauriPath = resolve(ROOT, 'src-tauri/tauri.conf.json');
-
 const pkg = readJSON(pkgPath);
-const tauri = readJSON(tauriPath);
-
 const currentPkg = pkg.version;
-const currentTauri = tauri.version;
-
-if (currentPkg !== currentTauri) {
-  die(
-    `Version mismatch between package.json (${currentPkg}) and ` +
-      `src-tauri/tauri.conf.json (${currentTauri}). Fix manually before bumping.`
-  );
-}
 
 if (currentPkg === normalized) {
   die(`Version is already ${currentPkg}. Nothing to do.`);
@@ -109,19 +95,15 @@ try {
         status
     );
   }
-} catch (e) {
+} catch {
   die('git is not available or this is not a git repository.');
 }
 
-// Apply the bump.
 pkg.version = normalized;
-tauri.version = normalized;
 writeJSON(pkgPath, pkg);
-writeJSON(tauriPath, tauri);
 ok(`Bumped version: ${currentPkg} -> ${normalized}`);
 
-// Commit + tag.
-run('git add package.json src-tauri/tauri.conf.json');
+run('git add package.json');
 run(`git commit -m "Bump version to ${normalized}"`);
 run(`git tag -a v${normalized} -m "Release v${normalized}"`);
 ok(`Created commit and tag v${normalized}`);
@@ -129,6 +111,3 @@ ok(`Created commit and tag v${normalized}`);
 console.log('');
 console.log('Next step:');
 console.log(`  git push origin main --tags`);
-console.log('');
-console.log('Then publish the draft release at:');
-console.log('  https://github.com/brandpreneuragency/TABS/releases');

@@ -1,14 +1,6 @@
-import { isTauriRuntime } from './runtime';
-
 /**
- * Use Tauri's native HTTP client in the desktop app so API calls are not
- * blocked by WebView CORS rules. Browser builds keep the standard fetch path.
+ * Fetch wrapper for third-party HTTP (AI providers, search APIs).
+ * Same-origin `/fs` and `/hermes` clients use plain `fetch` directly.
  */
-export const runtimeFetch: typeof fetch = async (input, init) => {
-  if (isTauriRuntime()) {
-    const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http');
-    return tauriFetch(input, init);
-  }
-
-  return globalThis.fetch(input, init);
-};
+export const runtimeFetch: typeof fetch = (input, init) =>
+  globalThis.fetch(input, init);
