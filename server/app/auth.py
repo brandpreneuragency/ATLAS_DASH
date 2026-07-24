@@ -20,12 +20,18 @@ from app.events import append_event
 
 COOKIE_NAME = "atlas_session"
 SESSION_MAX_AGE_S = 7 * 24 * 60 * 60
+MIN_PASSWORD_LENGTH = 12
 
 _hasher = PasswordHasher()
 
 
 class LoginRequest(BaseModel):
     password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 
 class RateLimiter:
@@ -68,18 +74,46 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def create_session_cookie(secret: str) -> str:
+def create_session_cookie(secret: str, epoch: int) -> str:
     serializer = URLSafeTimedSerializer(secret, salt="atlas-session")
-    return serializer.dumps({"sub": "admin"})
+    return serializer.dumps({"sub": "admin", "epoch": epoch})
 
 
-def verify_session_cookie(token: str, secret: str) -> dict[str, Any] | None:
+def verify_session_cookie(token: str, secret: str, epoch: int) -> dict[str, Any] | None:
+    """Validate a session cookie against the CURRENT session epoch.
+
+    The epoch is bumped whenever the password changes, which is what makes
+    rotation meaningful: a cookie minted under an older epoch stops being
+    accepted, so a stolen session dies with the password it was obtained under.
+    """
     serializer = URLSafeTimedSerializer(secret, salt="atlas-session")
     try:
         data = serializer.loads(token, max_age=SESSION_MAX_AGE_S)
     except (BadSignature, SignatureExpired):
         return None
-    return data if isinstance(data, dict) and data.get("sub") == "admin" else None
+    if not isinstance(data, dict) or data.get("sub") != "admin":
+        return None
+    return data if data.get("epoch") == epoch else None
+
+
+async def load_session_epoch() -> int:
+    async with get_session() as session:
+        value = (
+            await session.execute(
+                text("SELECT value FROM settings WHERE key = 'session_epoch'")
+            )
+        ).scalar_one_or_none()
+    return int(value) if value is not None else 1
+
+
+def current_session_epoch(request: Request) -> int | None:
+    """The running epoch, or None if it was never loaded.
+
+    None means fail closed. An unset epoch is a startup fault, and the safe
+    reading of a startup fault is "nobody is authenticated", not "everybody is".
+    """
+    epoch = getattr(request.app.state, "session_epoch", None)
+    return epoch if isinstance(epoch, int) else None
 
 
 async def bootstrap_password(settings: Settings) -> None:
@@ -98,11 +132,27 @@ async def bootstrap_password(settings: Settings) -> None:
             )
             await session.commit()
 
+        epoch = (
+            await session.execute(
+                text("SELECT value FROM settings WHERE key = 'session_epoch'")
+            )
+        ).scalar_one_or_none()
+        if epoch is None:
+            await session.execute(
+                text("INSERT INTO settings(key, value) VALUES ('session_epoch', '1')")
+            )
+            await session.commit()
+
 
 async def require_session(request: Request) -> dict[str, Any]:
     settings: Settings = request.app.state.settings
     token = request.cookies.get(COOKIE_NAME)
-    if token is None or verify_session_cookie(token, settings.secret_key) is None:
+    epoch = current_session_epoch(request)
+    if (
+        token is None
+        or epoch is None
+        or verify_session_cookie(token, settings.secret_key, epoch) is None
+    ):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
     return {"sub": "admin"}
 
@@ -134,9 +184,25 @@ class ApiAuthMiddleware(BaseHTTPMiddleware):
         if path.startswith("/api"):
             settings: Settings = request.app.state.settings
             token = request.cookies.get(COOKIE_NAME)
-            if token is None or verify_session_cookie(token, settings.secret_key) is None:
+            epoch = current_session_epoch(request)
+            if (
+                token is None
+                or epoch is None
+                or verify_session_cookie(token, settings.secret_key, epoch) is None
+            ):
                 return JSONResponse({"detail": "Unauthorized"}, status_code=401)
         return await call_next(request)
+
+
+def _set_session_cookie(response: Response, settings: Settings, epoch: int) -> None:
+    response.set_cookie(
+        COOKIE_NAME,
+        create_session_cookie(settings.secret_key, epoch),
+        httponly=True,
+        secure=not settings.dev_mode,
+        samesite="lax",
+        max_age=SESSION_MAX_AGE_S,
+    )
 
 
 def create_auth_router(
@@ -170,17 +236,65 @@ def create_auth_router(
         await append_event("system.login", "auth", "Signed in")
 
         settings: Settings = request.app.state.settings
-        response.set_cookie(
-            COOKIE_NAME,
-            create_session_cookie(settings.secret_key),
-            httponly=True,
-            secure=not settings.dev_mode,
-            samesite="lax",
-            max_age=SESSION_MAX_AGE_S,
-        )
+        _set_session_cookie(response, settings, current_session_epoch(request) or 1)
 
     @router.post("/logout", status_code=204, dependencies=[Depends(require_session)])
     async def logout(response: Response) -> None:
         response.delete_cookie(COOKIE_NAME)
+
+    @router.post(
+        "/password", status_code=204, dependencies=[Depends(require_session)]
+    )
+    async def change_password(
+        payload: ChangePasswordRequest, request: Request, response: Response
+    ) -> None:
+        client_host = request.client.host if request.client else "unknown"
+        if failures.blocked(client_host):
+            raise HTTPException(
+                status_code=429, detail="Locked out after repeated failures"
+            )
+        if len(payload.new_password) < MIN_PASSWORD_LENGTH:
+            raise HTTPException(
+                status_code=400,
+                detail=f"New password must be at least {MIN_PASSWORD_LENGTH} characters.",
+            )
+        if payload.new_password == payload.current_password:
+            raise HTTPException(
+                status_code=400,
+                detail="New password must be different from the current one.",
+            )
+
+        async with get_session() as session:
+            current_hash = (
+                await session.execute(
+                    text("SELECT value FROM settings WHERE key = 'password_hash'")
+                )
+            ).scalar_one()
+            if not verify_password(payload.current_password, current_hash):
+                failures.record(client_host)
+                raise HTTPException(
+                    status_code=401, detail="Current password is incorrect"
+                )
+
+            await session.execute(
+                text("UPDATE settings SET value = :value WHERE key = 'password_hash'"),
+                {"value": hash_password(payload.new_password)},
+            )
+            # Bumping the epoch is what actually revokes every outstanding
+            # session, including any cookie stolen under the old password.
+            new_epoch = (current_session_epoch(request) or 1) + 1
+            await session.execute(
+                text("UPDATE settings SET value = :value WHERE key = 'session_epoch'"),
+                {"value": str(new_epoch)},
+            )
+            await session.commit()
+
+        request.app.state.session_epoch = new_epoch
+        await append_event("system.password_changed", "auth", "Password changed")
+
+        # The caller just proved they know the current password, so re-mint
+        # their cookie under the new epoch rather than logging them out too.
+        settings: Settings = request.app.state.settings
+        _set_session_cookie(response, settings, new_epoch)
 
     return router

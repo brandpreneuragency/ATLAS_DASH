@@ -15,6 +15,8 @@
 
 export const CSRF_HEADER = 'X-Atlas-CSRF';
 
+export type ChangePasswordResult = { ok: true } | { ok: false; message: string };
+
 export type LoginResult =
   | { ok: true }
   | { ok: false; reason: 'invalid-password' | 'rate-limited' | 'network' | 'unknown'; message: string };
@@ -62,5 +64,46 @@ export const authApi = {
       method: 'POST',
       headers: { [CSRF_HEADER]: '1' },
     });
+  },
+
+  /**
+   * Rotate the product password (F10).
+   *
+   * A 204 also revokes every OTHER session server-side and re-mints this
+   * caller's cookie, so the user stays signed in here and is signed out
+   * everywhere else. Error text is taken from the backend's `detail` rather
+   * than reworded locally, so validation rules live in exactly one place.
+   */
+  async changePassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<ChangePasswordResult> {
+    const res = await safeFetch('/api/auth/password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', [CSRF_HEADER]: '1' },
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
+    });
+    if (res === null) {
+      return { ok: false, message: 'Could not reach the server.' };
+    }
+    if (res.status === 204) return { ok: true };
+
+    let detail: string | null = null;
+    try {
+      const body = (await res.json()) as { detail?: unknown };
+      if (typeof body.detail === 'string') detail = body.detail;
+    } catch {
+      detail = null;
+    }
+    if (res.status === 401) {
+      return { ok: false, message: detail ?? 'Current password is incorrect.' };
+    }
+    if (res.status === 429) {
+      return { ok: false, message: detail ?? 'Too many attempts. Please wait and try again.' };
+    }
+    return { ok: false, message: detail ?? 'Could not change the password.' };
   },
 };

@@ -7,7 +7,14 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.auth import ApiAuthMiddleware, CsrfMiddleware, RateLimiter, bootstrap_password, create_auth_router
+from app.auth import (
+    ApiAuthMiddleware,
+    CsrfMiddleware,
+    RateLimiter,
+    bootstrap_password,
+    create_auth_router,
+    load_session_epoch,
+)
 from app.config import Settings, get_settings
 from app.db import init_db
 from app.engine.engine import Engine
@@ -24,6 +31,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         db_path = resolved_settings.data_dir / "atlas.db"
         engine = await init_db(db_path)
         await bootstrap_password(resolved_settings)
+        app.state.session_epoch = await load_session_epoch()
         wf_engine = Engine(lambda: make_hermes_client(resolved_settings), resolved_settings)
         await wf_engine.startup()
         triggers = TriggerService(wf_engine, resolved_settings)

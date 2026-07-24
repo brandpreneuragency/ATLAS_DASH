@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Star, Ban, Trash2 } from 'lucide-react';
 import { SettingsPanels } from './SettingsPanels';
+import { ChangePasswordPanel } from './ChangePasswordPanel';
 import {
   useSettingsSystemStore,
   flattenModelOptions,
   type ModelListEntry,
 } from '../../stores/settingsSystemStore';
 
-type SubTab = 'models' | 'providers' | 'notifications' | 'limits' | 'backup';
+type SubTab = 'models' | 'providers' | 'notifications' | 'limits' | 'backup' | 'password';
 
 const SUBTABS: { id: SubTab; label: string }[] = [
   { id: 'models', label: 'Hermes model' },
@@ -15,6 +16,7 @@ const SUBTABS: { id: SubTab; label: string }[] = [
   { id: 'notifications', label: 'Notifications' },
   { id: 'limits', label: 'Run limits' },
   { id: 'backup', label: 'Backup & system' },
+  { id: 'password', label: 'Password' },
 ];
 
 /**
@@ -51,12 +53,12 @@ export function SystemSection() {
 
   const centerMain = (
     <div className="settings-detail-body">
-      {state === 'loading' && (
+      {state === 'loading' && activeTab !== 'password' && (
         <p className="subtle" style={{ fontSize: 'var(--fs-sm)' }}>
           Loading…
         </p>
       )}
-      {errorMessage && (
+      {errorMessage && activeTab !== 'password' && (
         <div role="alert" style={{ fontSize: 'var(--fs-sm)', color: '#b91c1c' }}>
           {errorMessage}
         </div>
@@ -66,6 +68,10 @@ export function SystemSection() {
       {state === 'ready' && activeTab === 'notifications' && <NotificationsPanel />}
       {state === 'ready' && activeTab === 'limits' && <LimitsPanel />}
       {state === 'ready' && activeTab === 'backup' && <BackupHealthPanel />}
+      {/* Password rotation needs no settings payload, so it renders whether or
+          not the system fetch succeeded — you must still be able to rotate a
+          leaked password when something else on this screen is broken. */}
+      {activeTab === 'password' && <ChangePasswordPanel />}
     </div>
   );
 
