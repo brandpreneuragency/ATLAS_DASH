@@ -282,15 +282,18 @@ def test_approval_atomicity_pass_flag():
     actually ran AND passed every assertion (it sets _ATOMICITY_PROVEN at its
     very end). If that test failed, was skipped, or was deselected, this fails
     instead of writing an unearned flag.
+
+    The log itself is an orchestrator-run artifact, not a product assertion, so
+    the write is skipped when RUN_DIR is absent (i.e. anywhere but an
+    orchestrated run). The _ATOMICITY_PROVEN guard above still runs everywhere.
     """
     assert _ATOMICITY_PROVEN, (
         "refusing to write APPROVAL-ATOMICITY: PASS - the concurrent "
         "exactly-once test did not run to completion in this session"
     )
-    run_dir = os.environ.get(
-        "RUN_DIR",
-        "/home/admin/.hermes/orchestrator/runs/atlas-dash-v1-runc-m4-m5",
-    )
+    run_dir = os.environ.get("RUN_DIR")
+    if not run_dir or not os.path.isdir(run_dir):
+        pytest.skip("RUN_DIR not set or not present - gate flag is an orchestrator artifact")
     log_path = os.path.join(run_dir, "migration-test.log")
     with open(log_path, "a", encoding="utf-8") as f:
         f.write("APPROVAL-ATOMICITY: PASS\n")
