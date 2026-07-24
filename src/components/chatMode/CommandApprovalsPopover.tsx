@@ -1,7 +1,7 @@
 import { useHermesStore } from '../../stores/hermesStore';
 import { formatRelativeTime } from '../../utils/timeFormat';
 
-interface ApprovalsInboxProps {
+interface CommandApprovalsPopoverProps {
   onClose?: () => void;
   /** Called after navigating to a session (e.g. close popover). */
   onOpenSession?: (sessionId: string) => void;
@@ -10,17 +10,24 @@ interface ApprovalsInboxProps {
 /**
  * Pending Hermes dangerous-command approvals.
  * Approve → approval.respond { choice: "once" }; Deny → { choice: "deny" }.
+ *
+ * This is NOT the workflow approvals queue. It is one of two distinct approval
+ * domains (DP-1, resolved 2026-07-24 — see `docs/V1_M2_MODULE_MAP.md`):
+ * these are ephemeral, WebSocket-delivered command prompts from `useHermesStore`
+ * with no database row and no run to resume. Persistent, run-linked workflow gate
+ * approvals live in `src/components/today/TodayApprovals.tsx`, backed by the
+ * `approvals` table via `/api/approvals` (D-APPROVALS).
  */
-export function ApprovalsInbox({ onClose, onOpenSession }: ApprovalsInboxProps) {
+export function CommandApprovalsPopover({ onClose, onOpenSession }: CommandApprovalsPopoverProps) {
   const approvals = useHermesStore((s) => s.approvals);
   const respondApproval = useHermesStore((s) => s.respondApproval);
   const openSession = useHermesStore((s) => s.openSession);
 
   return (
     <div
-      id="approvals-inbox"
+      id="command-approvals-popover"
       role="dialog"
-      aria-label="Approvals inbox"
+      aria-label="Command approvals"
       className="drop"
       style={{
         position: 'absolute',
@@ -46,10 +53,15 @@ export function ApprovalsInbox({ onClose, onOpenSession }: ApprovalsInboxProps) 
         }}
       >
         <span className="med" style={{ fontSize: 'var(--fs-sm)' }}>
-          Approvals
+          Command approvals
         </span>
         {onClose && (
-          <button type="button" className="btn-icon" onClick={onClose} aria-label="Close approvals">
+          <button
+            type="button"
+            className="btn-icon"
+            onClick={onClose}
+            aria-label="Close command approvals"
+          >
             ×
           </button>
         )}
@@ -57,7 +69,7 @@ export function ApprovalsInbox({ onClose, onOpenSession }: ApprovalsInboxProps) 
 
       {approvals.length === 0 && (
         <p className="subtle" style={{ fontSize: 'var(--fs-xs)', padding: '12px 8px', margin: 0 }}>
-          No pending approvals.
+          No pending command approvals.
         </p>
       )}
 

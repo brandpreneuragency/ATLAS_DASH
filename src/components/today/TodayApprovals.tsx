@@ -22,9 +22,10 @@ function kindLabel(kind: Approval['kind']): string {
  * Today area approvals inbox (M2 map D-APPROVALS). Full-page presentation
  * of the automation-engine approvals queue — `server/app/routers/approvals.py`
  * — surfaced from the Today area per the ratified module map. This is a
- * different domain from `src/components/chatMode/ApprovalsInbox.tsx` (which
- * is the Hermes *chat session* dangerous-command popover); that component is
- * untouched by this phase.
+ * different domain from `src/components/chatMode/CommandApprovalsPopover.tsx`
+ * (the Hermes *chat session* dangerous-command popover); that component is
+ * untouched by this phase. DP-1 (resolved 2026-07-24) ratified both domains
+ * as distinct and renamed that component so neither reads as "the" inbox.
  */
 export function TodayApprovals() {
   const state = useTodayApprovalsStore((s) => s.state);

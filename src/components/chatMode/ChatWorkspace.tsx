@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { ChatSessionPane } from './ChatSessionPane';
-import { ApprovalsInbox } from './ApprovalsInbox';
+import { CommandApprovalsPopover } from './CommandApprovalsPopover';
 import { useHermesStore } from '../../stores/hermesStore';
 
 /**
  * CHAT mode center workspace.
  * Session list lives in App.tsx leftPanel (SessionListColumn) — same slot as Doc Mode file tree.
- * Header hosts the approvals inbox bell (pending count badge).
+ * Header hosts the Hermes command-approvals bell (pending count badge). Workflow
+ * gate approvals are a separate domain and live in Today, not here (DP-1).
  */
 export function ChatWorkspace() {
   const loadSessions = useHermesStore((s) => s.loadSessions);
@@ -60,10 +61,16 @@ export function ChatWorkspace() {
         <div ref={bellRef} style={{ position: 'relative' }}>
           <button
             type="button"
-            id="approvals-bell"
+            id="command-approvals-bell"
             className="btn-icon"
-            title={count > 0 ? `${count} pending approval${count === 1 ? '' : 's'}` : 'Approvals'}
-            aria-label={count > 0 ? `Approvals, ${count} pending` : 'Approvals'}
+            title={
+              count > 0
+                ? `${count} pending command approval${count === 1 ? '' : 's'}`
+                : 'Command approvals'
+            }
+            aria-label={
+              count > 0 ? `Command approvals, ${count} pending` : 'Command approvals'
+            }
             aria-expanded={inboxOpen}
             aria-haspopup="dialog"
             onClick={() => setInboxOpen((v) => !v)}
@@ -94,7 +101,7 @@ export function ChatWorkspace() {
             )}
           </button>
           {inboxOpen && (
-            <ApprovalsInbox
+            <CommandApprovalsPopover
               onClose={() => setInboxOpen(false)}
               onOpenSession={() => setInboxOpen(false)}
             />
