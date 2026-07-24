@@ -1,23 +1,18 @@
-// AI tool surface (Claude Code-parity) exposed to the AI sidebar.
+// AI tool surface exposed to the AI sidebar.
 //
-// Defines the OpenAI-compatible `tools` schema and a dispatcher that invokes
-// the Rust `ai_*` Tauri commands. The dispatcher supports two permission
-// modes:
-//   - 'ask'    : each call is gated behind a user approval promise (the UI
-//                renders a pending tool-call bubble and resolves on Approve/
-//                Reject).
-//   - 'bypass' : calls execute immediately.
+// Defines the OpenAI-compatible `tools` schema and a dispatcher that runs
+// file tools against the active FolderConnector (remote VPS or browser FSA).
+// Permission modes:
+//   - 'ask'    : each call is gated behind a user approval promise
+//   - 'bypass' : calls execute immediately
 //
-// The workspace root is taken from the active connected folder. If no folder
-// is connected, the dispatcher returns an error result (the chat surfaces it).
+// `shell_exec` is omitted until the VPS Hermes PTY terminal lands.
 
-import { invoke } from '@tauri-apps/api/core';
 import type { OpenAITool, ToolCall } from './ai/types';
 import type { ToolResult } from '../hooks/useAgentLoop';
 import type { AgentPermissionMode } from '../hooks/useAgentLoop';
 import { useFileSystemStore } from '../stores/fileSystemStore';
 import { useWorkspaceStore } from '../stores/workspaceStore';
-import { isTauriRuntime } from './runtime';
 import { readDir, readTextFile, writeTextFile } from './fs-adapter';
 
 /** Resolve the active workspace root path, or null if none connected. */
@@ -38,27 +33,8 @@ export function getWorkspaceRoot(): string | null {
   return folder?.path ?? null;
 }
 
-/** OpenAI-compatible tool schema for all six AI tools. */
+/** OpenAI-compatible tool schema for workspace file tools. */
 export const AI_TOOLS: OpenAITool[] = [
-  {
-    type: 'function',
-    function: {
-      name: 'shell_exec',
-      description:
-        'Run a shell command in the workspace (cmd.exe /C on Windows). Returns stdout, stderr, exit code and whether it timed out. Use for build, test, git, and other CLI tasks.',
-      parameters: {
-        type: 'object',
-        properties: {
-          cmd: { type: 'string', description: 'The shell command to execute.' },
-          timeout_ms: {
-            type: 'number',
-            description: 'Optional timeout in milliseconds (default 60000).',
-          },
-        },
-        required: ['cmd'],
-      },
-    },
-  },
   {
     type: 'function',
     function: {
@@ -185,11 +161,6 @@ export function resolveApproval(toolCallId: string, approved: boolean): void {
 function summarizeResult(name: string, raw: unknown): string {
   try {
     const r = raw as Record<string, unknown>;
-    if (name === 'shell_exec') {
-      const stdout = String(r.stdout ?? '');
-      const lines = stdout.split('\n').slice(0, 3).join('\n');
-      return `exit ${r.exit_code ?? '?'}${r.timed_out ? ' (timed out)' : ''}${lines ? `\n${lines}` : ''}`;
-    }
     if (name === 'glob' || name === 'grep') {
       const arr = Array.isArray(r) ? r : [];
       return `${arr.length} match${arr.length === 1 ? '' : 'es'}`;
@@ -275,100 +246,12 @@ export async function dispatchToolCall(
   }
 }
 
-/** Invoke the matching Rust command (Tauri) or browser FS backend. */
+/** Run a tool against the active FolderConnector. */
 async function executeTool(call: ToolCall, root: string): Promise<unknown> {
-  if (!isTauriRuntime()) {
-    return executeToolInBrowser(call, root);
-  }
-
   const a = call.args as Record<string, unknown>;
   switch (call.name) {
     case 'shell_exec':
-      return invoke('ai_shell_exec', {
-        workspaceRoot: root,
-        cmd: a.cmd,
-        timeoutMs: a.timeout_ms,
-      });
-    case 'file_read':
-      return invoke('ai_file_read', {
-        workspaceRoot: root,
-        path: a.path,
-        offset: a.offset,
-        limit: a.limit,
-      });
-    case 'file_write':
-      return invoke('ai_file_write', {
-        workspaceRoot: root,
-        path: a.path,
-        content: a.content,
-      });
-    case 'file_edit':
-      return invoke('ai_file_edit', {
-        workspaceRoot: root,
-        path: a.path,
-        old: a.old,
-        new: a.new,
-        replaceAll: a.replace_all,
-      });
-    case 'glob':
-      return invoke('ai_glob', {
-        workspaceRoot: root,
-        pattern: a.pattern,
-        path: a.path,
-      });
-    case 'grep':
-      return invoke('ai_grep', {
-        workspaceRoot: root,
-        pattern: a.pattern,
-        path: a.path,
-        glob: a.glob,
-        caseInsensitive: a.case_insensitive,
-      });
-    default:
-      throw new Error(`unknown tool: ${call.name}`);
-  }
-}
-
-function resolveWorkspacePath(root: string, rel: string): string {
-  const cleaned = String(rel ?? '').replace(/^[/\\]+/, '').replace(/\\/g, '/');
-  if (!cleaned || cleaned === '.') return root.replace(/\\/g, '/');
-  return `${root.replace(/\\/g, '/').replace(/\/+$/, '')}/${cleaned}`;
-}
-
-function matchGlob(name: string, pattern: string): boolean {
-  // Minimal glob: * and ? only, matched against the full relative path.
-  const escaped = pattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*/g, '.*')
-    .replace(/\?/g, '.');
-  return new RegExp(`^${escaped}$`, 'i').test(name.replace(/\\/g, '/'));
-}
-
-async function walkFiles(
-  dir: string,
-  root: string,
-  out: string[],
-  max = 500,
-): Promise<void> {
-  if (out.length >= max) return;
-  const entries = await readDir(dir);
-  for (const entry of entries) {
-    if (out.length >= max) return;
-    const rel = entry.path.replace(/\\/g, '/').slice(root.replace(/\\/g, '/').length).replace(/^\//, '');
-    if (entry.kind === 'directory') {
-      if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'target') continue;
-      await walkFiles(entry.path, root, out, max);
-    } else {
-      out.push(rel);
-    }
-  }
-}
-
-async function executeToolInBrowser(call: ToolCall, root: string): Promise<unknown> {
-  const a = call.args as Record<string, unknown>;
-  switch (call.name) {
-    case 'shell_exec':
-      throw new Error('shell_exec requires the TABS desktop app.');
+      throw new Error('shell_exec is not available yet. Use the VPS terminal when it ships.');
     case 'file_read': {
       const full = resolveWorkspacePath(root, String(a.path ?? ''));
       const text = await readTextFile(full);
@@ -442,6 +325,41 @@ async function executeToolInBrowser(call: ToolCall, root: string): Promise<unkno
     }
     default:
       throw new Error(`unknown tool: ${call.name}`);
+  }
+}
+
+function resolveWorkspacePath(root: string, rel: string): string {
+  const cleaned = String(rel ?? '').replace(/^[/\\]+/, '').replace(/\\/g, '/');
+  if (!cleaned || cleaned === '.') return root.replace(/\\/g, '/');
+  return `${root.replace(/\\/g, '/').replace(/\/+$/, '')}/${cleaned}`;
+}
+
+function matchGlob(name: string, pattern: string): boolean {
+  // Minimal glob: * and ? only, matched against the full relative path.
+  const escaped = pattern
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*/g, '.*')
+    .replace(/\?/g, '.');
+  return new RegExp(`^${escaped}$`, 'i').test(name.replace(/\\/g, '/'));
+}
+
+async function walkFiles(
+  dir: string,
+  root: string,
+  out: string[],
+  max = 500,
+): Promise<void> {
+  if (out.length >= max) return;
+  const entries = await readDir(dir);
+  for (const entry of entries) {
+    if (out.length >= max) return;
+    const rel = entry.path.replace(/\\/g, '/').slice(root.replace(/\\/g, '/').length).replace(/^\//, '');
+    if (entry.kind === 'directory') {
+      if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'target') continue;
+      await walkFiles(entry.path, root, out, max);
+    } else {
+      out.push(rel);
+    }
   }
 }
 

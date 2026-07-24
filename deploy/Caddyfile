@@ -16,6 +16,9 @@ atlasdash.brandpreneur.net {
 	handle /hermes/* {
 		reverse_proxy 127.0.0.1:4010
 	}
+	handle /terminal* {
+		reverse_proxy 127.0.0.1:4010
+	}
 	handle {
 		root * /srv/atlas-dash-web
 		try_files {path} /index.html

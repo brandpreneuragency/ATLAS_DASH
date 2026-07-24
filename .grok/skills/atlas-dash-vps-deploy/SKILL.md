@@ -72,7 +72,6 @@ Also honor repo `AGENTS.md` security and verification rules.
 | `deploy/Dockerfile.api` | `api` |
 | `deploy/docker-compose.yml` | both (full) |
 | Docs only (`docs/`, `*.md` at root, plans) | **no rebuild** — push is enough |
-| `src-tauri/` only | **no VPS rebuild** (desktop; still may commit/push) |
 
 If unsure, rebuild **both**.
 
@@ -129,7 +128,6 @@ If **nothing** to ship (clean tree and no unpushed commits vs `origin/main`):
 | `server/` | `cd server; npm test` then from root if frontend also changed continue below |
 | Frontend / shared TS | `npm run check` (typecheck + lint + test + build) |
 | Docs only | `git diff --check` (or skip heavy gate) |
-| `src-tauri/` | `cargo check` in `src-tauri/` if tooling available; note desktop is not VPS |
 
 - Fix **gate failures you introduced** before deploy.  
 - If failures look like pre-existing WIP outside deploy scope, do not mass-fix
@@ -139,7 +137,7 @@ If **nothing** to ship (clean tree and no unpushed commits vs `origin/main`):
 
 1. Review `git status` and diffs. **Do not** stage:
    - `.env`, credentials, keys, local secrets  
-   - Accidental `node_modules/`, `dist/`, `src-tauri/target/`  
+   - Accidental `node_modules/`, `dist/`  
 2. Stage deployable work. Prefer explicit paths over blind `git add -A` when
    the tree is mixed.
 3. Commit with a concise message summarizing the *batch* of changes.
@@ -232,7 +230,7 @@ Factual, concise:
 3. **Rebuild** — `caddy` / `api` / both / none  
 4. **Smoke** — exact codes  
 5. **User action** — hard-refresh browser (`Ctrl+Shift+R`)  
-6. **Risks / skipped** — e.g. Tauri-only not on VPS  
+6. **Risks / skipped** — e.g. docs-only (no container rebuild)  
 
 ---
 
@@ -268,7 +266,6 @@ Smoke → report
 
 - Hermes container recreate / image change  
 - Changing basic-auth password without user request  
-- Desktop Tauri installers (`npm run tauri:build`)  
 - Editing production secrets into git  
 - Deleting `C:\02_APPS\TABS` or `/home/admin/tabs` without explicit Approve  
 

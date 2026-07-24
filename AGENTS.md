@@ -15,6 +15,8 @@ Follow instructions in this order:
 
 Do not revive requirements from deleted or superseded plans. If current code and a named source of truth disagree, inspect branch history and ask only when the intended behavior cannot be determined safely.
 
+**Desktop retired:** ATLAS_DASH is a web app only (Vite browser + deployed `server/` + VPS). Historical Tauri/desktop plans under `docs/` are evidence only — do not reintroduce a desktop runtime.
+
 ## Required start-up checks
 
 Before editing:
@@ -22,7 +24,7 @@ Before editing:
 1. Run `git status --short` and inspect relevant diffs. This repository may contain substantial user WIP.
 2. Read the named plan, spec, handoff, and progress tracker before implementation.
 3. Read every file you intend to change and search all references to affected symbols, selectors, commands, persisted keys, and types.
-4. Identify which runtime is in scope: browser/Vite, Tauri desktop, deployed web, Node service, or more than one.
+4. Identify which runtime is in scope: browser/Vite, deployed web, Node `server/`, or more than one.
 5. Confirm the acceptance criteria and verification commands for the active scope.
 
 Use `rg` and `rg --files` for repository searches. Do not infer system behavior from a single component.
@@ -54,22 +56,20 @@ Legacy local folder `C:\02_APPS\TABS` is out of scope unless the user explicitly
 - `src/types/`: cross-feature TypeScript contracts.
 - `src/i18n/`: English and Turkish UI strings.
 - `src/styles/` and feature CSS files: tokens, shell layout, and scoped feature styles.
-- `src-tauri/src/`: Rust desktop commands, AI tools, tray, and terminal backend.
-- `src-tauri/capabilities/`: Tauri permission scopes.
-- `server/`: deployed Node service when introduced by the active plan.
-- `deploy/`: deployment assets when introduced by the active plan.
-- `docs/`: plans, specifications, progress, and handoffs.
+- `server/`: Node API (`/fs/*`, `/hermes/*`, `/terminal`) for the VPS deploy.
+- `deploy/`: Caddy, Docker, and compose assets.
+- `docs/`: plans, specifications, progress, and handoffs (many historical).
 
-Generated or runtime data is not source: `node_modules/`, `dist/`, `src-tauri/target/`, and `src-tauri/TASKS/`.
+Generated or runtime data is not source: `node_modules/`, `dist/`, and `server/node_modules/`.
 
 ## Runtime and architecture rules
 
-ATLAS_DASH has multiple runtime paths. A browser preview is not proof that Tauri behavior works, and a local desktop build is not proof that the deployed web path works.
+ATLAS_DASH is web-first. A local Vite preview is not proof that the deployed VPS path works, and the reverse is also true.
 
 - Vite development uses port `1420` with a strict port setting.
-- Keep runtime detection and runtime-specific behavior in service/adaptor layers. Reuse `src/services/runtime.ts`, `src/services/http.ts`, and the `FolderConnector` abstraction instead of importing Tauri APIs into feature UI.
+- Keep runtime detection and runtime-specific behavior in service/adaptor layers. Reuse `src/services/runtime.ts`, `src/services/http.ts`, and the `FolderConnector` abstraction (remote VPS API preferred; browser File System Access API as local fallback).
 - Browser-only features must degrade safely when native APIs are unavailable.
-- Tauri command changes must stay aligned across Rust command registration, frontend invocation, and `src-tauri/capabilities/default.json` permissions.
+- The in-app terminal connects to `atlas_dash_api` `/terminal` (interactive VPS shell). Hermes `/api/pty` is the Hermes TUI chat surface, not a general shell.
 - Preserve stable component identity for editors, chat, forms, and selections; avoid keys or conditional branches that remount stateful UI accidentally.
 - Put shared state invariants in Zustand actions rather than duplicating them in event handlers. Use narrow selectors in large components.
 - Follow existing Dexie patterns for persisted settings and provide deliberate migration/fallback behavior when keys change.
@@ -92,13 +92,6 @@ ATLAS_DASH has multiple runtime paths. A browser preview is not proof that Tauri
 - Audit `min-width: 0`, `min-height: 0`, overflow ownership, and responsive behavior when changing nested layouts.
 - Remove obsolete selectors when their final use is removed, but do not perform unrelated global CSS cleanup.
 
-### Rust and Tauri
-
-- Keep commands focused and return actionable errors without leaking sensitive data.
-- Update capability scopes narrowly; never broaden filesystem, shell, or HTTP permissions merely to make a failing call pass.
-- Run Rust formatting and compile checks when Rust or Tauri configuration changes.
-- Distinguish the local debug executable from the installed application when diagnosing desktop behavior. Stop stale development processes before rebuilding a locked executable.
-
 ### Node service and deployment
 
 - Follow the canonical plan for the `server/` and `deploy/` architecture; do not invent protocol fields or deployment topology.
@@ -111,6 +104,7 @@ ATLAS_DASH has multiple runtime paths. A browser preview is not proof that Tauri
 - Do not modify reference-only Hermes sources. They are evidence for protocol discovery, not part of this repository.
 - For the current VPS plan, use non-interactive SSH exactly as documented in the canonical plan.
 - Keep `atlas_dash_api` bound to loopback. Never expose ports `4010`, `9119`, or `8642` publicly.
+- The `/terminal` WebSocket is an interactive shell behind Caddy basic-auth — treat it as a privileged surface.
 - Preserve the existing Atlas and Wagner Atelier sites when changing Caddy or deployment assets.
 - Recreating or changing the Hermes container for the session token requires the user's exact in-session approval specified by the phase. Prior approval for a different destructive step does not transfer.
 - Before any destructive operation, verify the target, capture the required evidence, and confirm that the active phase explicitly authorizes it. Stop on unexpected infrastructure state.
@@ -123,7 +117,7 @@ ATLAS_DASH has multiple runtime paths. A browser preview is not proof that Tauri
 - Do not create worktrees, delegate work, or broaden the phase unless explicitly requested.
 - Do not commit or push unless the user request or an active, user-approved phase explicitly requires it.
 - Never run destructive Git commands such as `git reset --hard`, `git clean -fd`, bulk `git restore`, or force-push without explicit user authorization.
-- Do not weaken TypeScript, ESLint, tests, Tauri capabilities, authentication, or filesystem guards to make a check pass.
+- Do not weaken TypeScript, ESLint, tests, authentication, or filesystem guards to make a check pass.
 
 ## Verification
 
@@ -137,18 +131,9 @@ npm run check
 
 This runs typecheck, lint, Vitest, and the production build. If `server/` changed, also run its tests as specified by the active plan (normally `cd server; npm test`).
 
-For Rust or Tauri changes, additionally run from `src-tauri/` as appropriate:
-
-```powershell
-cargo fmt --check
-cargo check
-```
-
-Run `cargo test` when Rust behavior has unit coverage. Use `npm run tauri:build` only when packaging is part of the acceptance criteria; it is heavier than a compile check.
-
 Documentation-only changes do not require the full build gate. Inspect the rendered structure, links, and `git diff --check` instead.
 
-Manual verification must name the runtime and path tested. Report browser preview, local Tauri debug, installed desktop, and deployed web checks separately. Never claim a command or flow passed unless it was actually run.
+Manual verification must name the runtime and path tested. Report browser preview and deployed web checks separately. Never claim a command or flow passed unless it was actually run.
 
 ## Handoff format
 

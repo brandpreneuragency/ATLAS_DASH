@@ -1,22 +1,10 @@
-import { invoke } from '@tauri-apps/api/core';
 import type { SearchConfig, SearchResult } from '../types';
-import { isTauriRuntime } from './runtime';
 import { runtimeFetch } from './http';
 
 export async function invokeWebSearch(
   query: string,
   config: Pick<SearchConfig, 'exaKey' | 'tavilyKey' | 'searchProvider'>,
 ): Promise<SearchResult[]> {
-  if (isTauriRuntime()) {
-    return invoke<SearchResult[]>('search_web', {
-      args: {
-        query,
-        exaKey: config.exaKey,
-        tavilyKey: config.tavilyKey,
-        provider: config.searchProvider,
-      },
-    });
-  }
   return searchInBrowser(query, config);
 }
 

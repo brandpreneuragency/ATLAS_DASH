@@ -30,7 +30,6 @@ import { useProjectStore } from './stores/projectStore';
 import { useCrmStore } from './stores/crmStore';
 import { useFormsStore } from './stores/formsStore';
 import { useThemeStore } from './stores/themeStore';
-import { runStartupUpdateCheck } from './services/updater';
 import { loadReasoningOverlay } from './services/ai/reasoning';
 
 export default function App() {
@@ -75,8 +74,6 @@ export default function App() {
       useFormsStore.getState().loadForms(),
       loadThemeTokens(),
     ]);
-    // Check for app updates in the background (no-op in the browser).
-    void runStartupUpdateCheck();
     // Load any runtime-refreshed reasoning catalog override from Dexie.
     void loadReasoningOverlay();
   }, [
@@ -87,27 +84,6 @@ export default function App() {
     loadProjects,
     loadThemeTokens,
   ]);
-
-  // Listen for "open with TABS" / argv file events from the Tauri shell.
-  // This is a no-op in the browser — the dynamic import silently fails.
-  useEffect(() => {
-    let unlisten: (() => void) | null = null;
-    void (async () => {
-      try {
-        // Only attempt to subscribe if Tauri runtime is actually present.
-        if (!('__TAURI_INTERNALS__' in window)) return;
-        const mod = await import('@tauri-apps/api/event');
-        unlisten = await mod.listen<string>('tabs://open-file', (e) => {
-          const payload = typeof e.payload === 'string' ? e.payload : '';
-          if (!payload) return;
-          void useWorkspaceStore.getState().openFileByPath(payload);
-        });
-      } catch {
-        // Not running in Tauri — ignore.
-      }
-    })();
-    return () => { if (unlisten) unlisten(); };
-  }, []);
 
   // Keyboard shortcut: Ctrl/Cmd + Shift + T toggles task mode
   useEffect(() => {

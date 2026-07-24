@@ -2,10 +2,11 @@ import { useEffect, useRef } from 'react';
 import { Terminal as XTerm } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
-import { invoke } from '@tauri-apps/api/core';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useThemeStore } from '../../stores/themeStore';
-import { isTauriRuntime } from '../../services/runtime';
+import {
+  connectVpsTerminal,
+  type VpsTerminalSession,
+} from '../../services/vpsTerminal';
 
 interface TerminalInstanceProps {
   id: string;
@@ -45,12 +46,9 @@ export function TerminalInstance({ id, active, onExit }: TerminalInstanceProps) 
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<XTerm | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
-  const sessionReadyRef = useRef<Promise<void> | null>(null);
-  const writeQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const sessionRef = useRef<VpsTerminalSession | null>(null);
   const themeVersion = useThemeStore((s) => s.tokens);
-  const native = isTauriRuntime();
 
-  // Create the xterm instance once.
   useEffect(() => {
     if (!containerRef.current) return;
     const term = new XTerm({
@@ -59,7 +57,7 @@ export function TerminalInstance({ id, active, onExit }: TerminalInstanceProps) 
       cursorBlink: true,
       theme: buildTheme(),
       convertEol: true,
-      disableStdin: !native,
+      disableStdin: true,
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
@@ -72,73 +70,58 @@ export function TerminalInstance({ id, active, onExit }: TerminalInstanceProps) 
     termRef.current = term;
     fitRef.current = fit;
 
-    if (!native) {
-      term.write(
-        '\x1b[90mShell requires the TABS desktop app.\x1b[0m\r\n' +
-          '\x1b[90mThe terminal panel is available here for layout parity;\x1b[0m\r\n' +
-          '\x1b[90mPTY sessions run in the desktop build.\x1b[0m\r\n',
-      );
-      return () => {
-        term.dispose();
-        termRef.current = null;
-        fitRef.current = null;
-      };
-    }
+    let disposed = false;
+    const session = connectVpsTerminal({
+      id,
+      cols: term.cols,
+      rows: term.rows,
+      onData: (text) => {
+        if (!disposed) term.write(text);
+      },
+      onOpen: () => {
+        if (disposed) return;
+        term.options.disableStdin = false;
+        term.write('\x1b[90mConnected to VPS shell.\x1b[0m\r\n');
+        try {
+          fit.fit();
+          session.resize(term.cols, term.rows);
+        } catch {
+          /* ignore */
+        }
+      },
+      onClose: (reason) => {
+        if (disposed) return;
+        term.options.disableStdin = true;
+        const msg = reason ? ` (${reason})` : '';
+        term.write(`\r\n\x1b[90m[disconnected${msg}]\x1b[0m\r\n`);
+        onExit?.(id);
+      },
+      onError: (message) => {
+        if (disposed) return;
+        term.write(`\r\n\x1b[31m${message}\x1b[0m\r\n`);
+      },
+    });
+    sessionRef.current = session;
 
     term.onData((data) => {
-      writeQueueRef.current = writeQueueRef.current
-        .then(() => ensureSession(term)) // eslint-disable-line react-hooks/immutability
-        .then(() => invoke('terminal_write', {
-          id,
-          data: btoa(data),
-        }))
-        .then(() => undefined)
-        .catch(() => undefined);
+      session.write(data);
     });
 
     const onResize = () => {
       try {
         fit.fit();
-        void invoke('terminal_resize', {
-          id,
-          cols: term.cols,
-          rows: term.rows,
-        }).catch(() => undefined);
+        session.resize(term.cols, term.rows);
       } catch {
         /* ignore */
       }
     };
     window.addEventListener('resize', onResize);
 
-    const unlistenFns: UnlistenFn[] = [];
-    let disposed = false;
-    const trackUnlisten = (promise: Promise<UnlistenFn>) => {
-      void promise.then((fn) => {
-        if (disposed) {
-          fn();
-          return;
-        }
-        unlistenFns.push(fn);
-      });
-    };
-
-    trackUnlisten(listen<{ id: string; data: string }>('terminal://output', (e) => {
-      if (disposed || e.payload.id !== id) return;
-      const bytes = Uint8Array.from(atob(e.payload.data), (c) => c.charCodeAt(0));
-      const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-      term.write(text);
-    }));
-
-    trackUnlisten(listen<{ id: string; exit_code: number }>('terminal://exit', (e) => {
-      if (disposed || e.payload.id !== id) return;
-      term.write('\r\n\x1b[90m[process exited]\x1b[0m\r\n');
-      onExit?.(id);
-    }));
-
     return () => {
       disposed = true;
       window.removeEventListener('resize', onResize);
-      unlistenFns.forEach((fn) => fn());
+      session.close();
+      sessionRef.current = null;
       term.dispose();
       termRef.current = null;
       fitRef.current = null;
@@ -146,72 +129,27 @@ export function TerminalInstance({ id, active, onExit }: TerminalInstanceProps) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Re-fit + re-theme when becoming active or theme changes.
   useEffect(() => {
     if (active && termRef.current && fitRef.current) {
-      // Defer fit until the element is visible.
       requestAnimationFrame(() => {
         const term = termRef.current;
         const fit = fitRef.current;
         if (!term || !fit) return;
         try {
           fit.fit();
+          sessionRef.current?.resize(term.cols, term.rows);
         } catch {
           /* ignore */
         }
-        if (!native) return;
-        void ensureSession(term) // eslint-disable-line react-hooks/immutability
-          .then(() => invoke('terminal_resize', {
-            id,
-            cols: term.cols,
-            rows: term.rows,
-          }))
-          .then(() => undefined)
-          .catch(() => undefined);
       });
     }
-  }, [active, id, native]);
+  }, [active, id]);
 
   useEffect(() => {
     if (termRef.current) {
       termRef.current.options.theme = buildTheme();
     }
   }, [themeVersion]);
-
-  function ensureSession(term: XTerm) {
-    if (!sessionReadyRef.current) {
-      sessionReadyRef.current = startSession(term).catch((err) => {
-        sessionReadyRef.current = null;
-        throw err;
-      });
-    }
-    return sessionReadyRef.current;
-  }
-
-  async function startSession(term: XTerm) {
-    try {
-      await invoke('terminal_create', { id, cwd: null, shell: null });
-    } catch (err) {
-      const message = String(err);
-      if (!message.includes('already exists')) {
-        term.write(`\r\n\x1b[31mFailed to start terminal: ${message}\x1b[0m\r\n`);
-        throw err;
-      }
-    }
-
-    try {
-      // Push an initial resize so the PTY matches the viewport.
-      fitRef.current?.fit();
-      await invoke('terminal_resize', {
-        id,
-        cols: term.cols,
-        rows: term.rows,
-      });
-    } catch (err) {
-      term.write(`\r\n\x1b[31mFailed to resize terminal: ${String(err)}\x1b[0m\r\n`);
-      throw err;
-    }
-  }
 
   return (
     <div
