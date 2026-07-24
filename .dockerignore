@@ -1,0 +1,31 @@
+# Keep host-side build artifacts out of the Docker build context.
+#
+# Both images copy source wholesale — Dockerfile.web does `COPY . .`, and
+# Dockerfile.api does `COPY server/ .` — so anything derived that happens to
+# exist in the working tree (a local venv, installed node_modules, a prior
+# build) would otherwise be baked into the image, bloating it and, worse,
+# shadowing what the image builds for itself. A stray server/.venv (created by
+# running the Python tests locally) is how F10 nearly shipped a 160 MB Python
+# virtualenv inside a Node image.
+
+.git
+.gitignore
+
+# Node — each image runs its own install; never copy a host node_modules over it.
+node_modules
+server/node_modules
+
+# Python virtualenvs and tool caches (the backend is Python; tests create these).
+server/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+
+# Build output — Dockerfile.web regenerates dist inside the image.
+dist
+
+# Local noise.
+*.log
+.DS_Store
