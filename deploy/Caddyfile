@@ -1,5 +1,5 @@
-# The ATLAS_DASH route chain, factored out so the CP-M5 gate can exercise the
-# exact same routing the public host uses, rather than a hand-copied lookalike.
+# The ATLAS_DASH route chain. Kept as a snippet so the CP-M5 cutover changed only
+# the auth line above it and provably nothing about the routing itself.
 (atlas_dash_app) {
 	handle /fs/* {
 		reverse_proxy 127.0.0.1:4010
@@ -22,7 +22,10 @@
 	}
 }
 
-# ATLAS_DASH web + API (basic-auth protected)
+# ATLAS_DASH web + API. Gated by the product's own argon2 cookie login
+# (server/app/auth.py), NOT by Caddy basic-auth — see CP-M5. Every protected API
+# route returns 401 without a valid atlas_session cookie; the SPA itself is
+# public static assets that render only a login screen until /api/me succeeds.
 atlasdash.brandpreneur.net {
 	encode zstd gzip
 	header {
@@ -31,20 +34,6 @@ atlasdash.brandpreneur.net {
 		Referrer-Policy "strict-origin-when-cross-origin"
 		-Server
 	}
-	basic_auth {
-		{$ATLAS_DASH_BASIC_AUTH_USER} {$ATLAS_DASH_BASIC_AUTH_HASH}
-	}
-	import atlas_dash_app
-}
-
-# TEMPORARY — CP-M5 Gate A only. Bound to loopback, so it is not reachable from
-# off the box and is not served over TLS by any public name. It exists purely to
-# prove the argon2 gate is enforcing through this exact route chain BEFORE the
-# basic-auth gate is removed from the public host. Delete it at cutover.
-http://127.0.0.1:8099 {
-	# Caddy uses the site address only for Host matching and otherwise listens on
-	# 0.0.0.0, so `bind` is what actually keeps this off the public interface.
-	bind 127.0.0.1
 	import atlas_dash_app
 }
 
