@@ -42,6 +42,9 @@ atlasdash.brandpreneur.net {
 # prove the argon2 gate is enforcing through this exact route chain BEFORE the
 # basic-auth gate is removed from the public host. Delete it at cutover.
 http://127.0.0.1:8099 {
+	# Caddy uses the site address only for Host matching and otherwise listens on
+	# 0.0.0.0, so `bind` is what actually keeps this off the public interface.
+	bind 127.0.0.1
 	import atlas_dash_app
 }
 
