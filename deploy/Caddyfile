@@ -19,6 +19,11 @@ atlasdash.brandpreneur.net {
 	handle /terminal* {
 		reverse_proxy 127.0.0.1:4010
 	}
+	# Product API (argon2 cookie login lives here): Python backend on :8700.
+	# Must precede the SPA catch-all, or /api/* falls through to index.html.
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8700
+	}
 	handle {
 		root * /srv/atlas-dash-web
 		try_files {path} /index.html
