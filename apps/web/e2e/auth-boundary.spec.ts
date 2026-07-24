@@ -16,7 +16,9 @@ test.describe("Auth boundaries (no bypass)", () => {
     const res = await page.goto("/login");
     expect(res?.status()).toBeLessThan(400);
     await expect(page.getByRole("heading", { name: /model monitor/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /sign in with google/i })).toBeVisible();
+    await expect(page.getByLabel("Email")).toBeVisible();
+    await expect(page.getByLabel("Password")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^sign in$/i })).toBeVisible();
   });
 
   test("protected /models redirects anonymous users to /login", async ({ page }) => {
@@ -28,7 +30,8 @@ test.describe("Auth boundaries (no bypass)", () => {
     expect(url.searchParams.get("callbackUrl") ?? "").toMatch(/models/);
     // Ensure we did not render the protected models surface.
     await expect(page.getByTestId("models-page")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /sign in with google/i })).toBeVisible();
+    await expect(page.getByLabel("Email")).toBeVisible();
+    await expect(page.getByLabel("Password")).toBeVisible();
     // status should be a redirect chain ending at login (200)
     expect(res?.status()).toBeLessThan(400);
   });

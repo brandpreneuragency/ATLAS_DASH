@@ -1,11 +1,19 @@
 import { signIn } from "@/lib/auth";
 import { safeCallbackUrl } from "@/lib/auth-policy";
 
-async function googleSignInAction(formData: FormData) {
+async function credentialsSignInAction(formData: FormData) {
   "use server";
-  const raw = formData.get("callbackUrl");
-  const callbackUrl = safeCallbackUrl(typeof raw === "string" ? raw : undefined);
-  await signIn("google", { redirectTo: callbackUrl });
+  const callbackValue = formData.get("callbackUrl");
+  const callbackUrl = safeCallbackUrl(
+    typeof callbackValue === "string" ? callbackValue : undefined,
+  );
+  const email = formData.get("email");
+  const password = formData.get("password");
+  await signIn("credentials", {
+    email: typeof email === "string" ? email : "",
+    password: typeof password === "string" ? password : "",
+    redirectTo: callbackUrl,
+  });
 }
 
 export default async function LoginPage({
@@ -25,16 +33,36 @@ export default async function LoginPage({
           </div>
           <h1 className="text-xl font-bold text-foreground">Model Monitor</h1>
           <p className="text-sm text-muted-foreground">
-            Private LLM registry. Sign in with an allow-listed Google account.
+            Private LLM registry. Sign in with your configured email and password.
           </p>
         </div>
-        <form action={googleSignInAction}>
+        <form action={credentialsSignInAction} className="space-y-4">
           <input type="hidden" name="callbackUrl" value={callbackUrl} />
+          <label className="block space-y-1 text-sm font-medium text-foreground">
+            <span>Email</span>
+            <input
+              required
+              type="email"
+              name="email"
+              autoComplete="username"
+              className="w-full rounded-md border border-border bg-background px-3 py-2"
+            />
+          </label>
+          <label className="block space-y-1 text-sm font-medium text-foreground">
+            <span>Password</span>
+            <input
+              required
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              className="w-full rounded-md border border-border bg-background px-3 py-2"
+            />
+          </label>
           <button
             type="submit"
             className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90"
           >
-            Sign in with Google
+            Sign in
           </button>
         </form>
         {params.error ? (
@@ -44,7 +72,7 @@ export default async function LoginPage({
             aria-live="assertive"
             data-testid="login-error"
           >
-            Access denied. Your account is not on the allow-list.
+            Invalid email or password.
           </p>
         ) : null}
       </div>

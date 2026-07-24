@@ -5,7 +5,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
-import { sql } from "drizzle-orm";
 import * as schema from "./schema/index";
 import {
   createSubscription,
@@ -54,7 +53,8 @@ const createdPlanIds: string[] = [];
 let seedModelId: string | null = null;
 let seedPlanId: string | null = null;
 let seedProviderId: string | null = null;
-let freeModelId: string | null = null;
+let testPlanId: string | null = null;
+let duplicatePlanId: string | null = null;
 
 beforeAll(async () => {
   const [plan] = await db
@@ -78,18 +78,32 @@ beforeAll(async () => {
   if (!provider) throw new Error("No access providers — run db:seed first");
   seedProviderId = provider.id;
 
-  // A model with no existing access path, so duplicate-access tests can
-  // create a first row without colliding with the seed. Exclude seedModelId
-  // (the first test creates an access row on it) to keep this stable when the
-  // duplicate test runs before/after the seed-access test.
-  const [free] = await db
-    .select({ id: schema.models.id })
-    .from(schema.models)
-    .where(
-      sql`NOT EXISTS (SELECT 1 FROM model_access ma WHERE ma.model_id = ${schema.models.id}) AND ${schema.models.id} <> ${seedModelId}`,
-    )
-    .limit(1);
-  freeModelId = free?.id ?? null;
+  // Use a test-only plan so this file never races with other integration
+  // files creating access for the seeded model/plan tuple.
+  const testPlan = await createPlan(
+    db,
+    {
+      accessProviderId: seedProviderId,
+      name: "mmtest:access-plan",
+      slug: `mmtest-access-plan-${crypto.randomUUID().slice(0, 8)}`,
+      planType: "test",
+    },
+    ctx,
+  );
+  testPlanId = testPlan.id;
+  createdPlanIds.push(testPlan.id);
+  const duplicatePlan = await createPlan(
+    db,
+    {
+      accessProviderId: seedProviderId,
+      name: "mmtest:duplicate-plan",
+      slug: `mmtest-duplicate-plan-${crypto.randomUUID().slice(0, 8)}`,
+      planType: "test",
+    },
+    ctx,
+  );
+  duplicatePlanId = duplicatePlan.id;
+  createdPlanIds.push(duplicatePlan.id);
 });
 
 afterAll(async () => {
@@ -228,13 +242,13 @@ describe("subscription limit rules", () => {
 describe("model access CRUD + dup conflict", () => {
   it("creates model access, verifies via getAccessMatrix, archives, and checks duplicate conflict", async () => {
     expect(seedModelId).not.toBeNull();
-    expect(seedPlanId).not.toBeNull();
+    expect(testPlanId).not.toBeNull();
 
     const access = await createModelAccess(
       db,
       {
         modelId: seedModelId!,
-        planId: seedPlanId!,
+        planId: testPlanId!,
         availability: "confirmed",
         accessMethod: "cli",
         cliOnly: true,
@@ -246,7 +260,7 @@ describe("model access CRUD + dup conflict", () => {
     expect(access.accessMethod).toBe("cli");
     expect(access.cliOnly).toBe(true);
     expect(access.model.id).toBe(seedModelId);
-    expect(access.plan.id).toBe(seedPlanId);
+    expect(access.plan.id).toBe(testPlanId);
 
     // Verify via getAccessMatrix
     const matrix = await getAccessMatrix(db, {});
@@ -271,14 +285,14 @@ describe("model access CRUD + dup conflict", () => {
   });
 
   it("rejects duplicate model+plan+null providerModelId with 409", async () => {
-    expect(freeModelId).not.toBeNull();
-    expect(seedPlanId).not.toBeNull();
+    expect(seedModelId).not.toBeNull();
+    expect(duplicatePlanId).not.toBeNull();
 
     const first = await createModelAccess(
       db,
       {
-        modelId: freeModelId!,
-        planId: seedPlanId!,
+        modelId: seedModelId!,
+        planId: duplicatePlanId!,
         availability: "confirmed",
         accessMethod: "cli",
         cliOnly: false,
@@ -292,8 +306,8 @@ describe("model access CRUD + dup conflict", () => {
       await createModelAccess(
         db,
         {
-          modelId: freeModelId!,
-          planId: seedPlanId!,
+          modelId: seedModelId!,
+          planId: duplicatePlanId!,
           availability: "confirmed",
           accessMethod: "cli",
           cliOnly: true,

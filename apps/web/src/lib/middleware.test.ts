@@ -64,6 +64,39 @@ describe("middleware auth boundaries", () => {
     expect(location).toContain("callbackUrl=%2Fmodels");
   });
 
+  it("uses the configured public origin instead of an internal proxy URL", async () => {
+    const previousAuthUrl = process.env.AUTH_URL;
+    process.env.AUTH_URL = "https://models.brandpreneur.net";
+    getToken.mockResolvedValue(null);
+
+    try {
+      const res = await middleware(makeRequest("/dashboard"));
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toBe(
+        "https://models.brandpreneur.net/login?callbackUrl=%2Fdashboard",
+      );
+    } finally {
+      if (previousAuthUrl === undefined) delete process.env.AUTH_URL;
+      else process.env.AUTH_URL = previousAuthUrl;
+    }
+  });
+
+  it("reads the secure Auth.js session cookie for an HTTPS public origin", async () => {
+    const previousAuthUrl = process.env.AUTH_URL;
+    process.env.AUTH_URL = "https://models.brandpreneur.net";
+    getToken.mockResolvedValue(null);
+
+    try {
+      await middleware(makeRequest("/dashboard"));
+      expect(getToken).toHaveBeenCalledWith(
+        expect.objectContaining({ secureCookie: true }),
+      );
+    } finally {
+      if (previousAuthUrl === undefined) delete process.env.AUTH_URL;
+      else process.env.AUTH_URL = previousAuthUrl;
+    }
+  });
+
   it("allows authenticated requests through", async () => {
     const prev = process.env.ALLOWED_EMAILS;
     process.env.ALLOWED_EMAILS = "a@b.com";

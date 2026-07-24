@@ -8,6 +8,19 @@ import {
   parseAllowedEmails,
 } from "@/lib/auth-policy";
 
+function canonicalBaseUrl(request: NextRequest): string {
+  return (
+    process.env.AUTH_URL?.trim() ||
+    process.env.NEXTAUTH_URL?.trim() ||
+    process.env.APP_BASE_URL?.trim() ||
+    request.url
+  );
+}
+
+function usesSecureSessionCookie(request: NextRequest): boolean {
+  return new URL(canonicalBaseUrl(request)).protocol === "https:";
+}
+
 export async function middleware(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
   const { pathname } = request.nextUrl;
@@ -28,6 +41,7 @@ export async function middleware(request: NextRequest) {
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET,
+    secureCookie: usesSecureSessionCookie(request),
   });
 
   const allowedEmails = parseAllowedEmails(process.env.ALLOWED_EMAILS);
@@ -63,7 +77,7 @@ export async function middleware(request: NextRequest) {
         },
       );
     }
-    const login = new URL("/login", request.url);
+    const login = new URL("/login", canonicalBaseUrl(request));
     login.searchParams.set("callbackUrl", pathname);
     const redirect = NextResponse.redirect(login);
     redirect.headers.set("x-request-id", requestId);

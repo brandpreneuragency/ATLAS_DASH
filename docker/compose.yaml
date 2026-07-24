@@ -1,21 +1,52 @@
 services:
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+      network: host
+    container_name: model-monitor-web
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    network_mode: host
+    env_file:
+      - ../.env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 127.0.0.1
+      APP_BASE_URL: https://models.brandpreneur.net
+      AUTH_URL: https://models.brandpreneur.net
+      NEXTAUTH_URL: https://models.brandpreneur.net
+      AUTH_DEV_BYPASS: "false"
+      AUTH_TRUST_HOST: "true"
+    volumes:
+      - import_storage:/app/apps/web/.import-storage
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/v1/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
   postgres:
     image: postgres:16-alpine
     container_name: model-monitor-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: modelmonitor
-      POSTGRES_PASSWORD: modelmonitor
-      POSTGRES_DB: modelmonitor
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB must be set}
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U modelmonitor"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
 volumes:
+  import_storage:
   pgdata:

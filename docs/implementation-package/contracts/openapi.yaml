@@ -8,12 +8,65 @@ servers:
 security:
   - sessionAuth: []
 paths:
+  /exports/{scope}:
+    get:
+      operationId: exportData
+      parameters:
+        - name: scope
+          in: path
+          required: true
+          schema:
+            {
+              type: string,
+              enum:
+                [
+                  models,
+                  subscriptions,
+                  access,
+                  benchmarks,
+                  scores,
+                  sources,
+                  full,
+                ],
+            }
+        - {
+            name: format,
+            in: query,
+            schema: { type: string, enum: [json, csv, xlsx], default: json },
+          }
+        - {
+            name: includeArchived,
+            in: query,
+            schema: { type: boolean, default: false },
+          }
+        - {
+            name: includeProvenance,
+            in: query,
+            schema: { type: boolean, default: false },
+          }
+        - {
+            name: neutralizeFormulas,
+            in: query,
+            schema: { type: boolean, default: true },
+          }
+      responses:
+        "200":
+          description: Export download
+          content:
+            application/json:
+              { schema: { type: object, additionalProperties: true } }
+            text/csv: { schema: { type: string, format: binary } }
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              { schema: { type: string, format: binary } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
   /health:
     get:
       security: []
       operationId: getHealth
       responses:
-        '200':
+        "200":
           description: Healthy
           content:
             application/json:
@@ -37,110 +90,156 @@ paths:
         - { name: capabilityVision, in: query, schema: { type: boolean } }
         - { name: capabilityReasoning, in: query, schema: { type: boolean } }
         - { name: capabilityToolUse, in: query, schema: { type: boolean } }
-        - { name: lifecycle, in: query, schema: { type: string, enum: [current, ga, preview, beta, legacy, deprecated, retired, unavailable, unknown] } }
+        - {
+            name: lifecycle,
+            in: query,
+            schema:
+              {
+                type: string,
+                enum:
+                  [
+                    current,
+                    ga,
+                    preview,
+                    beta,
+                    legacy,
+                    deprecated,
+                    retired,
+                    unavailable,
+                    unknown,
+                  ],
+              },
+          }
         - { name: needsRecheck, in: query, schema: { type: boolean } }
         - { name: sort, in: query, schema: { type: string } }
-        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - {
+            name: page,
+            in: query,
+            schema: { type: integer, minimum: 1, default: 1 },
+          }
         - { name: accessible, in: query, schema: { type: boolean } }
-        - { name: archived, in: query, schema: { type: boolean, default: false } }
+        - {
+            name: archived,
+            in: query,
+            schema: { type: boolean, default: false },
+          }
         - { name: cursor, in: query, schema: { type: string } }
-        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 200, default: 50 },
+          }
       responses:
-        '200':
+        "200":
           description: Model collection
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ModelCollection'
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+                $ref: "#/components/schemas/ModelCollection"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
     post:
       operationId: createModel
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ModelWrite' }
+            schema: { $ref: "#/components/schemas/ModelWrite" }
       responses:
-        '201':
+        "201":
           description: Created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Model' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '409': { $ref: '#/components/responses/Conflict' }
+              schema: { $ref: "#/components/schemas/Model" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /models/{modelId}:
     parameters:
-      - { name: modelId, in: path, required: true, schema: { type: string, format: uuid } }
+      - {
+          name: modelId,
+          in: path,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
     get:
       operationId: getModel
       responses:
-        '200':
+        "200":
           description: Model
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Model' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
+              schema: { $ref: "#/components/schemas/Model" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
     patch:
       operationId: updateModel
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ModelPatch' }
+            schema: { $ref: "#/components/schemas/ModelPatch" }
       responses:
-        '200':
+        "200":
           description: Updated
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Model' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409':
+              schema: { $ref: "#/components/schemas/Model" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
           description: Conflict (unique constraint or merged-source immutability)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+              schema: { $ref: "#/components/schemas/Error" }
     delete:
       operationId: archiveModel
       responses:
-        '204': { description: Archived }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409':
+        "204": { description: Archived }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
           description: Conflict (merged-source immutability)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+              schema: { $ref: "#/components/schemas/Error" }
   /models/{modelId}/restore:
     post:
       operationId: restoreModel
       parameters:
-        - { name: modelId, in: path, required: true, schema: { type: string, format: uuid } }
+        - {
+            name: modelId,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
       responses:
-        '200':
+        "200":
           description: Restored
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Model' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409':
+              schema: { $ref: "#/components/schemas/Model" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
           description: Conflict when restoring a merged source tombstone
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+              schema: { $ref: "#/components/schemas/Error" }
   /models/merge:
     post:
       operationId: mergeModels
       parameters:
-        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+        - {
+            name: Idempotency-Key,
+            in: header,
+            required: true,
+            schema: { type: string },
+          }
       requestBody:
         required: true
         content:
@@ -157,29 +256,40 @@ paths:
                   properties:
                     name: { type: string }
                     canonicalId: { type: string }
-                    family: { type: [string, 'null'] }
-                    generation: { type: [string, 'null'] }
+                    family: { type: [string, "null"] }
+                    generation: { type: [string, "null"] }
                     lifecycle:
                       type: string
-                      enum: [current, ga, preview, beta, legacy, deprecated, retired, unavailable, unknown]
-                    lifecycleRaw: { type: [string, 'null'] }
-                    releaseDate: { type: [string, 'null'], format: date }
-                    knowledgeCutoff: { type: [string, 'null'] }
-                    modelType: { type: [string, 'null'] }
-                    description: { type: [string, 'null'] }
-                    codingSpecialization: { type: [string, 'null'] }
-                    bestUse: { type: [string, 'null'] }
-                    avoidFor: { type: [string, 'null'] }
-                    contextTokens: { type: [integer, 'null'], minimum: 0 }
-                    maxOutputTokens: { type: [integer, 'null'], minimum: 0 }
-                    speedRating: { type: [string, 'null'] }
+                      enum:
+                        [
+                          current,
+                          ga,
+                          preview,
+                          beta,
+                          legacy,
+                          deprecated,
+                          retired,
+                          unavailable,
+                          unknown,
+                        ]
+                    lifecycleRaw: { type: [string, "null"] }
+                    releaseDate: { type: [string, "null"], format: date }
+                    knowledgeCutoff: { type: [string, "null"] }
+                    modelType: { type: [string, "null"] }
+                    description: { type: [string, "null"] }
+                    codingSpecialization: { type: [string, "null"] }
+                    bestUse: { type: [string, "null"] }
+                    avoidFor: { type: [string, "null"] }
+                    contextTokens: { type: [integer, "null"], minimum: 0 }
+                    maxOutputTokens: { type: [integer, "null"], minimum: 0 }
+                    speedRating: { type: [string, "null"] }
                     developerId: { type: string, format: uuid }
       responses:
-        '200':
+        "200":
           description: Merge result
           headers:
             Idempotency-Replayed:
-              schema: { type: string, enum: ['true'] }
+              schema: { type: string, enum: ["true"] }
               description: Present when a prior identical request is replayed
           content:
             application/json:
@@ -189,18 +299,20 @@ paths:
                 properties:
                   targetModelId: { type: string, format: uuid }
                   sourceModelId: { type: string, format: uuid }
-                  transferred: { type: object, additionalProperties: { type: integer } }
+                  transferred:
+                    { type: object, additionalProperties: { type: integer } }
                   auditEventId: { type: string, format: uuid }
-                  appliedResolutions: { type: object, additionalProperties: true }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
+                  appliedResolutions:
+                    { type: object, additionalProperties: true }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /developers:
     get:
       operationId: listDevelopers
       responses:
-        '200':
+        "200":
           description: Developers
           content:
             application/json:
@@ -217,34 +329,44 @@ paths:
                         id: { type: string, format: uuid }
                         name: { type: string }
                         slug: { type: string }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+        "401": { $ref: "#/components/responses/Unauthorized" }
   /models/{modelId}/aliases:
     parameters:
-      - { name: modelId, in: path, required: true, schema: { type: string, format: uuid } }
+      - {
+          name: modelId,
+          in: path,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
     post:
       operationId: addModelAlias
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ModelAliasWrite' }
+            schema: { $ref: "#/components/schemas/ModelAliasWrite" }
       responses:
-        '201':
+        "201":
           description: Alias created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ModelAlias' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
+              schema: { $ref: "#/components/schemas/ModelAlias" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /models/{modelId}/history:
     parameters:
-      - { name: modelId, in: path, required: true, schema: { type: string, format: uuid } }
+      - {
+          name: modelId,
+          in: path,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
     get:
       operationId: getModelHistory
       responses:
-        '200':
+        "200":
           description: Model audit history
           content:
             application/json:
@@ -255,90 +377,95 @@ paths:
                   data:
                     type: array
                     items: { type: object, additionalProperties: true }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '404': { $ref: '#/components/responses/NotFound' }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /subscriptions:
     get:
       operationId: listSubscriptions
       responses:
-        '200':
+        "200":
           description: Subscriptions
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/Subscription' }
+                items: { $ref: "#/components/schemas/Subscription" }
     post:
       operationId: createSubscription
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/SubscriptionWrite' }
+            schema: { $ref: "#/components/schemas/SubscriptionWrite" }
       responses:
-        '201':
+        "201":
           description: Created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Subscription' }
+              schema: { $ref: "#/components/schemas/Subscription" }
   /subscriptions/{subscriptionId}:
     parameters:
-      - { name: subscriptionId, in: path, required: true, schema: { type: string } }
+      - {
+          name: subscriptionId,
+          in: path,
+          required: true,
+          schema: { type: string },
+        }
     get:
       operationId: getSubscription
       responses:
-        '200':
+        "200":
           description: Subscription
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Subscription' }
+              schema: { $ref: "#/components/schemas/Subscription" }
     patch:
       operationId: updateSubscription
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/SubscriptionWrite' }
+            schema: { $ref: "#/components/schemas/SubscriptionWrite" }
       responses:
-        '200':
+        "200":
           description: Updated
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Subscription' }
+              schema: { $ref: "#/components/schemas/Subscription" }
     delete:
       operationId: archiveSubscription
       responses:
-        '204': { description: Archived }
+        "204": { description: Archived }
   /model-access:
     get:
       operationId: listModelAccess
       responses:
-        '200':
+        "200":
           description: Access records
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/ModelAccess' }
+                items: { $ref: "#/components/schemas/ModelAccess" }
     post:
       operationId: createModelAccess
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/ModelAccessWrite' }
+            schema: { $ref: "#/components/schemas/ModelAccessWrite" }
       responses:
-        '201':
+        "201":
           description: Created
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ModelAccess' }
+              schema: { $ref: "#/components/schemas/ModelAccess" }
   /access-matrix:
     get:
       operationId: getAccessMatrix
       responses:
-        '200':
+        "200":
           description: Matrix
           content:
             application/json:
@@ -346,9 +473,21 @@ paths:
                 type: object
                 required: [models, subscriptions, cells]
                 properties:
-                  models: { type: array, items: { type: object, additionalProperties: true } }
-                  subscriptions: { type: array, items: { type: object, additionalProperties: true } }
-                  cells: { type: array, items: { type: object, additionalProperties: true } }
+                  models:
+                    {
+                      type: array,
+                      items: { type: object, additionalProperties: true },
+                    }
+                  subscriptions:
+                    {
+                      type: array,
+                      items: { type: object, additionalProperties: true },
+                    }
+                  cells:
+                    {
+                      type: array,
+                      items: { type: object, additionalProperties: true },
+                    }
   /imports/preview:
     post:
       operationId: previewImport
@@ -362,52 +501,113 @@ paths:
               properties:
                 file: { type: string, format: binary }
       responses:
-        '202':
-          description: Preview accepted
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ImportJob' }
+        "202":
+          {
+            description: Preview accepted,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/ImportJob" } },
+              },
+          }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /imports/{importId}:
+    parameters:
+      - {
+          name: importId,
+          in: path,
+          required: true,
+          schema: { type: string, format: uuid },
+        }
     get:
       operationId: getImport
-      parameters:
-        - { name: importId, in: path, required: true, schema: { type: string } }
       responses:
-        '200':
-          description: Import
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ImportJob' }
+        "200":
+          {
+            description: Import,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/ImportJob" } },
+              },
+          }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /imports/{importId}/conflicts:
+    post:
+      operationId: resolveImportConflicts
+      parameters:
+        - {
+            name: importId,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              { $ref: "#/components/schemas/ImportConflictResolutionRequest" }
+      responses:
+        "200":
+          {
+            description: Resolutions applied,
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      {
+                        $ref: "#/components/schemas/ImportConflictResolutionResponse",
+                      },
+                  },
+              },
+          }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /imports/{importId}/commit:
     post:
       operationId: commitImport
       parameters:
-        - { name: importId, in: path, required: true, schema: { type: string } }
-        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+        - {
+            name: importId,
+            in: path,
+            required: true,
+            schema: { type: string, format: uuid },
+          }
+        - {
+            name: Idempotency-Key,
+            in: header,
+            required: true,
+            schema: { type: string, maxLength: 128 },
+          }
       responses:
-        '200':
-          description: Committed
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ImportJob' }
-  /audit-events:
-    get:
-      operationId: listAuditEvents
-      responses:
-        '200':
-          description: Audit events
-          content:
-            application/json:
-              schema:
-                type: array
-                items: { type: object, additionalProperties: true }
+        "200":
+          {
+            description: Committed or idempotent replay,
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/ImportJob" } },
+              },
+          }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /hermes/catalog:
     get:
       operationId: getHermesCatalog
       security:
         - bearerAuth: [catalog:read]
       responses:
-        '200':
+        "200":
           description: Hermes catalog
           headers:
             ETag: { schema: { type: string } }
@@ -417,8 +617,315 @@ paths:
               schema:
                 type: object
                 description: Must validate against contracts/hermes-catalog.schema.json.
-        '304': { description: Not modified }
+        "304": { description: Not modified }
+  /dashboard:
+    get:
+      operationId: getDashboard
+      responses:
+        "200":
+          description: Dashboard summary
+          headers: { X-Request-Id: { $ref: "#/components/headers/RequestId" } }
+          content:
+            application/json:
+              { schema: { $ref: "#/components/schemas/DashboardResponse" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+  /audit-events:
+    get:
+      operationId: listAuditEvents
+      parameters:
+        - {
+            name: page,
+            in: query,
+            schema: { type: integer, minimum: 1, default: 1 },
+          }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 200, default: 50 },
+          }
+        - {
+            name: entityType,
+            in: query,
+            schema: { type: string, minLength: 1, maxLength: 80 },
+          }
+        - {
+            name: action,
+            in: query,
+            schema: { type: string, minLength: 1, maxLength: 80 },
+          }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - {
+            name: search,
+            in: query,
+            schema: { type: string, minLength: 1, maxLength: 200 },
+          }
+      responses:
+        "200":
+          {
+            description: Audit events,
+            headers:
+              { X-Request-Id: { $ref: "#/components/headers/RequestId" } },
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      { $ref: "#/components/schemas/AuditEventCollection" },
+                  },
+              },
+          }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+  /api-tokens:
+    get:
+      operationId: listApiTokens
+      responses:
+        "200":
+          {
+            description: API tokens (hashes are never returned),
+            headers:
+              { X-Request-Id: { $ref: "#/components/headers/RequestId" } },
+            content:
+              {
+                application/json:
+                  {
+                    schema: { $ref: "#/components/schemas/ApiTokenCollection" },
+                  },
+              },
+          }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+    post:
+      operationId: createApiToken
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                { schema: { $ref: "#/components/schemas/CreateApiToken" } },
+            },
+        }
+      responses:
+        "201":
+          {
+            description: Created; plaintext token is returned only in this response,
+            headers:
+              { X-Request-Id: { $ref: "#/components/headers/RequestId" } },
+            content:
+              {
+                application/json:
+                  {
+                    schema:
+                      { $ref: "#/components/schemas/ApiTokenCreateResponse" },
+                  },
+              },
+          }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+  /api-tokens/{tokenId}:
+    parameters:
+      [
+        {
+          name: tokenId,
+          in: path,
+          required: true,
+          schema: { type: string, format: uuid },
+        },
+      ]
+    delete:
+      operationId: revokeApiToken
+      responses:
+        "200":
+          {
+            description: Revoked,
+            headers:
+              { X-Request-Id: { $ref: "#/components/headers/RequestId" } },
+            content:
+              {
+                application/json:
+                  { schema: { $ref: "#/components/schemas/IdResponse" } },
+              },
+          }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "500": { $ref: "#/components/responses/InternalServerError" }
+  /settings/verification:
+    get:
+      operationId: getVerificationSettings
+      responses:
+        {
+          "200":
+            {
+              description: Verification settings,
+              headers:
+                { X-Request-Id: { $ref: "#/components/headers/RequestId" } },
+              content:
+                {
+                  application/json:
+                    {
+                      schema:
+                        {
+                          $ref: "#/components/schemas/VerificationSettingsResponse",
+                        },
+                    },
+                },
+            },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        }
+    patch:
+      operationId: updateVerificationSettings
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                {
+                  schema: { $ref: "#/components/schemas/VerificationSettings" },
+                },
+            },
+        }
+      responses:
+        {
+          "200":
+            {
+              description: Updated,
+              headers:
+                { X-Request-Id: { $ref: "#/components/headers/RequestId" } },
+              content:
+                {
+                  application/json:
+                    {
+                      schema:
+                        {
+                          $ref: "#/components/schemas/VerificationSettingsResponse",
+                        },
+                    },
+                },
+            },
+          "400": { $ref: "#/components/responses/BadRequest" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        }
+  /saved-views:
+    get:
+      operationId: listSavedViews
+      responses:
+        {
+          "200":
+            {
+              description: Saved views,
+              headers:
+                { X-Request-Id: { $ref: "#/components/headers/RequestId" } },
+              content:
+                {
+                  application/json:
+                    {
+                      schema:
+                        { $ref: "#/components/schemas/SavedViewCollection" },
+                    },
+                },
+            },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        }
+    post:
+      operationId: createSavedView
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                { schema: { $ref: "#/components/schemas/SavedViewWrite" } },
+            },
+        }
+      responses:
+        {
+          "201":
+            {
+              description: Created,
+              headers:
+                { X-Request-Id: { $ref: "#/components/headers/RequestId" } },
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: "#/components/schemas/SavedView" } },
+                },
+            },
+          "400": { $ref: "#/components/responses/BadRequest" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        }
+  /saved-views/{viewId}:
+    parameters:
+      [
+        {
+          name: viewId,
+          in: path,
+          required: true,
+          schema: { type: string, format: uuid },
+        },
+      ]
+    patch:
+      operationId: updateSavedView
+      requestBody:
+        {
+          required: true,
+          content:
+            {
+              application/json:
+                { schema: { $ref: "#/components/schemas/SavedViewPatch" } },
+            },
+        }
+      responses:
+        {
+          "200":
+            {
+              description: Updated,
+              headers:
+                { X-Request-Id: { $ref: "#/components/headers/RequestId" } },
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: "#/components/schemas/SavedView" } },
+                },
+            },
+          "400": { $ref: "#/components/responses/BadRequest" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        }
+    delete:
+      operationId: deleteSavedView
+      responses:
+        {
+          "200":
+            {
+              description: Deleted,
+              headers:
+                { X-Request-Id: { $ref: "#/components/headers/RequestId" } },
+              content:
+                {
+                  application/json:
+                    { schema: { $ref: "#/components/schemas/IdResponse" } },
+                },
+            },
+          "400": { $ref: "#/components/responses/BadRequest" },
+          "401": { $ref: "#/components/responses/Unauthorized" },
+          "404": { $ref: "#/components/responses/NotFound" },
+          "500": { $ref: "#/components/responses/InternalServerError" },
+        }
 components:
+  headers:
+    RequestId: { description: Correlation request ID, schema: { type: string } }
   securitySchemes:
     sessionAuth:
       type: apiKey
@@ -432,23 +939,228 @@ components:
       description: Authentication required or email not allow-listed
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/Error' }
+          schema: { $ref: "#/components/schemas/Error" }
     BadRequest:
       description: Validation error
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/Error' }
+          schema: { $ref: "#/components/schemas/Error" }
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
     Conflict:
       description: Conflict
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/Error' }
+          schema: { $ref: "#/components/schemas/Error" }
     NotFound:
       description: Not found
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/Error' }
+          schema: { $ref: "#/components/schemas/Error" }
   schemas:
+    IdResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          {
+            type: object,
+            required: [id],
+            properties: { id: { type: string, format: uuid } },
+          }
+        meta: { $ref: "#/components/schemas/Meta" }
+    Meta:
+      type: object
+      required: [requestId]
+      properties: { requestId: { type: string } }
+    DashboardResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { type: object, additionalProperties: true }
+        meta: { $ref: "#/components/schemas/Meta" }
+    AuditEventCollection:
+      type: object
+      required: [data, page, meta]
+      properties:
+        data:
+          { type: array, items: { type: object, additionalProperties: true } }
+        page:
+          {
+            type: object,
+            required: [page, limit, hasMore],
+            properties:
+              {
+                page: { type: integer },
+                limit: { type: integer },
+                hasMore: { type: boolean },
+              },
+          }
+        meta: { $ref: "#/components/schemas/Meta" }
+    CreateApiToken:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        expiresAt: { type: [string, "null"], format: date-time }
+    ApiToken:
+      type: object
+      required: [id, name, tokenPrefix, scopes, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        tokenPrefix: { type: string }
+        scopes: { type: array, items: { type: string, enum: [catalog:read] } }
+        expiresAt: { type: [string, "null"], format: date-time }
+        lastUsedAt: { type: [string, "null"], format: date-time }
+        revokedAt: { type: [string, "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+    ApiTokenCollection:
+      type: object
+      required: [data, meta]
+      properties:
+        {
+          data:
+            { type: array, items: { $ref: "#/components/schemas/ApiToken" } },
+          meta: { $ref: "#/components/schemas/Meta" },
+        }
+    ApiTokenCreateResponse:
+      allOf:
+        - { $ref: "#/components/schemas/ApiToken" }
+        - type: object
+          required: [token]
+          properties: { token: { type: string } }
+    VerificationSettings:
+      type: object
+      additionalProperties: false
+      required: [intervalDays, thresholdDays]
+      properties:
+        {
+          intervalDays: { type: integer, minimum: 1, maximum: 3650 },
+          thresholdDays: { type: integer, minimum: 1, maximum: 3650 },
+        }
+    VerificationSettingsResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        {
+          data: { $ref: "#/components/schemas/VerificationSettings" },
+          meta: { $ref: "#/components/schemas/Meta" },
+        }
+    SavedViewWrite:
+      type: object
+      additionalProperties: false
+      required: [name, columns, filters, density]
+      properties:
+        {
+          name: { type: string, minLength: 1, maxLength: 120 },
+          columns:
+            {
+              type: array,
+              maxItems: 100,
+              items: { type: string, minLength: 1, maxLength: 80 },
+            },
+          filters: { type: object, additionalProperties: true },
+          sort: { type: [string, "null"], maxLength: 120 },
+          density: { type: string, enum: [comfortable, compact, spacious] },
+        }
+    SavedViewPatch:
+      type: object
+      additionalProperties: false
+      description: Partial saved-view update; all fields optional.
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        columns:
+          {
+            type: array,
+            maxItems: 100,
+            items: { type: string, minLength: 1, maxLength: 80 },
+          }
+        filters: { type: object, additionalProperties: true }
+        sort: { type: [string, "null"], maxLength: 120 }
+        density: { type: string, enum: [comfortable, compact, spacious] }
+    SavedView:
+      allOf:
+        - { $ref: "#/components/schemas/SavedViewWrite" }
+        - type: object
+          required: [id, createdAt, updatedAt]
+          properties:
+            {
+              id: { type: string, format: uuid },
+              createdAt: { type: string, format: date-time },
+              updatedAt: { type: string, format: date-time },
+            }
+    SavedViewCollection:
+      type: object
+      required: [data, meta]
+      properties:
+        {
+          data:
+            { type: array, items: { $ref: "#/components/schemas/SavedView" } },
+          meta: { $ref: "#/components/schemas/Meta" },
+        }
+    ImportConflictResolutionRequest:
+      type: object
+      additionalProperties: false
+      required: [importJobId, resolutions]
+      properties:
+        importJobId: { type: string, format: uuid }
+        resolutions:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/ImportConflictResolution" }
+    ImportConflictResolution:
+      type: object
+      additionalProperties: false
+      required: [conflictId, action]
+      properties:
+        conflictId: { type: string, format: uuid }
+        action:
+          {
+            type: string,
+            enum:
+              [
+                keep_existing,
+                use_imported,
+                merge,
+                create_separate_access,
+                ignore_row,
+                defer,
+              ],
+          }
+        payload: {}
+    ImportConflict:
+      type: object
+      required: [id, importJobId, conflictType, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        importJobId: { type: string, format: uuid }
+        conflictType: { type: string }
+        sourceSheet: { type: [string, "null"] }
+        sourceRow: { type: [integer, "null"], minimum: 0 }
+        sourceColumn: { type: [string, "null"] }
+        entityType: { type: [string, "null"] }
+        candidateEntityId: { type: [string, "null"], format: uuid }
+        currentValue: {}
+        importedValue: {}
+        resolution: { type: [string, "null"] }
+        resolutionPayload: {}
+        resolvedAt: { type: [string, "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+    ImportConflictResolutionResponse:
+      type: object
+      additionalProperties: false
+      required: [conflicts]
+      properties:
+        conflicts:
+          {
+            type: array,
+            items: { $ref: "#/components/schemas/ImportConflict" },
+          }
     Error:
       type: object
       required: [error]
@@ -460,33 +1172,54 @@ components:
             code: { type: string }
             message: { type: string }
             requestId: { type: string }
-            fieldErrors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+            fieldErrors:
+              {
+                type: object,
+                additionalProperties: { type: array, items: { type: string } },
+              }
     Model:
       type: object
-      required: [id, canonicalId, name, developerId, status, createdAt, updatedAt]
+      required:
+        [id, canonicalId, name, developerId, status, createdAt, updatedAt]
       properties:
         id: { type: string, format: uuid }
         canonicalId: { type: string, minLength: 1 }
         name: { type: string, minLength: 1 }
         developerId: { type: string, format: uuid }
-        family: { type: [string, 'null'] }
-        generation: { type: [string, 'null'] }
-        lifecycle: { type: string, enum: [current, ga, preview, beta, legacy, deprecated, retired, unavailable, unknown] }
-        lifecycleRaw: { type: [string, 'null'] }
-        releaseDate: { type: [string, 'null'], format: date }
-        knowledgeCutoff: { type: [string, 'null'] }
-        modelType: { type: [string, 'null'] }
-        description: { type: [string, 'null'] }
-        codingSpecialization: { type: [string, 'null'] }
-        contextTokens: { type: [integer, 'null'], minimum: 0 }
-        maxOutputTokens: { type: [integer, 'null'], minimum: 0 }
-        bestUse: { type: [string, 'null'] }
-        avoidFor: { type: [string, 'null'] }
-        speedRating: { type: [string, 'null'] }
-        verifiedTps: { type: [number, 'null'], minimum: 0 }
+        family: { type: [string, "null"] }
+        generation: { type: [string, "null"] }
+        lifecycle:
+          {
+            type: string,
+            enum:
+              [
+                current,
+                ga,
+                preview,
+                beta,
+                legacy,
+                deprecated,
+                retired,
+                unavailable,
+                unknown,
+              ],
+          }
+        lifecycleRaw: { type: [string, "null"] }
+        releaseDate: { type: [string, "null"], format: date }
+        knowledgeCutoff: { type: [string, "null"] }
+        modelType: { type: [string, "null"] }
+        description: { type: [string, "null"] }
+        codingSpecialization: { type: [string, "null"] }
+        contextTokens: { type: [integer, "null"], minimum: 0 }
+        maxOutputTokens: { type: [integer, "null"], minimum: 0 }
+        bestUse: { type: [string, "null"] }
+        avoidFor: { type: [string, "null"] }
+        speedRating: { type: [string, "null"] }
+        verifiedTps: { type: [number, "null"], minimum: 0 }
         needsRecheck: { type: boolean }
-        capabilities: { type: [object, 'null'], additionalProperties: true }
-        aliases: { type: array, items: { $ref: '#/components/schemas/ModelAlias' } }
+        capabilities: { type: [object, "null"], additionalProperties: true }
+        aliases:
+          { type: array, items: { $ref: "#/components/schemas/ModelAlias" } }
         status: { type: string, enum: [active, archived] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
@@ -497,22 +1230,33 @@ components:
         canonicalId: { type: string, minLength: 1 }
         name: { type: string, minLength: 1 }
         developerId: { type: string, format: uuid }
-        family: { type: [string, 'null'] }
-        generation: { type: [string, 'null'] }
+        family: { type: [string, "null"] }
+        generation: { type: [string, "null"] }
         lifecycle:
           type: string
-          enum: [current, ga, preview, beta, legacy, deprecated, retired, unavailable, unknown]
-        lifecycleRaw: { type: [string, 'null'] }
-        releaseDate: { type: [string, 'null'], format: date }
-        knowledgeCutoff: { type: [string, 'null'] }
-        modelType: { type: [string, 'null'] }
-        description: { type: [string, 'null'] }
-        codingSpecialization: { type: [string, 'null'] }
-        contextTokens: { type: [integer, 'null'], minimum: 0 }
-        maxOutputTokens: { type: [integer, 'null'], minimum: 0 }
-        bestUse: { type: [string, 'null'] }
-        avoidFor: { type: [string, 'null'] }
-        speedRating: { type: [string, 'null'] }
+          enum:
+            [
+              current,
+              ga,
+              preview,
+              beta,
+              legacy,
+              deprecated,
+              retired,
+              unavailable,
+              unknown,
+            ]
+        lifecycleRaw: { type: [string, "null"] }
+        releaseDate: { type: [string, "null"], format: date }
+        knowledgeCutoff: { type: [string, "null"] }
+        modelType: { type: [string, "null"] }
+        description: { type: [string, "null"] }
+        codingSpecialization: { type: [string, "null"] }
+        contextTokens: { type: [integer, "null"], minimum: 0 }
+        maxOutputTokens: { type: [integer, "null"], minimum: 0 }
+        bestUse: { type: [string, "null"] }
+        avoidFor: { type: [string, "null"] }
+        speedRating: { type: [string, "null"] }
         needsRecheck: { type: boolean }
         capabilities:
           type: object
@@ -520,7 +1264,7 @@ components:
         aliases:
           type: array
           items:
-            $ref: '#/components/schemas/ModelAliasWrite'
+            $ref: "#/components/schemas/ModelAliasWrite"
     ModelPatch:
       type: object
       description: Partial model update payload (all fields optional; mirrors modelUpdateSchema)
@@ -529,22 +1273,33 @@ components:
         canonicalId: { type: string, minLength: 1 }
         name: { type: string, minLength: 1 }
         developerId: { type: string, format: uuid }
-        family: { type: [string, 'null'] }
-        generation: { type: [string, 'null'] }
+        family: { type: [string, "null"] }
+        generation: { type: [string, "null"] }
         lifecycle:
           type: string
-          enum: [current, ga, preview, beta, legacy, deprecated, retired, unavailable, unknown]
-        lifecycleRaw: { type: [string, 'null'] }
-        releaseDate: { type: [string, 'null'], format: date }
-        knowledgeCutoff: { type: [string, 'null'] }
-        modelType: { type: [string, 'null'] }
-        description: { type: [string, 'null'] }
-        codingSpecialization: { type: [string, 'null'] }
-        contextTokens: { type: [integer, 'null'], minimum: 0 }
-        maxOutputTokens: { type: [integer, 'null'], minimum: 0 }
-        bestUse: { type: [string, 'null'] }
-        avoidFor: { type: [string, 'null'] }
-        speedRating: { type: [string, 'null'] }
+          enum:
+            [
+              current,
+              ga,
+              preview,
+              beta,
+              legacy,
+              deprecated,
+              retired,
+              unavailable,
+              unknown,
+            ]
+        lifecycleRaw: { type: [string, "null"] }
+        releaseDate: { type: [string, "null"], format: date }
+        knowledgeCutoff: { type: [string, "null"] }
+        modelType: { type: [string, "null"] }
+        description: { type: [string, "null"] }
+        codingSpecialization: { type: [string, "null"] }
+        contextTokens: { type: [integer, "null"], minimum: 0 }
+        maxOutputTokens: { type: [integer, "null"], minimum: 0 }
+        bestUse: { type: [string, "null"] }
+        avoidFor: { type: [string, "null"] }
+        speedRating: { type: [string, "null"] }
         needsRecheck: { type: boolean }
         capabilities:
           type: object
@@ -552,7 +1307,7 @@ components:
         aliases:
           type: array
           items:
-            $ref: '#/components/schemas/ModelAliasWrite'
+            $ref: "#/components/schemas/ModelAliasWrite"
     ModelAliasWrite:
       type: object
       required: [alias]
@@ -563,7 +1318,7 @@ components:
           type: string
           enum: [display, short, provider, legacy, other]
           default: display
-        accessProviderId: { type: [string, 'null'], format: uuid }
+        accessProviderId: { type: [string, "null"], format: uuid }
     ModelAlias:
       type: object
       required: [id, alias, aliasType]
@@ -573,23 +1328,23 @@ components:
         aliasType:
           type: string
           enum: [display, short, provider, legacy, other]
-        accessProviderId: { type: [string, 'null'], format: uuid }
+        accessProviderId: { type: [string, "null"], format: uuid }
         normalizedAlias: { type: string }
-        createdAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: [string, "null"], format: date-time }
     ModelCollection:
       type: object
       required: [data, page]
       properties:
-        data: { type: array, items: { $ref: '#/components/schemas/Model' } }
+        data: { type: array, items: { $ref: "#/components/schemas/Model" } }
         page:
           type: object
           required: [hasMore]
           properties:
-            nextCursor: { type: [string, 'null'] }
+            nextCursor: { type: [string, "null"] }
             hasMore: { type: boolean }
     Subscription:
       allOf:
-        - { $ref: '#/components/schemas/SubscriptionWrite' }
+        - { $ref: "#/components/schemas/SubscriptionWrite" }
         - type: object
           required: [id, createdAt, updatedAt]
           properties:
@@ -603,16 +1358,16 @@ components:
         planId: { type: string }
         accountLabel: { type: string }
         status: { type: string }
-        actualPrice: { type: [number, 'null'] }
-        currency: { type: [string, 'null'] }
-        nextBillingDate: { type: [string, 'null'], format: date }
-        autoRenews: { type: [boolean, 'null'] }
+        actualPrice: { type: [number, "null"] }
+        currency: { type: [string, "null"] }
+        nextBillingDate: { type: [string, "null"], format: date }
+        autoRenews: { type: [boolean, "null"] }
         usageTrackingMode: { type: string }
-        usageCheckInstructions: { type: [string, 'null'] }
-        notes: { type: [string, 'null'] }
+        usageCheckInstructions: { type: [string, "null"] }
+        notes: { type: [string, "null"] }
     ModelAccess:
       allOf:
-        - { $ref: '#/components/schemas/ModelAccessWrite' }
+        - { $ref: "#/components/schemas/ModelAccessWrite" }
         - type: object
           required: [id]
           properties:
@@ -623,13 +1378,13 @@ components:
       properties:
         modelId: { type: string }
         planId: { type: string }
-        providerModelId: { type: [string, 'null'] }
+        providerModelId: { type: [string, "null"] }
         availability: { enum: [confirmed, unconfirmed, unavailable, removed] }
         accessMethod: { type: string }
-        apiCompatible: { type: [boolean, 'null'] }
+        apiCompatible: { type: [boolean, "null"] }
         cliOnly: { type: boolean, default: false }
         webOnly: { type: boolean, default: false }
-        limitations: { type: [string, 'null'] }
+        limitations: { type: [string, "null"] }
     ImportJob:
       type: object
       required: [id, filename, status, createdAt]
@@ -637,6 +1392,6 @@ components:
         id: { type: string }
         filename: { type: string }
         status: { type: string }
-        previewSummary: { type: [object, 'null'], additionalProperties: true }
-        commitSummary: { type: [object, 'null'], additionalProperties: true }
+        previewSummary: { type: [object, "null"] }
+        commitSummary: { type: [object, "null"] }
         createdAt: { type: string, format: date-time }

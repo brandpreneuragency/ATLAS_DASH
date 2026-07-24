@@ -2,11 +2,11 @@
 
 ## Current phase
 
-`Phase 2 — Model registry` — Complete. Mechanical gate green end to end; both E2E projects pass.
+`MVP implementation plan complete` — Phases 1–7 are implemented, verified, deployed, and browser-smoke-tested in production.
 
 ## Current objective
 
-Phase 2 is closed. Next: obtain the independent-review accept verdict (blocked earlier by the OpenAI 429 on review workers), then resume the orchestrator at Phase 3 (subscriptions/access).
+Phases 1–7 are complete. Production HTTPS/reverse proxy, backup/restore proof, runtime health and exposure checks, single-account credentials login, Settings authentication, browser smoke testing, firewall verification, and restore-test cleanup are complete.
 
 Repository: `/home/admin/model-monitor/`
 
@@ -84,6 +84,122 @@ Implemented service layer, API routes, management UI, dashboard KPIs, and tests 
 
 ### Outstanding (non-blocking)
 
-- Database `tsc` typecheck has pre-existing external-dependency errors (`drizzle-orm` CJS + `postgres` default import + `models.ts` Set iteration under the database tsconfig target). Recommend adding `esModuleInterop`/`downlevelIteration` or a targeted `// @ts-expect-error` on the `postgres` import — separate from Phase 3 logic.
-- Independent-review accept verdict still outstanding (Phase 2 review workers hit HTTP 429 on 2026-07-22).
+- The earlier database TypeScript warning is superseded by the final full repository typecheck passing on 2026-07-24.
+- Final independent read-only checkpoint review returned **ACCEPT** on 2026-07-24 with no commit blockers; the complete staged tree then passed lint, typecheck, full tests, production build, secret scanning, and diff validation.
+- No remaining implementation or release blockers.
+
+---
+
+## Phase 4 Wave A — Schemas & Persistence Contract — Complete (2026-07-23)
+
+Implemented the typed Zod schema foundation for import/export. No database migration was needed — the existing `import_jobs`, `import_conflicts`, `import_provenance`, and `audit_events` tables already satisfy the Phase 4 persistence contract.
+
+### Delivered
+
+- **`packages/schemas/src/phase4.ts`**: All Phase 4 Zod schemas:
+  - Formula-like text detection (`isFormulaLike`) and neutralization (`neutralizeFormulaText`, `neutralizeExportRow`)
+  - Upload metadata (`importUploadSchema`)
+  - Per-sheet summary (`sheetSummarySchema`)
+  - Import preview/commit/error summaries (`importPreviewSummarySchema`, `importCommitSummarySchema`, `importErrorSummarySchema`)
+  - Conflict types enum and DTO (`importConflictTypeSchema`, `importConflictDtoSchema`)
+  - Resolution actions and batch resolution (`importResolutionActionSchema`, `importConflictResolutionSchema`, `importBatchResolutionSchema`)
+  - Provenance DTO (`importProvenanceDtoSchema`)
+  - Import job response (`importJobResponseSchema`)
+  - Preview response with rows and conflicts (`importPreviewResponseSchema`, `importPreviewRowSchema`)
+  - Export request/response schemas (`exportRequestSchema`, `exportResponseSchema`, `exportPayloadSchema`)
+  - Structured export row types for models, subscriptions, access, benchmarks
+- **`packages/schemas/src/phase4.test.ts`**: 49 unit tests covering formula neutralization, every schema boundary, empty-to-null semantics, and conflict type enumeration.
+- **`packages/schemas/src/index.ts`**: Added `export * from "./phase4"` re-export.
+
+### Gate results (2026-07-23)
+
+- schemas lint (`eslint .`): **PASS**
+- schemas typecheck (`tsc --noEmit`): **PASS**
+- schemas unit tests (`vitest run`): **81 passed** (49 Phase 4 + 32 Phase 2/3 pre-existing)
+- No database schema changes — existing tables fully satisfy the contract.
 - No commit/push performed (awaiting user direction).
+
+---
+
+## Phase 4 — Import and Export — Complete (2026-07-23)
+
+Implemented safe workbook intake, fixture-backed normalization and matching, transactional preview/commit/conflict resolution, idempotent import commit, and authenticated JSON/CSV/XLSX exports.
+
+### Delivered
+
+- Safe XLSX/XLSM intake with private storage, checksum/parser metadata, and no macro/formula execution.
+- Fixture-backed preview planning with 31 populated `Master Models` rows, a 51-model canonical roster, and 276 benchmark plan rows.
+- Typed blank/unknown-ID conflicts, duplicate-access handling without canonical model duplication, preserved benchmark settings/comparable groups/source metadata, null cost semantics, formula/error preservation, and import provenance.
+- Read-only preview, useful persisted/reconstructed preview rows, transactional rollback on failed commit, conflict resolution, audit events, and idempotent commit/replay handling.
+- Authenticated import routes and documented OpenAPI contracts for preview, inspection, conflict resolution, commit, and export downloads.
+- JSON, CSV, and XLSX export serializers with formula neutralization, null preservation, typed score/source/provenance sections, and safe download headers.
+
+### Gate results (2026-07-23, independently rerun)
+
+- full lint: **PASS** (5 packages; 0 errors; 2 pre-existing warnings in `apps/web/e2e/subscriptions.spec.ts`)
+- full typecheck: **PASS** (9 tasks)
+- full unit: **PASS** (232 tests)
+- full integration: **PASS** (web 1; database 63 passed, 2 skipped)
+- seed integrity: **PASS** — 51 models, 4 subscriptions, 19 access, 276 benchmarks, USD 61 monthly cost
+- web production build: **PASS**
+- E2E: **PASS** — 7 auth-boundary tests and 19 workflow/accessibility tests
+- `git diff --check`: **PASS**
+- No commit/push performed.
+
+---
+
+## Phase 5 — Dashboard and administration — Complete (2026-07-23)
+
+Implemented the dashboard quality/KPI surface and administration controls for audit events, verification settings, saved table views, and scoped API tokens. Added authenticated route-level tests and documented the implemented Phase 5 API paths in OpenAPI.
+
+### Gate results
+
+- full lint: **PASS** (0 errors; 2 pre-existing warnings in `apps/web/e2e/subscriptions.spec.ts`)
+- full typecheck: **PASS**
+- full unit: **PASS**
+- full integration: **PASS** (seed integrity and health checks included)
+- isolated web production build: **PASS**
+- E2E: **PASS** — 7 auth-boundary tests and 19 workflow/accessibility tests
+- Phase 5 route tests: **10 passed**
+- OpenAPI contract tests: **10 passed**
+
+---
+
+## Phase 6 — Hermes contract — Complete (2026-07-23)
+
+Added `@model-monitor/hermes-contract` with strict Zod serialization aligned to the authoritative Hermes JSON Schema, plus the versioned read-only `GET /api/v1/hermes/catalog` endpoint.
+
+### Delivered
+
+- Bearer token authentication with `catalog:read`, expiry, revocation, and invalid-token rejection.
+- Direct schema-valid catalog response with canonical models emitted once, active access paths, null-preserving capabilities/technical values/scores, methodology versions, and latest usage provenance.
+- Mock/manual usage source and `isMock` labels preserved; no token plaintext/hash or provider secrets returned.
+- Stable `ETag`, `Last-Modified`, private 60-second caching, and `304 Not Modified` support.
+- OpenAPI catalog documentation and route-level tests with mocked database access; catalog requests perform no token last-used write.
+
+### Gate results
+
+- focused Hermes route/contract tests: **9 passed**
+- full lint: **PASS** (0 errors; 2 pre-existing warnings)
+- full typecheck: **PASS**
+- full unit: **PASS** — 263 tests across the workspace
+- full integration: **PASS** — 63 database tests passed, 2 skipped; web health integration passed
+- production build: **PASS**; `/api/v1/hermes/catalog` present in the route manifest
+- E2E: **PASS** — 7 auth-boundary tests and 19 workflow/accessibility tests
+
+---
+
+## Phase 7 — Hardening/deployment artifacts and runtime verification (2026-07-23)
+
+- Added environment-driven PostgreSQL credentials, loopback-only Compose binding, explicit Next hostname binding, dynamic healthcheck, and the production web image.
+- Added static `scripts/check-deployment-artifacts.sh`, `RELEASE_CHECKLIST.md`, and `SECURITY_REVIEW.md`.
+- Added `models.brandpreneur.net` to the existing Caddy configuration without changing the Atlas Dash, Atlas Control, or Wagner site blocks.
+- Runtime verified: `model-monitor-web` healthy; web listens on `127.0.0.1:3000`; PostgreSQL remains on `127.0.0.1:5433`; public HTTPS health returns 200; unauthenticated Hermes catalog returns 401 with a request ID; existing sites remain reachable.
+- Backup verified: archive and checksum are owner-readable mode `600`; SHA-256 and `pg_restore --list` pass; archive restored into an isolated empty database; restored seed-integrity assertions pass (51 models, 4 subscriptions, 19 access, 276 benchmarks, 4 mock usage snapshots, $61 monthly cost, 0 duplicate canonical IDs, 0 orphan access records).
+- Fresh repository gates: `pnpm run lint` PASS (2 pre-existing warnings); `pnpm run typecheck` PASS; `pnpm run test` PASS (13 Turbo tasks, 85 web unit tests, 41 database unit tests, 63 database integration tests with 2 expected skips); `pnpm run test:e2e` PASS (7 auth-boundary tests, 19 workflow/accessibility tests); `pnpm run verify:deployment` PASS; `bash -n scripts/*.sh` PASS; Compose config PASS; Caddy validation PASS; production Docker build PASS.
+- Credentials login replacement (2026-07-24): replaced Google OAuth with a single configured email/password account using a Node built-in scrypt password hash; added hidden-input hash generation, login UI, unit coverage, and updated anonymous auth-boundary E2E assertions. Runtime credentials were configured from the protected environment, and Auth.js production URL/trusted-host settings (`AUTH_URL`, `NEXTAUTH_URL`, `AUTH_TRUST_HOST`) were added to the web deployment. Middleware now derives redirects from the canonical public URL and explicitly reads the HTTPS `__Secure-authjs.session-token` cookie; exact redirect/cookie regressions pass, and a 60-second in-memory synthetic production session reached `/dashboard` with HTTP 200 and no redirect. The web container was rebuilt and restarted without recreating PostgreSQL; live health, database health, and anonymous auth-boundary checks pass. Google client variables are no longer used.
+- Settings authentication repair (2026-07-24): credential emails now resolve race-safely to UUID-backed `users` rows for both new logins and existing JWT sessions, so UUID-owned API tokens no longer fail. Settings API responses are validated and loaded independently so one failed endpoint renders an inline error instead of crashing React. Production verification with the legacy textual session returned HTTP 200 and valid response shapes for `/settings`, verification settings, API tokens, and saved views; exactly one configured UUID user row exists.
+- Production browser smoke test passed (2026-07-24): credentials login reached `/dashboard`, and the Settings verification, saved-view, and API-token sections loaded without a client exception.
+- Restore-test cleanup (2026-07-24): after explicit approval, dropped only `modelmonitor_restore_20260723182731` after verifying it had zero active connections and differed from the production database name. Post-cleanup verification confirms only production `modelmonitor` remains; PostgreSQL and web containers are healthy, and public app/database health is `ok`.
+- Firewall verification (2026-07-24): UFW is active with default deny for incoming and routed traffic. Public inbound allowances are SSH (`22`), HTTP/HTTPS (`80`/`443`), and the intentional Syncthing TCP/UDP port (`22000`); `18789` is explicitly denied. Docker NAT publishes PostgreSQL `5433` and the existing `8888` service only on `127.0.0.1`; Model Monitor and PostgreSQL are not publicly exposed. No firewall rules were changed.
+- Outstanding: none for the Phase 7 deployment/runtime verification scope.

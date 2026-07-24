@@ -26,4 +26,7 @@ export * from "./services/access";
 export * from "./services/usage";
 export * from "./services/plans";
 export * from "./services/subscriptions";
+export * from "./services/imports";
+export * from "./services/admin";
+export * from "./services/users";
 export { cleanupTestModels } from "./cleanup-test-models";

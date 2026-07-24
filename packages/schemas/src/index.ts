@@ -5,3 +5,5 @@
 // every export undefined under vitest's CJS interop.
 export * from "./primitives";
 export * from "./phase3";
+export * from "./phase4";
+export * from "./phase5";

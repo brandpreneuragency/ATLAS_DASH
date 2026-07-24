@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { ModelServiceError } from "@model-monitor/database";
+import { ensureUserByEmail, ModelServiceError } from "@model-monitor/database";
 import { idempotencyKeySchema, pathUuidSchema } from "@model-monitor/schemas";
+import { ZodError } from "zod";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 import {
   isDevAuthBypassEnabled,
   isEmailAllowed,
@@ -47,6 +49,25 @@ export function jsonError(
         },
       },
       { status: error.status, headers: { "x-request-id": requestId } },
+    );
+  }
+
+  if (error instanceof ZodError) {
+    const fieldErrors: Record<string, string[]> = {};
+    for (const issue of error.issues) {
+      const field = issue.path.join(".") || "body";
+      (fieldErrors[field] ??= []).push(issue.message);
+    }
+    return NextResponse.json(
+      {
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Invalid request",
+          requestId,
+          fieldErrors,
+        },
+      },
+      { status: 400, headers: { "x-request-id": requestId } },
     );
   }
 
@@ -127,10 +148,12 @@ export async function requireApiSession(_requestId: string): Promise<{
   ) {
     throw new ModelServiceError("UNAUTHORIZED", "Email is not allow-listed", 401);
   }
-  return {
-    userId: session.user.id ?? null,
-    email: session.user.email ?? null,
-  };
+  const email = session.user.email?.trim().toLowerCase();
+  if (!email) {
+    throw new ModelServiceError("UNAUTHORIZED", "Authenticated email required", 401);
+  }
+  const user = await ensureUserByEmail(db, email);
+  return { userId: user.id, email: user.email };
 }
 
 export function unauthorizedJson(requestId: string) {

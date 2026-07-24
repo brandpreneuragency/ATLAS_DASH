@@ -1,0 +1,7 @@
+import { updateSavedView, deleteSavedView } from "@model-monitor/database";
+import { savedViewPatchSchema } from "@model-monitor/schemas";
+import { db } from "@/lib/db";
+import { ModelServiceError } from "@model-monitor/database";
+import { auditContext, getRequestId, jsonError, jsonOk, parseJsonBody, parsePathUuid, requireApiSession } from "@/lib/api";
+export async function PATCH(request: Request, context: { params: Promise<{ viewId: string }> }) { const requestId = getRequestId(request); try { const s = await requireApiSession(requestId); if (!s.userId) throw new ModelServiceError("UNAUTHORIZED", "Authenticated user id required", 401); const { viewId } = await context.params; const input = savedViewPatchSchema.parse(await parseJsonBody(request)); return jsonOk(await updateSavedView(db, s.userId, parsePathUuid(viewId, "viewId"), input, auditContext(request, s.userId).requestId), { requestId }); } catch (e) { return jsonError(e, requestId); } }
+export async function DELETE(request: Request, context: { params: Promise<{ viewId: string }> }) { const requestId = getRequestId(request); try { const s = await requireApiSession(requestId); if (!s.userId) throw new ModelServiceError("UNAUTHORIZED", "Authenticated user id required", 401); const { viewId } = await context.params; await deleteSavedView(db, s.userId, parsePathUuid(viewId, "viewId"), auditContext(request, s.userId).requestId); return jsonOk({ data: { id: viewId }, meta: { requestId } }, { requestId }); } catch (e) { return jsonError(e, requestId); } }

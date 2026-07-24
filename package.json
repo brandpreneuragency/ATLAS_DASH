@@ -16,7 +16,8 @@
     "db:migrate": "turbo db:migrate",
     "db:seed": "turbo db:seed",
     "db:studio": "turbo db:studio",
-    "verify": "turbo verify"
+    "verify": "turbo verify",
+    "verify:deployment": "bash scripts/check-deployment-artifacts.sh"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.6",
