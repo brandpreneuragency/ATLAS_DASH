@@ -1,15 +1,6 @@
-# ATLAS_DASH web + API (basic-auth protected)
-atlasdash.brandpreneur.net {
-	encode zstd gzip
-	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
-		X-Content-Type-Options "nosniff"
-		Referrer-Policy "strict-origin-when-cross-origin"
-		-Server
-	}
-	basic_auth {
-		{$ATLAS_DASH_BASIC_AUTH_USER} {$ATLAS_DASH_BASIC_AUTH_HASH}
-	}
+# The ATLAS_DASH route chain, factored out so the CP-M5 gate can exercise the
+# exact same routing the public host uses, rather than a hand-copied lookalike.
+(atlas_dash_app) {
 	handle /fs/* {
 		reverse_proxy 127.0.0.1:4010
 	}
@@ -29,6 +20,29 @@ atlasdash.brandpreneur.net {
 		try_files {path} /index.html
 		file_server
 	}
+}
+
+# ATLAS_DASH web + API (basic-auth protected)
+atlasdash.brandpreneur.net {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+	basic_auth {
+		{$ATLAS_DASH_BASIC_AUTH_USER} {$ATLAS_DASH_BASIC_AUTH_HASH}
+	}
+	import atlas_dash_app
+}
+
+# TEMPORARY — CP-M5 Gate A only. Bound to loopback, so it is not reachable from
+# off the box and is not served over TLS by any public name. It exists purely to
+# prove the argon2 gate is enforcing through this exact route chain BEFORE the
+# basic-auth gate is removed from the public host. Delete it at cutover.
+http://127.0.0.1:8099 {
+	import atlas_dash_app
 }
 
 # Model Monitor (private application service; public access is HTTPS only).
